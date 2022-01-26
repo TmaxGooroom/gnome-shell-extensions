@@ -1,0 +1,86 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 25 Jan 2022 16:47:42 +0900
+Subject: [chore] notification-center: change icon(WIP)
+
+- change noti icon
+- work continue after getting alarm off icon
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js             | 17 ++++++++++++-----
+ .../notification-center/img/tos_ic_notification.svg     | 13 +++++++++++++
+ 2 files changed, 25 insertions(+), 5 deletions(-)
+ create mode 100644 extensions/notification-center/img/tos_ic_notification.svg
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 9b6b548..db9e677 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -251,7 +251,9 @@ const NotificationCenter = new LangClass({
+ 
+         this.eventsIcon        = new St.Icon({ style_class: 'system-status-icon', visible: false, icon_name: 'x-office-calendar-symbolic' });
+         this.mediaIcon         = new St.Icon({ style_class: 'system-status-icon', visible: false, icon_name: 'audio-x-generic-symbolic'  });
+-        this.notificationIcon  = new St.Icon({ style_class: 'system-status-icon', visible: false });
++        this.notificationIcon  = new St.Icon({ style_class: 'system-status-icon', visible: false,
++            gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_ic_notification.svg`),
++            icon_size: 32 });
+         this.emptyIcon         = new St.Icon({ style_class: 'notification-center-empty-icon',
+             gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_img_alarm_none.png`),
+             icon_size: 142,
+@@ -410,7 +412,11 @@ const NotificationCenter = new LangClass({
+         this.blinkIconStopIfBlinking();
+         this.manageAutohide();
+ 
+-        this.notificationIcon.icon_name = this.notificationIconName;
++        if (this.notificationIconName)
++            this.notificationIcon.icon_name = this.notificationIconName;
++
++        else
++            this.notificationIcon.gicon = Gio.icon_new_for_string(`${Me.path}/img/tos_ic_notification.svg`);
+ 
+         if (this.isDndOff) {
+             this.alarmIcon.setStatus(true);
+@@ -665,11 +671,12 @@ const NotificationCenter = new LangClass({
+ 
+     setNotificationIconName() {
+ 
+-        if (Gtk.IconTheme.get_default())
++        this.notificationIconName = null;
++        /* if (Gtk.IconTheme.get_default())
+             this.notificationIconName = Gtk.IconTheme.get_default().has_icon('notification-symbolic') ? 'notification-symbolic' : 'preferences-system-notifications-symbolic';
+ 
+         else
+-            this.notificationIconName = 'preferences-system-notifications-symbolic';
++            this.notificationIconName = 'preferences-system-notifications-symbolic';*/
+ 
+ 
+     },
+@@ -767,7 +774,7 @@ const NotificationCenter = new LangClass({
+ 
+         this.menu.box.add_actor(this.titleBox);
+ 
+-        this.setNotificationIconName();
++        // this.setNotificationIconName();
+         this.iconThemeChangeSig = this.textureCache.connect('icon-theme-changed', this.iconThemeChanged.bind(this));
+ 
+         Main.panel.addToStatusArea('NotificationCenter', this, this.prefs.get_int('indicator-index'), this.prefs.get_string('indicator-pos'));
+diff --git a/extensions/notification-center/img/tos_ic_notification.svg b/extensions/notification-center/img/tos_ic_notification.svg
+new file mode 100644
+index 0000000..7b93da0
+--- /dev/null
++++ b/extensions/notification-center/img/tos_ic_notification.svg
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>msg</title>
++    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="Group">
++            <rect id="Rectangle" fill="#FFFFFF" opacity="0.6" x="0" y="0" width="32" height="32" rx="8"></rect>
++            <g transform="translate(4.000000, 4.000000)">
++                <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                <path d="M22,20.7928932 C22,21.0690356 21.7761424,21.2928932 21.5,21.2928932 C21.3673918,21.2928932 21.2402148,21.2402148 21.1464466,21.1464466 L18,18 L4,18 C2.8954305,18 2,17.1045695 2,16 L2,4 C2,2.8954305 2.8954305,2 4,2 L20,2 C21.1045695,2 22,2.8954305 22,4 L22,20.7928932 Z M17,13 L7,13 C6.44771525,13 6,13.4477153 6,14 C6,14.5128358 6.38604019,14.9355072 6.88337887,14.9932723 L7,15 L17,15 C17.5522847,15 18,14.5522847 18,14 C18,13.4477153 17.5522847,13 17,13 Z M17,9 L7,9 C6.44771525,9 6,9.44771525 6,10 C6,10.5128358 6.38604019,10.9355072 6.88337887,10.9932723 L7,11 L17,11 C17.5522847,11 18,10.5522847 18,10 C18,9.44771525 17.5522847,9 17,9 Z M17,5 L7,5 C6.44771525,5 6,5.44771525 6,6 C6,6.51283584 6.38604019,6.93550716 6.88337887,6.99327227 L7,7 L17,7 C17.5522847,7 18,6.55228475 18,6 C18,5.44771525 17.5522847,5 17,5 Z" id="Combined-Shape" fill="#000000"></path>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file

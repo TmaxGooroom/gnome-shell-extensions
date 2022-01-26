@@ -1,0 +1,168 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 30 Apr 2021 17:15:29 +0900
+Subject: [feat] AlternateTab : rearrange gridLayout when preview window
+ closed during Popup
+
+  - When remove window via keypresshandling, Rearrange GridLayout
+  - Fix automatic create Row layout function
+  - Remove print log code
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 50 +++++++++++++++++++++++++-----------
+ 1 file changed, 35 insertions(+), 15 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 07f62c1..9000bb8 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -188,7 +188,6 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         let [width, height] = this._items[this._selectedIndex].get_size();
+         let [x, y] = this._items[this._selectedIndex].get_transformed_position();
+         let target = this._items[this._selectedIndex].get_stage().get_actor_at_pos(Clutter.PickMode.REACTIVE, x + width / 3, y + height * 1.2);
+-        global.log(target);
+         return this._items.indexOf(target.get_child());
+ 
+     }
+@@ -199,7 +198,6 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         let [width, height] = this._items[this._selectedIndex].get_size();
+         let [x, y] = this._items[this._selectedIndex].get_transformed_position();
+         let target = this._items[this._selectedIndex].get_stage().get_actor_at_pos(Clutter.PickMode.REACTIVE, x + width / 2, y - height / 3);
+-        global.log(target);
+         return this._items.indexOf(target.get_child());
+     }
+ });
+@@ -217,8 +215,8 @@ class WindowIcon extends St.BoxLayout {
+         this.add_child(this._title);
+ 
+         // Preview can be a Window Clone or Appicon
+-        this._preview = new St.Widget({ layout_manager: new Clutter.BinLayout() });
+-        this.add_child(this._preview);
++        this.preview = new St.Widget({ layout_manager: new Clutter.BinLayout() });
++        this.add_child(this.preview);
+ 
+         // Label is window name
+         this.label = new St.Label({ text: window.get_title(), style_class: 'tos-text-label' });
+@@ -229,7 +227,7 @@ class WindowIcon extends St.BoxLayout {
+         let mutterWindow = this.window.get_compositor_private();
+         let size;
+ 
+-        this._preview.destroy_all_children();
++        this.preview.destroy_all_children();
+ 
+         // scaleFactor is used to resize preview widget.
+         let scaleFactor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+@@ -238,12 +236,12 @@ class WindowIcon extends St.BoxLayout {
+         switch (mode) {
+         case AppIconMode.THUMBNAIL_ONLY:
+             size = WINDOW_PREVIEW_SIZE;
+-            this._preview.add_child(_createWindowClone(mutterWindow, size * scaleFactor));
++            this.preview.add_child(_createWindowClone(mutterWindow, size * scaleFactor));
+             break;
+ 
+         case AppIconMode.BOTH:
+             size = WINDOW_PREVIEW_SIZE;
+-            this._preview.add_child(_createWindowClone(mutterWindow, size * scaleFactor));
++            this.preview.add_child(_createWindowClone(mutterWindow, size * scaleFactor));
+ 
+             if (this.app) {
+                 this._title.add_child(this._createAppIcon(this.app,
+@@ -252,7 +250,7 @@ class WindowIcon extends St.BoxLayout {
+             break;
+         case AppIconMode.APP_ICON_ONLY:
+             size = APP_ICON_SIZE;
+-            this._preview.add_child(this._createAppIcon(this.app, size));
++            this.preview.add_child(this._createAppIcon(this.app, size));
+         }
+         // Set window name on title row
+         this._title.add_child(this.label);
+@@ -260,7 +258,7 @@ class WindowIcon extends St.BoxLayout {
+         let [width, height] = mutterWindow.get_size();
+         let ratio = width / height;
+ 
+-        this._preview.set_size(size * ratio * scaleFactor, size * scaleFactor);
++        this.preview.set_size(size * ratio * scaleFactor, size * scaleFactor);
+     }
+ 
+     _createAppIcon(app, size) {
+@@ -307,7 +305,7 @@ var WindowSwitcher = GObject.registerClass({
+             let icon = new WindowIcon(win, mode);
+             let rowWidth = this.precalculateRowWidth(this._rows);
+ 
+-            if (rowWidth + icon.get_width() > this._maxWidth) {
++            if (rowWidth + icon.preview.get_width() > this._maxWidth) {
+                 this._rows++;
+                 let newRow = new St.BoxLayout({ style_class: 'switcher-list-item-container',
+                     vertical: false,
+@@ -320,11 +318,14 @@ var WindowSwitcher = GObject.registerClass({
+             this.addItem(icon, icon.label);
+ 
+             this.icons.push(icon);
++
++            this._items[i].set_width(this.icons[i].preview.get_width());
+             icon._unmanagedSignalId = icon.window.connect('unmanaged', window => {
+                 this._removeWindow(window);
+             });
+         }
+         this.connect('destroy', this._onDestroy.bind(this));
++
+     }
+ 
+     _onDestroy() {
+@@ -380,6 +381,7 @@ var WindowSwitcher = GObject.registerClass({
+         bbox.connect('clicked', () => this._onItemClicked(bbox));
+         bbox.connect('button-press-event', () => this._onItemPress(bbox));
+ 
++
+         bbox.label_actor = label;
+         this._items.push(bbox);
+ 
+@@ -399,6 +401,7 @@ var WindowSwitcher = GObject.registerClass({
+     }
+ 
+     highlight(index, justOutline) {
++
+         if (this._items[this._highlighted]) {
+             this._items[this._highlighted].remove_style_pseudo_class('outlined');
+             this._items[this._highlighted].remove_style_pseudo_class('selected');
+@@ -488,6 +491,19 @@ var WindowSwitcher = GObject.registerClass({
+         this.emit('item-pressed', n);
+     }
+ 
++    _rearrangeGrid(rowIndex) {
++        if (rowIndex === this._rows)
++            return;
++        let nextRowItem = this._lists[rowIndex + 1].get_first_child();
++        let rowWidth = this.precalculateRowWidth(rowIndex);
++
++        if (rowWidth + nextRowItem.get_width() < this._maxWidth) {
++            this._lists[rowIndex + 1].remove_actor(nextRowItem);
++            this._lists[rowIndex].add_actor(nextRowItem);
++            this._rearrangeGrid(rowIndex + 1);
++        }
++    }
++
+     _removeWindow(window) {
+         let index = this.icons.findIndex(icon => {
+             return icon.window === window;
+@@ -497,11 +513,15 @@ var WindowSwitcher = GObject.registerClass({
+         let rowIndex = this.findRowIndexFromItem(index);
+         this.icons.splice(index, 1);
+         this.removeItem(index);
+-        if (this._lists[rowIndex].get_children().length === 0) {
+-            this._rowList.remove_child(this._lists[rowIndex]);
+-            this._lists.splice(rowIndex, 1);
+-            global.log(this._lists.length);
+-            this._rows--;
++        this._rearrangeGrid(rowIndex);
++        for (let i = this._rows; i >= 0; i--) {
++            if (this._lists[i].get_children().length === 0) {
++                this._rowList.remove_child(this._lists[i]);
++                this._lists.splice(i, 1);
++                this._rows--;
++            } else {
++                break;
++            }
+         }
+     }
+ });

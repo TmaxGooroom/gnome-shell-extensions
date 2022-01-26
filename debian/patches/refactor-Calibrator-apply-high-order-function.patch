@@ -1,0 +1,155 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Mon, 26 Jul 2021 15:30:40 +0900
+Subject: [refactor] Calibrator : apply high-order function
+
+- Apply higher function at array variable initialization
+
+[IMS] N/A
+---
+ extensions/calibrator/extension.js | 72 +++++++++++++++++---------------------
+ 1 file changed, 32 insertions(+), 40 deletions(-)
+
+diff --git a/extensions/calibrator/extension.js b/extensions/calibrator/extension.js
+index 020d5e0..8cdf03e 100644
+--- a/extensions/calibrator/extension.js
++++ b/extensions/calibrator/extension.js
+@@ -4,15 +4,14 @@ const { Gio, GLib } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ 
+-const IdentityMatrix = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1];
++const IdentityMatrix = '1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1';
+ 
+ var _resolution = [-1, -1];
+ 
+ var _monitorId;
+ 
+ function _getXInputCommand(device, matrix = IdentityMatrix) {
+-    let CommandArray = ['xinput', '--set-prop', device, '"libinput Calibration Matrix"'];
+-    return CommandArray.concat(matrix).join(' ');
++    return `xinput --set-prop ${device.toString()} "libinput Calibration Matrix" ${matrix}`;
+ }
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
+@@ -46,10 +45,9 @@ function enable() { // eslint-disable-line no-unused-vars
+         }
+ 
+         let logCalibrationMatrix = ByteArray.toString(logByteArray);
+-        for (let deviceId of calibratableDeviceId) {
+-            let logCommand = _getXInputCommand(deviceId, logCalibrationMatrix);
+-            GLib.spawn_command_line_sync(logCommand);
+-        }
++        calibratableDeviceId.forEach(deviceId => {
++            GLib.spawn_command_line_sync(_getXInputCommand(deviceId, logCalibrationMatrix));
++        });
+     }
+ }
+ 
+@@ -83,19 +81,16 @@ function disable() { // eslint-disable-line no-unused-vars
+ */
+ 
+ function _extractCalibrationElement(stdoutLines, calibratableDeviceId) {
+-    let calibrationElement = [];
+     let stdoutString = stdoutLines.join(' ');
+ 
+     let filterWord = ['min_x=', 'max_x=', 'min_y=', 'max_y=', '"MinX"\t"', '"MaxX"\t"', '"MinY"\t"', '"MaxY"\t"'];
+-
+-    for (let word of filterWord) {
++    let calibrationElement = filterWord.map(word => {
+         let argumentIndex = stdoutString.indexOf(word);
+         stdoutString = stdoutString.slice(argumentIndex + word.length);
+-        calibrationElement.push(parseInt(stdoutString));
+-    }
+-
+-    let calibrationMatrix = IdentityMatrix.slice();
++        return parseInt(stdoutString);
++    });
+ 
++    let calibrationMatrix = IdentityMatrix.split(' ');
+     calibrationMatrix[0] = (calibrationElement[1] - calibrationElement[0]) / (calibrationElement[5] - calibrationElement[4]);
+     calibrationMatrix[2] = -1 * calibrationElement[4] * calibrationMatrix[0] / (calibrationElement[1] - calibrationElement[0]);
+     calibrationMatrix[4] = (calibrationElement[3] - calibrationElement[2]) / (calibrationElement[7] - calibrationElement[6]);
+@@ -110,10 +105,10 @@ function _extractCalibrationElement(stdoutLines, calibratableDeviceId) {
+ 
+     outputStream.write(logByteStream, null);
+     outputStream.close(null);
+-    for (let deviceId of calibratableDeviceId) {
+-        let newString = _getXInputCommand(deviceId, calibrationMatrix);
+-        GLib.spawn_command_line_sync(newString);
+-    }
++
++    calibratableDeviceId.forEach(deviceId => {
++        GLib.spawn_command_line_sync(_getXInputCommand(deviceId, calibrationMatrix.join(' ')));
++    });
+ }
+ 
+ function _calibrate(calibratableDeviceId) {
+@@ -121,11 +116,10 @@ function _calibrate(calibratableDeviceId) {
+     // HandleMe : During calibrating, resolution can be changed. then we close old one, and start new one. it can be happen.
+ 
+     // Before calibrating, We need to unset previous Calibration Matrix. Because, It causes that wrong Calibration Matrix.
+-    for (let deviceId of calibratableDeviceId) {
+-        let initCommand = _getXInputCommand(deviceId);
+-        // initCommand[2] = calibratableDeviceId[0];
+-        GLib.spawn_command_line_sync(initCommand);
+-    }
++    calibratableDeviceId.forEach(deviceId => {
++        GLib.spawn_command_line_sync(_getXInputCommand(deviceId));
++    });
++
+     // we must run xinput-calibrator asynchronously.
+     // If it runs synchronously, it cause Blackscreen.
+     let [, calibratorPid, stdin, stdout] = GLib.spawn_async_with_pipes(global.userdatadir,
+@@ -164,8 +158,6 @@ function _calibrate(calibratableDeviceId) {
+ 
+ function _getCalibratableDeviceList() {
+     let xinputListCommand = 'xinput --list';
+-    let listPropsCommand = ['xinput', '--list-props', 0];
+-
+     let [isOk, xListByteArray] = GLib.spawn_command_line_sync(xinputListCommand);
+ 
+     if (!isOk) {
+@@ -176,28 +168,28 @@ function _getCalibratableDeviceList() {
+     let xListString = ByteArray.toString(xListByteArray);
+     let xDeviceList = xListString.split('\n');
+ 
+-    let xDeviceIdList = [];
+-    for (let xDevice of xDeviceList) {
++    let xDeviceIdList = xDeviceList.reduce((result, xDevice) => {
+         if (xDevice.indexOf('master') !== -1)
+-            continue;
++            return result;
++
+         let deviceId = xDevice.split('id=');
+-        xDeviceIdList.push(parseInt(deviceId[1]));
+-    }
++        if (deviceId.length > 1)
++            result.push(parseInt(deviceId[1]));
+ 
+-    let calibratableDeviceId = [];
+-    for (let xDeviceId of xDeviceIdList) {
+-        listPropsCommand[2] = xDeviceId;
+-        let [Ok, infoByteArray] = GLib.spawn_command_line_sync(listPropsCommand.join(' '));
+-        let infoString = ByteArray.toString(infoByteArray);
++        return result;
++    }, []);
+ 
+-        if (!Ok) {
++    let calibratableDeviceId = xDeviceIdList.filter(xDeviceId => {
++        let listPropsCommand = `xinput --list-props ${xDeviceId.toString()}`;
++        let [ok, infoByteArray] = GLib.spawn_command_line_sync(listPropsCommand);
++        if (!ok) {
+             global.log('there are something wrong happen during get calibratable device property');
+-            return;
++            return false;
+         }
++        let infoString = ByteArray.toString(infoByteArray);
+ 
+-        if (infoString.indexOf('libinput Calibration Matrix') !== -1)
+-            calibratableDeviceId.push(xDeviceId);
+-    }
++        return infoString.indexOf('libinput Calibration Matrix') !== -1;
++    });
+ 
+     return calibratableDeviceId;
+ }

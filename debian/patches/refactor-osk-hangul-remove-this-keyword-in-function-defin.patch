@@ -1,0 +1,103 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 15 Sep 2021 09:52:02 +0900
+Subject: [refactor] osk-hangul : remove this keyword in function definition
+
+ - Instead of using eslint-disable to use 'this' keyword, use the
+   instance directly inside functions. Because the execution context of
+   each function will not change.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/keyboardWrapper.js | 35 ++++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 18 deletions(-)
+
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index f2a3d38..e6d18e0 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -1,5 +1,4 @@
+ /* exported BaseKeyboardWrapper, IbusKeyboardWrapper, XkbKeyboardWrapper */
+-/* eslint-disable no-invalid-this */
+ const { Clutter, IBus } = imports.gi;
+ 
+ const Main = imports.ui.main;
+@@ -86,14 +85,14 @@ class BaseKeyboardWrapper {
+ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper {
+     wrapAll(keyboard, controller) {
+         super.wrapAll(keyboard, controller);
+-        this.wrap(controller, 'keyvalPress', function (originalKeyvalPress, keyval) {
++        this.wrap(controller, 'keyvalPress', (originalKeyvalPress, keyval) => {
+             keyval = _krToUsKeysym(keyval);
+-            return originalKeyvalPress.call(this, keyval);
++            return originalKeyvalPress.call(controller, keyval);
+         });
+ 
+-        this.wrap(controller, 'keyvalRelease', function (originalKeyvalRelease, keyval) {
++        this.wrap(controller, 'keyvalRelease', (originalKeyvalRelease, keyval) => {
+             keyval = _krToUsKeysym(keyval);
+-            return originalKeyvalRelease.call(this, keyval);
++            return originalKeyvalRelease.call(controller, keyval);
+         });
+ 
+         // change the functionality of flag icon
+@@ -101,8 +100,8 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+             _switchInputMethod();
+         });
+ 
+-        this.wrap(keyboard, '_createLayersForGroup', function (originalCreateLayersForGroup, groupname) {
+-            let layers = originalCreateLayersForGroup.call(this, groupname);
++        this.wrap(keyboard, '_createLayersForGroup', (originalCreateLayersForGroup, groupname) => {
++            let layers = originalCreateLayersForGroup.call(keyboard, groupname);
+             for (let layer of Object.keys(layers)) {
+                 for (let key of layers[layer]) {
+                     let button = key.keyButton;
+@@ -116,11 +115,11 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+         // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+         // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+         // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+-        this.wrap(keyboard, '_setActiveLayer', function (originalSetActiveLayer, activeLevel) {
++        this.wrap(keyboard, '_setActiveLayer', (originalSetActiveLayer, activeLevel) => {
+             // make us keyboard layout if not exist
+-            this._ensureKeysForGroup('us');
++            keyboard._ensureKeysForGroup('us');
+ 
+-            let oldGroupName = this._keyboardController.getCurrentGroup();
++            let oldGroupName = keyboard._keyboardController.getCurrentGroup();
+             let newGroupname = _getCurrentGroup();
+             if (!newGroupname)
+                 newGroupname = oldGroupName;
+@@ -129,11 +128,11 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+             if (Main.inputMethod._purpose === Clutter.InputContentPurpose.PASSWORD)
+                 newGroupname = 'us';
+ 
+-            this._keyboardController._currentSource.xkbId = newGroupname;
++            keyboard._keyboardController._currentSource.xkbId = newGroupname;
+ 
+-            originalSetActiveLayer.call(this, activeLevel);
++            originalSetActiveLayer.call(keyboard, activeLevel);
+ 
+-            this._keyboardController._currentSource.xkbId = oldGroupName;
++            keyboard._keyboardController._currentSource.xkbId = oldGroupName;
+         });
+     }
+ };
+@@ -141,14 +140,14 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+ var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper {
+     wrapAll(keyboard) {
+         super.wrapAll(keyboard);
+-        this.wrap(keyboard, '_setActiveLayer', function (originalSetActiveLayer, activeLevel) {
++        this.wrap(keyboard, '_setActiveLayer', (originalSetActiveLayer, activeLevel) => {
+             // make us keyboard layout if not exist
+-            this._ensureKeysForGroup('us');
+-            this._keyboardController._currentSource.xkbId = 'us';
++            keyboard._ensureKeysForGroup('us');
++            keyboard._keyboardController._currentSource.xkbId = 'us';
+ 
+-            originalSetActiveLayer.call(this, activeLevel);
++            originalSetActiveLayer.call(keyboard, activeLevel);
+ 
+-            this._keyboardController._currentSource.xkbId = 'kr';
++            keyboard._keyboardController._currentSource.xkbId = 'kr';
+         });
+     }
+ };

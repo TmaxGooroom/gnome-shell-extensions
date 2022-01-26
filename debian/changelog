@@ -1,0 +1,972 @@
+gnome-shell-extensions (3.38.2-1tos5) tmax-unstable; urgency=medium
+
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Wed, 26 Jan 2022 12:59:11 +0900
+
+gnome-shell-extensions (3.38.2-1tos4) tmax-unstable; urgency=medium
+
+  * [bugfix] Greeter: Enable keyboard input on the xserver-based login screen
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Fri, 31 Dec 2021 11:32:34 +0900
+
+gnome-shell-extensions (3.38.2-1tos3) tmax-unstable; urgency=medium
+
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Tue, 28 Dec 2021 19:36:50 +0900
+
+gnome-shell-extensions (3.38.2-1tos2) tmax-unstable; urgency=medium
+
+  * Modify build dependency
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Thu, 16 Dec 2021 18:48:00 +0900
+
+gnome-shell-extensions (3.38.2-1tos1) tmax-unstable; urgency=medium
+
+  * Modify the maintainer, uploader information
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Wed, 24 Nov 2021 18:55:42 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u27) nabi; urgency=medium
+
+  * Remove patches - file rename
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Wed, 15 Dec 2021 17:28:23 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u26) nabi; urgency=medium
+
+  * [bugfix] desktop-icons-ng : Remove extension of .desktop file in icon label
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Tue, 14 Dec 2021 17:11:34 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u25) nabi; urgency=medium
+
+  * [bugfix] osk-hangul : remove "layout-key-type" signal
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Mon, 13 Dec 2021 17:12:12 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u24) nabi; urgency=medium
+
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Fri, 10 Dec 2021 12:57:35 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u23) nabi; urgency=medium
+
+  [ jiyong_kim2 ]
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Wed, 17 Nov 2021 18:36:30 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u22) nabi; urgency=medium
+
+  [ jiyong_kim2 ]
+  * [bugfix] dash-to-panel : Modify to show network tray icon as before when network connection is disconnected.
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Thu, 11 Nov 2021 10:13:09 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u21) nabi; urgency=medium
+
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Mon, 25 Oct 2021 12:17:50 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u20) nabi; urgency=medium
+
+  * Add dependency on contorl.in - nimf
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Wed, 20 Oct 2021 15:28:04 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u19) nabi; urgency=medium
+
+  * Rediff patches
+  * Add dependency - nimf
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Tue, 19 Oct 2021 18:11:54 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u18) nabi; urgency=medium
+
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Wed, 13 Oct 2021 10:22:14 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u17) nabi; urgency=medium
+
+  * Rediff patches
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Fri, 08 Oct 2021 16:28:59 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u16) nabi; urgency=medium
+
+  * Rediff patches
+  * Add dependency - xiput-calibrator
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Thu, 07 Oct 2021 17:22:57 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u15) nabi; urgency=medium
+
+  * [feat] Greeter: Add a login notification message
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Tue, 28 Sep 2021 18:44:50 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u14) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Tue, 16 Sep 2021 12:03:08 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u13) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 26 Aug 2021 13:32:35 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u12) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 05 Aug 2021 15:26:26 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u11) nabi; urgency=medium
+
+  [ sohee_yoon ]
+  * [feat] Search : Add search animation icon
+
+  [ jungrae kim ]
+  * Update include-binaries
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Wed, 14 Jul 2021 11:38:52 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u10) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 10 Jun 2021 15:23:49 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u9) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 10 Jun 2021 15:08:22 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u8) nabi; urgency=medium
+
+  [ sohee_yoon ]
+  * [feat] Arc Menu : Add expand button image
+
+  [ jungrae kim ]
+  * [chore] arc-menu : add expand button image
+  * [chore] arc-menu : add expand button image
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 20 May 2021 17:02:02 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u7) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Wed, 12 May 2021 17:55:16 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u6) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 06 May 2021 12:33:57 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u5) nabi; urgency=medium
+
+  [ Gyumin Lim ]
+  * [feat] Notification Center : add Empty New Notification Image
+
+  [ jungrae kim ]
+  * [chore] Update include-binaries
+
+  [ sohee_yoon ]
+  * [feat] Search : add image resource
+
+  [ jungrae kim ]
+  * [chore] update include-binaries
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Wed, 28 Apr 2021 18:08:08 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u4) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Wed, 21 Apr 2021 11:36:53 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u3) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Wed, 14 Apr 2021 10:26:01 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u2) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * [chore] common : add dh_fixperm at rules file
+  * Rediff patches
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Wed, 07 Apr 2021 14:32:10 +0900
+
+gnome-shell-extensions (3.38.2-1+tos21u1) nabi; urgency=medium
+
+  [ jungrae kim ]
+  * New Maintainers and Uploaders
+  * [chore] common : override dh configure
+  * [chore] common : change rule for dh_fixperm
+  * Rediff patches
+  * Rediff patches
+
+ -- root <root@localhost.localdomain>  Thu, 01 Apr 2021 10:40:31 +0900
+
+gnome-shell-extensions (3.38.2-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Standards-Version: 4.5.1 (no changes required)
+  * d/gbp.conf: Use upstream/3.38.x branch.
+    Version 40~alpha was already released upstream.
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 03 Dec 2020 10:17:58 +0000
+
+gnome-shell-extensions (3.38.1-1) unstable; urgency=medium
+
+  * New upstream release
+  * Recommend gnome-shell-extension-prefs instead of gnome-tweaks
+
+ -- Jeremy Bicha <jbicha@debian.org>  Tue, 06 Oct 2020 17:44:30 -0400
+
+gnome-shell-extensions (3.38.0-2) unstable; urgency=medium
+
+  * Team upload
+  * Revert "debian/watch: Watch for unstable releases"
+  * Release to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 25 Sep 2020 23:00:58 +0100
+
+gnome-shell-extensions (3.38.0-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Translation updates
+  * d/upstream/metadata: Add
+  * Update standards version to 4.5.0, no changes needed
+  * Fix gnome-classic regression in 3.37.91-1.
+    gnome-session no longer takes the `--session gnome-classic` argument
+    when running in classic mode.
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 22 Sep 2020 11:49:24 +0100
+
+gnome-shell-extensions (3.37.91-1) experimental; urgency=medium
+
+  * New upstream release:
+    - drive-menu: Emphasize eject buttons
+    - user-theme: Add preference dialog
+    - window-list:
+      + Fix inconsistent state in preference dialog
+      + auto-move: Modernize preference dialogs
+    - workspace-indicator: Overhaul preference dialog
+    - user-theme: Support session mode styles
+    - Adjust to gnome-shell changes
+  * debian/patches: Refresh
+  * debian/control: B-D on debhelper 13
+  * debian/rules: Don't override dh_missing equal default behavior
+  * debian/control: Remove useless dependency on clutter gir
+
+ -- Marco Trevisan (Treviño) <marco@ubuntu.com>  Thu, 27 Aug 2020 17:39:42 +0200
+
+gnome-shell-extensions (3.36.2-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 03 May 2020 10:02:18 +0200
+
+gnome-shell-extensions (3.36.1-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Update Ukrainian translation
+    - Update Gnome Shell CSS
+  * Upload to unstable (part of transition: #954422)
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 10 Apr 2020 15:12:29 +0100
+
+gnome-shell-extensions (3.36.0-1) experimental; urgency=medium
+
+  * New upstream translation release
+
+ -- Iain Lane <laney@debian.org>  Mon, 16 Mar 2020 12:39:02 +0000
+
+gnome-shell-extensions (3.35.91-1) experimental; urgency=medium
+
+  * New upstream release
+    - Fixes and adjustments to latest gnome-shell
+
+ -- Marco Trevisan (Treviño) <marco@ubuntu.com>  Mon, 24 Feb 2020 18:29:29 +0000
+
+gnome-shell-extensions (3.34.2-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/control.in: Bump Standards-Version to 4.4.1 (no further changes)
+
+ -- Laurent Bigonville <bigon@debian.org>  Mon, 30 Dec 2019 00:51:13 +0100
+
+gnome-shell-extensions (3.34.1-2) unstable; urgency=high
+
+  * New upstream release
+    - Fix GNOME Classic session's compatibility with gnome-setting-daemon 3.34
+
+ -- Jeremy Bicha <jbicha@debian.org>  Tue, 08 Oct 2019 22:49:14 -0400
+
+gnome-shell-extensions (3.34.0-2) unstable; urgency=medium
+
+  * Team upload.
+  * Upload to unstable.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Mon, 30 Sep 2019 17:27:38 +0200
+
+gnome-shell-extensions (3.34.0-1) experimental; urgency=medium
+
+  * New upstream translation release
+
+ -- Iain Lane <laney@debian.org>  Tue, 10 Sep 2019 10:59:31 +0100
+
+gnome-shell-extensions (3.33.92-1) experimental; urgency=medium
+
+  * New upstream bugfix / translation releases
+
+ -- Iain Lane <laney@debian.org>  Thu, 05 Sep 2019 18:22:14 +0100
+
+gnome-shell-extensions (3.33.90-1) experimental; urgency=medium
+
+  [ Marco Trevisan (Treviño) ]
+  * New upstream release
+    + window-list: Support showing windows from all workspaces
+    + Make GNOME Classic more classic:
+      - Disable GNOME 3 overview
+      - Add window picker button to window list
+      - Style improvements and fixes
+      - Support horizontal workspace layout in window list
+      - Add draggable previews to window list workspace switcher
+      - Arrange workspaces horizontally
+    + workspace-indicator: Support horizontal workspace layout
+    + workspace-indicator: Add draggable previews
+    + Fix windowsNavigator extension after ES6 port
+    + screenshot-window-sizer: Add phone screenshot sizes
+
+  [ Iain Lane ]
+  * rules: Build all extensions via the upstream build system. We don't need
+    to hardcode the list to build, as the build system provides a way to build
+    'all' extensions.
+  * rules: Build with --fail-missing
+  * compat, control, rules: Move to compat 12 and specifying via build-deps
+
+ -- Iain Lane <laney@debian.org>  Tue, 13 Aug 2019 11:59:22 +0100
+
+gnome-shell-extensions (3.32.0-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Iain Lane <laney@debian.org>  Tue, 12 Mar 2019 16:34:14 +0000
+
+gnome-shell-extensions (3.31.92-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Iain Lane <laney@debian.org>  Wed, 06 Mar 2019 15:40:48 +0000
+
+gnome-shell-extensions (3.31.90-1) experimental; urgency=medium
+
+  * New upstream release
+    + Misc. bug fixes and cleanups
+    + Remove obsolete alternate-tab extension
+    + Adjust to gnome-shell changes
+  * debian/watch: Watch for unstable releases
+  * rules: alternate-tab is dropped; stop trying to enable it
+
+ -- Iain Lane <laney@debian.org>  Thu, 21 Feb 2019 10:33:12 +0000
+
+gnome-shell-extensions (3.30.1-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Bump Standards-Version to 4.2.1
+  * d/p/gnome-session-classic-wrapper-script.patch:
+    Re-word to avoid a Lintian warning
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 02 Nov 2018 09:26:47 +0000
+
+gnome-shell-extensions (3.30.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Release to unstable
+
+ -- Jeremy Bicha <jbicha@debian.org>  Wed, 05 Sep 2018 12:34:40 -0400
+
+gnome-shell-extensions (3.29.91-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream development release
+  * Bump Standards-Version to 4.2.0
+  * Sort dependency lists (wrap-and-sort -a)
+  * d/copyright: Remove unnecessary sentence fragment
+  * d/p/series: Remove commented-out line
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 20 Aug 2018 20:27:57 +0100
+
+gnome-shell-extensions (3.29.90-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream development release
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 02 Aug 2018 10:46:44 +0100
+
+gnome-shell-extensions (3.29.3+really3.29.3-1) experimental; urgency=medium
+
+  * Team upload
+  * d/watch: Watch for development versions
+  * Re-upload to experimental with a higher version than
+    3.29.3+really3.28.1-1, which reverted the incorrect upload of the
+    previous version to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 27 Jul 2018 23:56:10 +0100
+
+gnome-shell-extensions (3.29.3-1) unstable; urgency=medium
+
+  * Team upload
+
+  [ Arnaud Rebillout ]
+  * New upstream release
+
+  [ Simon McVittie ]
+  * Bump Standards-Version to 4.1.5
+  * Set Rules-Requires-Root to no
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 27 Jul 2018 09:37:34 +0100
+
+gnome-shell-extensions (3.28.1-1) unstable; urgency=medium
+
+  * New upstream release
+  * Bump Standards-Version to 4.1.4
+
+ -- Jeremy Bicha <jbicha@debian.org>  Mon, 14 May 2018 21:51:46 -0400
+
+gnome-shell-extensions (3.28.0-2) unstable; urgency=medium
+
+  * Fix typo in configure flag that resulted in missing
+    auto-move-windows, native-window-placement, & user-theme extensions
+
+ -- Jeremy Bicha <jbicha@debian.org>  Mon, 19 Mar 2018 18:20:53 -0400
+
+gnome-shell-extensions (3.28.0-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 18 Mar 2018 20:17:17 -0400
+
+gnome-shell-extensions (3.27.92-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sat, 10 Mar 2018 19:37:45 -0500
+
+gnome-shell-extensions (3.27.92-1) experimental; urgency=medium
+
+  [ Jeremy Bicha ]
+  * New upstream release candidate
+  * Drop explicit dependency on mutter's gir. gnome-shell-extensions depends
+    on gnome-shell which depends on the gir. Dropping it will make transitions
+    easier.
+
+  [ Simon McVittie ]
+  * Recommend gnome-tweaks instead of transitional gnome-tweak-tool
+
+ -- Jeremy Bicha <jbicha@debian.org>  Mon, 05 Mar 2018 21:02:01 -0500
+
+gnome-shell-extensions (3.27.91-1) experimental; urgency=medium
+
+  * New upstream development release
+  * Build with meson
+  * Build-Depend on sassc
+  * Bump debhelper compat to 11
+  * Drop places-menu-Don-t-force-dispose-of-uninitialized-proxies.patch &
+    dont-require-nautilus-classic.patch: Applied in new release
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 23 Feb 2018 19:49:59 -0500
+
+gnome-shell-extensions (3.26.2-3) unstable; urgency=medium
+
+  * Team upload
+
+  [ Jeremy Bicha ]
+  * Update Vcs fields for migration to https://salsa.debian.org/
+
+  [ Simon McVittie ]
+  * d/patches: Re-export with gbp pq export
+  * d/p/places-menu-Don-t-force-dispose-of-uninitialized-proxies.patch:
+    Take patch from upstream to avoid frequent tracebacks from the Places
+    menu with gjs >= 1.50.2-3 (Closes: #888608)
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 30 Jan 2018 09:15:54 +0000
+
+gnome-shell-extensions (3.26.2-2) unstable; urgency=medium
+
+  * Update Vcs fields for conversion to git
+  * Add debian/gbp.conf
+  * Bump Standards-Version to 4.1.2
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 15 Dec 2017 15:19:14 -0500
+
+gnome-shell-extensions (3.26.2-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 05 Nov 2017 20:17:03 +0100
+
+gnome-shell-extensions (3.26.1-2) unstable; urgency=medium
+
+  * Release to unstable
+  * Bump Standards-Version to 4.1.1
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 13 Oct 2017 16:49:30 -0400
+
+gnome-shell-extensions (3.26.1-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream stable release
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 06 Oct 2017 11:01:11 +0100
+
+gnome-shell-extensions (3.26.0-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream stable release
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 13 Sep 2017 11:33:19 +0100
+
+gnome-shell-extensions (3.25.91-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release, for GNOME Shell 3.25.91
+    - d/p/adapt-to-gsd324.patch: Drop, applied upstream
+    - Switch dependency to gir1.2-mutter-1
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 05 Sep 2017 16:43:01 +0100
+
+gnome-shell-extensions (3.22.2-2) unstable; urgency=medium
+
+  * Add adapt-to-gsd324.patch (Closes: #869948):
+    - Adjust gnome-session file for gnome-settings-daemon 3.24
+  * debian/control.in:
+    - Bump Standards-Version to 4.0.0
+    - Explicitly depend on gnome-settings-daemon >= 3.24
+    - Drop version from gnome-tweak-tool recommends
+    - Depend on gnome-session-bin instead of gnome-session (LP: #1702832)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Sun, 06 Aug 2017 17:38:06 -0400
+
+gnome-shell-extensions (3.22.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 10 Nov 2016 19:36:44 +0100
+
+gnome-shell-extensions (3.22.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 11 Oct 2016 17:58:31 +0200
+
+gnome-shell-extensions (3.22.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 20 Sep 2016 01:59:50 +0200
+
+gnome-shell-extensions (3.21.92-1) unstable; urgency=medium
+
+  * New upstream development release.
+  * Replace Build-Depends gnome-common with pkg-config and gettext.
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 13 Sep 2016 22:13:19 +0200
+
+gnome-shell-extensions (3.21.91-1) unstable; urgency=medium
+
+  * New upstream beta release.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Tue, 30 Aug 2016 19:57:32 +0200
+
+gnome-shell-extensions (3.21.90-1) experimental; urgency=medium
+
+  [ Andreas Henriksson ]
+  * New upstream beta release.
+  * Update build-dependencies according to configure.ac changes:
+    - drop intltool, now gettext is used instead.
+
+  [ Jeremy Bicha ]
+  * Convert from cdbs to dh
+  * Add debian/docs to install NEWS and README
+  * Bump dh compat to 10
+  * Update Vcs fields
+  * Refresh patches
+
+ -- Andreas Henriksson <andreas@fatal.se>  Sun, 21 Aug 2016 05:36:17 +0200
+
+gnome-shell-extensions (3.21.4-1) experimental; urgency=medium
+
+  * New upstream development release.
+  * Stop hard-coding Victor Seva in the Uploaders field
+
+ -- Andreas Henriksson <andreas@fatal.se>  Fri, 12 Aug 2016 16:28:33 +0200
+
+gnome-shell-extensions (3.20.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Bump Standards-Version to 3.9.8.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 11 May 2016 15:21:35 +0200
+
+gnome-shell-extensions (3.20.0-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 17 Apr 2016 00:25:25 +0200
+
+gnome-shell-extensions (3.20.0-1) experimental; urgency=medium
+
+  * New upstream release.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Fri, 25 Mar 2016 10:48:00 +0100
+
+gnome-shell-extensions (3.19.92-1) experimental; urgency=medium
+
+  * New upstream release.
+  * Update dont-require-nautilus-classic.patch to apply.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Thu, 17 Mar 2016 12:51:13 +0100
+
+gnome-shell-extensions (3.18.4-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Bump Standards-Version to 3.9.7.
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 06 Mar 2016 22:38:57 +0100
+
+gnome-shell-extensions (3.18.3-2) unstable; urgency=medium
+
+  * Add Breaks/Replaces gnome-shell-common (<< 3.18) (Closes: #808906)
+    - Helps upgrades from Jessie by allowing overwriting
+      /usr/share/gnome-shell/theme/calendar-today.svg et.al.
+      which was previously shipped in gnome-shell-common.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Wed, 10 Feb 2016 01:24:42 +0100
+
+gnome-shell-extensions (3.18.3-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 14 Jan 2016 22:49:16 +0100
+
+gnome-shell-extensions (3.18.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 13 Nov 2015 00:04:09 +0100
+
+gnome-shell-extensions (3.18.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 16 Oct 2015 22:09:01 +0200
+
+gnome-shell-extensions (3.18.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 11 Oct 2015 16:29:18 +0200
+
+gnome-shell-extensions (3.17.92-1) experimental; urgency=medium
+
+  * New upstream release candidate.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Fri, 18 Sep 2015 17:28:06 +0200
+
+gnome-shell-extensions (3.16.2-1) unstable; urgency=medium
+
+  [ Emilio Pozuelo Monfort ]
+  * debian/gnome-shell-extensions.gsettings-override:
+    + Dropped, no longer needed as the enabled extension no longer exists.
+      Thanks Artur Rona for noticing. (Closes: #782747)
+
+  [ Michael Biebl ]
+  * New upstream release.
+  * Update Homepage.
+  * Bump debhelper compatibility level to 9.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 02 Jul 2015 19:13:32 +0200
+
+gnome-shell-extensions (3.16.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/control.in,
+    debian/rules:
+    + The system monitor extension was removed. Drop the libgtop
+      build and runtime dependencies and stop enabling it.
+  * debian/patches/apps-center-labels.patch,
+    debian/patches/window-list-pointerInNotification.patch,
+    debian/patches/menu-arrows-icons.patch:
+    + Dropped, merged upstream.
+  * debian/patches/dont-require-nautilus-classic.patch:
+    + Updated for the new version.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Sun, 14 Jun 2015 15:23:59 +0200
+
+gnome-shell-extensions (3.14.2-1) unstable; urgency=medium
+
+  * New upstream bugfix release.
+  * menu-arrows-icons: new patch. Make arrows consistent with the rest
+    of the shell.
+  * apps-center-labels.patch: patch from upstream git. Center labels
+    vertically in the applications menu.
+  * window-list-pointerInNotification.patch: patch from upstream git.
+    Update window-list extension for an older shell API change.
+
+ -- Josselin Mouette <joss@debian.org>  Sun, 30 Nov 2014 16:06:59 +0100
+
+gnome-shell-extensions (3.14.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/control.in: Bump Standards-Version to 3.9.6 (no further changes)
+  * Add missing dependencies against gir packages, including gir1.2-gmenu-3.0,
+    this should fix the apps-menu extension for some people (Closes: #765460).
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 19 Oct 2014 21:17:58 +0200
+
+gnome-shell-extensions (3.14.0-2) unstable; urgency=medium
+
+  * Drop xrandr from EXTENSIONS_DISABLED, this extension was removed
+    upstream.
+  * Add new screenshot-window-sizer extension to EXTENSIONS_ENABLED.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 24 Sep 2014 01:15:32 +0200
+
+gnome-shell-extensions (3.14.0-1) unstable; urgency=medium
+
+  * debian/watch: only scan for stable releases.
+  * New upstream release.
+  * Upload to unstable.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Tue, 23 Sep 2014 15:46:30 +0200
+
+gnome-shell-extensions (3.13.91-1) experimental; urgency=medium
+
+  * New upstream development release.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Sat, 06 Sep 2014 11:16:39 -0700
+
+gnome-shell-extensions (3.12.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Bump Standards-Version to 3.9.5
+  * Upload to unstable.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Tue, 15 Jul 2014 00:06:09 +0200
+
+gnome-shell-extensions (3.12.0-1) experimental; urgency=low
+
+  [ Jean Schurger ]
+  * New upstream release (3.10.1)
+  * debian/rules: remove one of the 'windowsNavigator' extension listed twice
+    and the 'alternative-system-menu' extension (does not exists anymore)
+  * debian/copyright: Update 'Format:' line
+
+  [ Andreas Henriksson ]
+  * New upstream release (3.12.0)
+  * debian/local/gnome-session-classic,
+    debian/patches/gnome-session-classic-wrapper-script.patch:
+    - update script to include new GNOME_SHELL_SESSION_MODE env variable
+      and update patch to apply again.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Fri, 04 Apr 2014 21:43:18 +0200
+
+gnome-shell-extensions (3.8.4-2) unstable; urgency=low
+
+  * Upload to unstable.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Sun, 13 Oct 2013 18:11:33 +0200
+
+gnome-shell-extensions (3.8.4-1) experimental; urgency=low
+
+  [ Jeremy Bicha ]
+  * New upstream release
+  * Dropped patches applied in new version:
+    - fix-hibernate.patch
+    - fix-applications-menu-resolution-change.patch
+    - look-in-data-home-for-themes.patch
+
+  [ Michael Biebl ]
+  * Add a wrapper script to start the GNOME Classic session as currently
+    Xsession doesn't allow to run gnome-session with custom arguments due to
+    #653327.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 11 Oct 2013 18:55:23 +0200
+
+gnome-shell-extensions (3.8.3.1-1) experimental; urgency=low
+
+  [ Jeremy Bicha ]
+  * New upstream release
+    - default-min-max and static-workspaces extensions have been dropped.
+      Use Classic Mode or tweak org.gnome.shell.overrides in dconf-editor
+  * debian/control.in:
+    - Depend on gnome-session 3.8, required for the new Classic mode.
+    - Update homepage
+  * debian/patches/dont-require-nautilus-classic.patch:
+    - Don't require nautilus-classic since it forces desktop icons
+  * debian/patches/fix-applications-menu-resolution-change.patch:
+    - Backport commit to not break applications menu when screen resolution
+      changes
+  * debian/patches/fix-hibernate.patch:
+    - Backport patch to fix checking whether hibernate is allowed
+  * debian/patches/look-in-data-home-for-themes.patch:
+    - Backport commit to also look in XDG_DATA_HOME (usually ~/.local/share/)
+      for user themes
+  * debian/rules:
+    - Run autoreconf
+
+ -- Andreas Henriksson <andreas@fatal.se>  Fri, 16 Aug 2013 20:25:30 +0200
+
+gnome-shell-extensions (3.8.2-1) experimental; urgency=low
+
+  * Team upload
+
+  [ Victor Seva ]
+  * Recommends gnome-tweak-tool
+
+  [ Jean Schurger ]
+  * New upstream release 3.7.92 (LP: #1017979, #1059152).
+  * Enabled new extensions.
+  * Dropped 'dock' and 'gajim'.
+  * Use ./configure instead of autoreconf.
+  * Bumped Standards-Version to 3.9.4.
+  * Updated Vcs-Svn.
+  * debian/control.in
+    - Added runtime dependency to 'gvfs' (>= 1.16.0).
+      The 'Places' extension rely on a 'gvfs' linked to 'udisks2'.
+
+  [ Simon McVittie ]
+  * New upstream release 3.8.2.
+  * Install the "classic mode"
+  * Enable windowNavigator extension (this means we have everything except
+    example and xrandr, the same as in the Ubuntu gnome3-team's PPA)
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 23 May 2013 09:07:23 +0100
+
+gnome-shell-extensions (3.4.0-2) unstable; urgency=low
+
+  * Upload to unstable.
+
+ -- Michael Biebl <biebl@debian.org>  Wed, 30 May 2012 13:22:54 +0200
+
+gnome-shell-extensions (3.4.0-1) experimental; urgency=low
+
+  * New upstream release.
+  * Remove 01_status-menu_disable_accounts.patch: The alternative-status-menu
+    extension no longer recreates the complete user menu but reuses the one
+    from gnome-shell, so we can't easily get rid of the "Online Accounts" menu
+    entry. We will patch gnome-shell directly instead.
+  * Remove 02-Revert-all-remove-all-GSettings-usage.patch and
+    03-Revert-Remove-all-references-to-localedir-from-metad.patch, no longer
+    required.
+  * Bump Standards-Version to 3.9.3
+
+ -- Michael Biebl <biebl@debian.org>  Mon, 21 May 2012 00:24:56 +0200
+
+gnome-shell-extensions (3.2.3-1) unstable; urgency=low
+
+  [ Josselin Mouette ]
+  * gnome-shell-extensions.gsettings-override: enable the alternative
+    status menu by default. Closes: #648112.
+  * Use ${gnome:Version} to generate strict dependencies, it’s very
+    unlikely that extensions remain compatible after a major upgrade.
+
+  [ Michael Biebl ]
+  * Upload to unstable.
+
+  [ Josselin Mouette ]
+  * 01_status-menu_disable_accounts.patch: new patch. Drop the unusable
+    advertisement for Google. It is already available in the control
+    center anyway.
+
+  [ Michael Biebl ]
+  * New upstream release.
+  * Drop patches which have been merged upstream:
+    - debian/patches/upstream/*
+    - debian/patches/fix-*
+  * Refresh 01_status-menu_disable_accounts.patch.
+  * Add 02-Revert-all-remove-all-GSettings-usage.patch: Use GSettings since we
+    install the extensions system-wide.
+  * Use dh-autoreconf to generate the build system.
+  * Add 03-Revert-Remove-all-references-to-localedir-from-metad.patch: Use
+    locales from system-wide location.
+
+ -- Michael Biebl <biebl@debian.org>  Sat, 11 Feb 2012 23:28:53 +0100
+
+gnome-shell-extensions (3.2.0-1) experimental; urgency=low
+
+  [ Victor Seva ]
+  * Initial release (Closes: #627515)
+    Package based on the work by Bilal Akhtar <bilalakhtar@ubuntu.com>
+  * debian/copyright
+    - Added myself
+    - Fixed syntax-error-in-dep5-copyright syntax error
+  * debian/control.in
+    - Added myself as maintainer.
+    - Fix gnome-shell dependency.
+    - Fix gir1.2-gtop-2.0 dependency for systemMonitor ext.
+  * debian/rules
+    - Added uploaders.mk gnome-version.mk includes.
+    - Removed unused variables.
+  * debian/watch added.
+  * No more gnome-shell-extension-* packages.
+  * debian/patches/upstream
+    - patch_967aee7aad2accfb38d91ab56b6c5e91d86a2722.diff
+      popup menu fix
+    - patch_66242aa76a5d59fb4659551575c1fbb42e50b8fb.diff
+      dock fix.
+    - patch_4c5a36e4c0cbe38f2e26b6b3c8b02e88b4b939f7.diff
+      patch_2bba98d6214cffae2eb5cecb9d7c1f6b6d244052.diff
+      systemMonitor: Properly enable/disable
+  * debian/patches
+    - fix_dock_gnome-shell_version.diff
+    - fix_alternate-tab_661281.diff
+    - fix_alternate-tab_gnome-shell_version.diff
+  * debian/rules
+    - EXTENSIONS_ENABLED, EXTENSIONS_DISABLED variables
+    - disabled xrandr-indicator
+
+  [ Michael Biebl ]
+  * debian/watch: Track .xz tarballs.
+  * debian/control.in:
+    - Set pkg-gnome-maintainers@lists.alioth.debian.org as Maintainer and add
+      Victor Seva <linuxmaniac@torreviejawireless.org> to Uploaders.
+    - Wrap (Build-)Depends.
+    - Add Vcs-Svn and Vcs-Browser field.
+  * debian/rules:
+    - Include gnome-get-source.mk.
+
+ -- Michael Biebl <biebl@debian.org>  Sat, 12 Nov 2011 18:32:22 +0100

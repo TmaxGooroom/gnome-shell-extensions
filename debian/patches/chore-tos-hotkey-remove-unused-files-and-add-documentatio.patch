@@ -1,0 +1,489 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 30 Apr 2021 15:10:41 +0900
+Subject: [chore] tos-hotkey : remove unused files and add documentation to
+ baseWidget
+
+ - removed unused files
+ - added comments in BaseWidget according to gtk-doc documentaton
+   guideline
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/baseWidget.js   |  52 +++++++++-
+ extensions/tos-hotkey/modalDialog.js  | 186 ----------------------------------
+ extensions/tos-hotkey/systemDialog.js | 160 -----------------------------
+ 3 files changed, 51 insertions(+), 347 deletions(-)
+ delete mode 100644 extensions/tos-hotkey/modalDialog.js
+ delete mode 100644 extensions/tos-hotkey/systemDialog.js
+
+diff --git a/extensions/tos-hotkey/baseWidget.js b/extensions/tos-hotkey/baseWidget.js
+index a6818d1..9cf8194 100644
+--- a/extensions/tos-hotkey/baseWidget.js
++++ b/extensions/tos-hotkey/baseWidget.js
+@@ -11,6 +11,11 @@ const GrabHelper = imports.ui.grabHelper;
+ 
+ var OPEN_AND_CLOSE_TIME = 100;
+ 
++/*
++ * State:
++ *
++ * enum values to control animation effect of BaseWidget.
++ */
+ var State = {
+     OPENED: 0,
+     CLOSED: 1,
+@@ -75,7 +80,18 @@ class IconLabelButton extends St.BoxLayout {
+     }
+ });
+ 
++/*
++ * SECTION: BaseWidget
++ * @brief Base class for system-related UI widget development in TOS 21
++ * @author jiyun_ha <jiyun_ha@tmax.co.kr>
++ * @date 2021-04-30
++ */
+ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
++    /*
++     * BaseWidget:state:
++     *
++     * current widget state for animating widget. Values must be defined in `State`.
++     */
+     Properties: {
+         'state': GObject.ParamSpec.int('state', 'Dialog state', 'state',
+             GObject.ParamFlags.READABLE,
+@@ -170,6 +186,12 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+         this.notify('state');
+     }
+ 
++    /*
++     * _fadeOpen:
++     * @onPrimary: Determines to open the widget on primary monitor or not
++     *
++     * apply fade-in effect to show() function
++     */
+     _fadeOpen(onPrimary) {
+         if (onPrimary)
+             this._monitorConstraint.primary = true;
+@@ -193,11 +215,19 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+         });
+     }
+ 
++    /*
++     * open:
++     * onPrimary: Determines to open the widget on primary monitor or not
++     *
++     * Open the widget with animation effect.
++     */
+     open(onPrimary) {
+         if (this.state === State.OPENED || this.state === State.OPENING)
+             return true;
+ 
+         this._fadeOpen(onPrimary);
++
++        // TODO(jiyun_ha, 210403) : need to create an API that can set up the first focused actor.
+         this._grabHelper.grab({ actor: this,
+             focus: this.buttonLayout.get_children()[0],
+             onUngrab: this.close.bind(this) });
+@@ -213,6 +243,11 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+             this.destroy();
+     }
+ 
++    /*
++     * close:
++     *
++     * Close the widget with fade-out effect.
++     */
+     close() {
+         if (this.state === State.CLOSED || this.state === State.CLOSING)
+             return;
+@@ -234,6 +269,16 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+         }
+     }
+ 
++    /*
++     * addButton:
++     * @labelText: text to be displayed on the button
++     * @iconName: the path of icon to be displayed on the button
++     * @params: parameters used to create St.button
++     *
++     * add button to button layout.
++     *
++     * Returns: the newly added button.
++     */
+     addButton(labelText, iconName, params) {
+         let icon = new St.Icon({ style_class: 'system-widget-button-image',
+             y_align: Clutter.ActorAlign.CENTER,
+@@ -293,9 +338,14 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+         return Clutter.EVENT_PROPAGATE;
+     }
+ 
++    /*
++     * vfunc_key_press_event:
++     * @event Clutter.KeyEvent
++     *
++     * manage key event according to interaction guideline of TOS21
++     */
+     vfunc_key_press_event(event) {
+         if (this._isWithinFocusGroup(event.source))
+             return this._navigateFocus(event);
+-
+     }
+ });
+diff --git a/extensions/tos-hotkey/modalDialog.js b/extensions/tos-hotkey/modalDialog.js
+deleted file mode 100644
+index cd91b5d..0000000
+--- a/extensions/tos-hotkey/modalDialog.js
++++ /dev/null
+@@ -1,186 +0,0 @@
+-// Credits:
+-// Some code was adapted from the upstream Gnome Shell source code.
+-
+-const { Atk, Clutter, GObject, Shell, St } = imports.gi;
+-
+-const Dialog = imports.ui.dialog;
+-const Layout = imports.ui.layout;
+-const Main = imports.ui.main;
+-const Params = imports.misc.params;
+-
+-const GrabHelper = imports.ui.grabHelper;
+-
+-var OPEN_AND_CLOSE_TIME = 100;
+-var FADE_OUT_DIALOG_TIME = 1000;
+-
+-var State = {
+-    OPENED: 0,
+-    CLOSED: 1,
+-    OPENING: 2,
+-    CLOSING: 3,
+-    FADED_OUT: 4,
+-};
+-
+-var ModalDialog = GObject.registerClass({ // eslint-disable-line no-unused-vars
+-    Properties: {
+-        'state': GObject.ParamSpec.int('state', 'Dialog state', 'state',
+-            GObject.ParamFlags.READABLE,
+-            Math.min(...Object.values(State)),
+-            Math.max(...Object.values(State)),
+-            State.CLOSED),
+-    },
+-    Signals: { 'opened': {}, 'closed': {} },
+-}, class ModalDialog extends St.Widget {
+-    _init(params) {
+-        super._init({ visible: false,
+-            x: 0,
+-            y: 0,
+-            accessible_role: Atk.Role.DIALOG });
+-
+-        params = Params.parse(params, { shellReactive: false,
+-            styleClass: null,
+-            actionMode: Shell.ActionMode.SYSTEM_MODAL,
+-            shouldFadeIn: true,
+-            shouldFadeOut: true,
+-            destroyOnClose: true });
+-
+-        this._state = State.CLOSED;
+-        this._actionMode = params.actionMode;
+-        this._shellReactive = params.shellReactive;
+-        this._shouldFadeIn = params.shouldFadeIn;
+-        this._shouldFadeOut = params.shouldFadeOut;
+-        this._destroyOnClose = params.destroyOnClose;
+-
+-        Main.uiGroup.add_actor(this);
+-
+-        let constraint = new Clutter.BindConstraint({ source: global.stage,
+-            coordinate: Clutter.BindCoordinate.ALL });
+-        this.add_constraint(constraint);
+-
+-        this.backgroundStack = new St.Widget({
+-            layout_manager: new Clutter.BinLayout(),
+-            x_expand: true,
+-            y_expand: true,
+-        });
+-        this._backgroundBin = new St.Bin({ child: this.backgroundStack });
+-        this._monitorConstraint = new Layout.MonitorConstraint();
+-        this._backgroundBin.add_constraint(this._monitorConstraint);
+-        this.add_actor(this._backgroundBin);
+-
+-        this.dialogLayout = new Dialog.Dialog(this.backgroundStack, params.styleClass);
+-        this.contentLayout = this.dialogLayout.contentLayout;
+-        this.buttonLayout = this.dialogLayout.buttonLayout;
+-
+-        global.focus_manager.add_group(this.dialogLayout);
+-        this._initialKeyFocus = null;
+-        this._initialKeyFocusDestroyId = 0;
+-        this._savedKeyFocus = null;
+-
+-        this._grabHelper = new GrabHelper.GrabHelper(this);
+-    }
+-
+-    get state() {
+-        return this._state;
+-    }
+-
+-    _setState(state) {
+-        if (this._state === state)
+-            return;
+-
+-        this._state = state;
+-        this.notify('state');
+-    }
+-
+-    _fadeOpen(onPrimary) {
+-        if (onPrimary)
+-            this._monitorConstraint.primary = true;
+-        else
+-            this._monitorConstraint.index = global.display.get_current_monitor();
+-
+-        this._setState(State.OPENING);
+-
+-        this.dialogLayout.opacity = 255;
+-        if (this._lightbox)
+-            this._lightbox.lightOn();
+-        this.opacity = 0;
+-        this.show();
+-        this.ease({
+-            opacity: 255,
+-            duration: this._shouldFadeIn ? OPEN_AND_CLOSE_TIME : 0,
+-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+-            onComplete: () => {
+-                this._setState(State.OPENED);
+-                this.emit('opened');
+-            },
+-        });
+-    }
+-
+-    open(onPrimary) {
+-        if (this.state === State.OPENED || this.state === State.OPENING)
+-            return true;
+-
+-        this._fadeOpen(onPrimary);
+-        this._grabHelper.grab({ actor: this,
+-            focus: this.buttonLayout.get_children()[0],
+-            onUngrab: this.close.bind(this) });
+-        return true;
+-    }
+-
+-    _closeComplete() {
+-        this._setState(State.CLOSED);
+-        this.hide();
+-        this.emit('closed');
+-
+-        if (this._destroyOnClose)
+-            this.destroy();
+-    }
+-
+-    close() {
+-        if (this.state === State.CLOSED || this.state === State.CLOSING)
+-            return;
+-
+-        if (this._grabHelper._isWithinGrabbedActor(this))
+-            this._grabHelper.ungrab();
+-
+-
+-        this._setState(State.CLOSING);
+-        this._savedKeyFocus = null;
+-
+-        if (this._shouldFadeOut) {
+-            this.ease({
+-                opacity: 0,
+-                duration: OPEN_AND_CLOSE_TIME,
+-                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+-                onComplete: () => this._closeComplete(),
+-            });
+-        } else {
+-            this._closeComplete();
+-        }
+-    }
+-
+-    // This method is like close, but fades the dialog out much slower,
+-    // and leaves the lightbox in place. Once in the faded out state,
+-    // the dialog can be brought back by an open call, or the lightbox
+-    // can be dismissed by a close call.
+-    //
+-    // The main point of this method is to give some indication to the user
+-    // that the dialog response has been acknowledged but will take a few
+-    // moments before being processed.
+-    // e.g., if a user clicked "Log Out" then the dialog should go away
+-    // immediately, but the lightbox should remain until the logout is
+-    // complete.
+-    _fadeOutDialog() {
+-        if (this.state === State.CLOSED || this.state === State.CLOSING)
+-            return;
+-
+-        if (this.state === State.FADED_OUT)
+-            return;
+-
+-        this.dialogLayout.ease({
+-            opacity: 0,
+-            duration: FADE_OUT_DIALOG_TIME,
+-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+-            onComplete: () => (this.state = State.FADED_OUT),
+-        });
+-    }
+-});
+diff --git a/extensions/tos-hotkey/systemDialog.js b/extensions/tos-hotkey/systemDialog.js
+deleted file mode 100644
+index 116c2b3..0000000
+--- a/extensions/tos-hotkey/systemDialog.js
++++ /dev/null
+@@ -1,160 +0,0 @@
+-const { Atk, Clutter, GObject, Gio, St } = imports.gi;
+-
+-const _ = imports.gettext.gettext;
+-
+-// const ModalDialog = imports.ui.modalDialog;
+-
+-const SystemActions = imports.misc.systemActions;
+-const Params = imports.misc.params;
+-
+-const Me = imports.misc.extensionUtils.getCurrentExtension();
+-const ModalDialog = Me.imports.modalDialog;
+-
+-const LOGOUT_IMG_FILE_PATH = '/assets/tos_desktop_ic_windowf4_logout.svg';
+-const USER_SWITCH_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_user.svg';
+-const SLEEP_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_sleep.svg';
+-const RESTART_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_restart.svg';
+-const POWEROFF_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_power.svg';
+-
+-const LOGOUT_LABEL_TEXT = _('로그아웃');
+-const USER_SWITCH_LABEL_TEXT = _('사용자 전환');
+-const SLEEP_LABEL_TEXT = _('잠자기');
+-const RESTART_LABEL_TEXT = _('다시 시작');
+-const POWEROFF_LABEL_TEXT = _('시스템 종료');
+-
+-var SystemDialogButton = GObject.registerClass(
+-class SystemDialogButton extends St.BoxLayout {
+-    _init(params) {
+-        params = Params.parse(params, {
+-            reactive: true,
+-            activate: true,
+-            hover: true,
+-            style_class: null,
+-            can_focus: true,
+-            x_expand: true,
+-            vertical: true,
+-            y_align: Clutter.ActorAlign.CENTER,
+-            handler: null,
+-            systemDialog: null,
+-        });
+-        super._init({ style_class: 'system-dialog-button',
+-            reactive: params.reactive,
+-            track_hover: params.reactive,
+-            can_focus: params.can_focus,
+-            accessible_role: Atk.Role.TOGGLE_BUTTON });
+-
+-
+-
+-        this._delegate = this;
+-
+-        if (params.handler)
+-            this._handler = params.handler;
+-
+-
+-        if (params.systemDialog)
+-            this._systemDialog = params.systemDialog;
+-    }
+-
+-    vfunc_button_press_event() {
+-        this.add_style_pseudo_class('active');
+-    }
+-
+-    vfunc_button_release_event() {
+-        this.remove_style_pseudo_class('active');
+-        if (!this._handler)
+-            return Clutter.EVENT_PROPAGATE;
+-
+-        this._systemDialog.close();
+-        this._handler();
+-
+-        return Clutter.EVENT_STOP;
+-    }
+-
+-    vfunc_key_release_event(event) {
+-        if (event.keyval === Clutter.KEY_Return)
+-            return this.vfunc_button_release_event();
+-
+-
+-        return Clutter.EVENT_PROPAGATE;
+-    }
+-});
+-
+-var SystemDialog = GObject.registerClass( // eslint-disable-line no-unused-vars
+-class SystemDialog extends ModalDialog.ModalDialog {
+-    _init() {
+-        super._init({
+-            styleClass: 'system-dialog',
+-            destroyOnClose: false,
+-            shellReactive: true,
+-        });
+-
+-        let _title = _('원하는 작업을 선택해 주세요.');
+-        let label = new St.Label({ style_class: 'system-dialog-title',
+-            text: _title });
+-
+-
+-        this.contentLayout.set_style_class_name('system-dialog-content-box');
+-        this.contentLayout.add_actor(label);
+-
+-        this.systemActions = SystemActions.getDefault();
+-
+-        this.buttonLayout.set_style_class_name('system-dialog-button-container');
+-        this._buttons = [];
+-
+-        let iconPath = Me.path + LOGOUT_IMG_FILE_PATH;
+-        let button = this._createButton({
+-            handler: this.systemActions.activateLogout.bind(this.systemActions),
+-            systemDialog: this,
+-        }, iconPath, LOGOUT_LABEL_TEXT);
+-        button.add_style_pseudo_class('focus');
+-        this.buttonLayout.add_child(button);
+-
+-        iconPath = Me.path + USER_SWITCH_IMAGE_PATH;
+-        button = this._createButton({
+-            handler: this.systemActions.activateSwitchUser.bind(this.systemActions),
+-            systemDialog: this,
+-        }, iconPath, USER_SWITCH_LABEL_TEXT);
+-        this.buttonLayout.add_child(button);
+-
+-        iconPath = Me.path + SLEEP_IMAGE_PATH;
+-        button = this._createButton({
+-            handler: this.systemActions.activateSuspend.bind(this.systemActions),
+-            systemDialog: this,
+-        }, iconPath, SLEEP_LABEL_TEXT);
+-        this.buttonLayout.add_child(button);
+-
+-        iconPath = Me.path + RESTART_IMAGE_PATH;
+-        button = this._createButton({
+-            handler: this.systemActions.activateRestart.bind(this.systemActions),
+-            systemDialog: this,
+-        }, iconPath, RESTART_LABEL_TEXT);
+-        this.buttonLayout.add_child(button);
+-
+-        iconPath = Me.path + POWEROFF_IMAGE_PATH;
+-        button = this._createButton({
+-            handler: this.systemActions.activatePowerOff.bind(this.systemActions),
+-            systemDialog: this,
+-        }, iconPath, POWEROFF_LABEL_TEXT);
+-        this.buttonLayout.add_child(button);
+-    }
+-
+-    _createButton(params, iconName, labelText) {
+-        let icon = new St.Icon({ style_class: 'system-dialog-button-image',
+-            y_align: Clutter.ActorAlign.CENTER,
+-            gicon: Gio.icon_new_for_string(iconName),
+-            icon_size: 38 });
+-        let label = new St.Label({ style_class: 'system-dialog-button-label',
+-            text: labelText,
+-            y_align: Clutter.ActorAlign.CENTER });
+-        let button = new SystemDialogButton(params);
+-
+-        button.add_child(icon);
+-        button.add_child(label);
+-
+-        button.vertical = true;
+-
+-        this._buttons.push(button);
+-
+-        return button;
+-    }
+-});

@@ -1,0 +1,633 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Thu, 17 Jun 2021 14:22:23 +0900
+Subject: [feat] Notification Center : Add Easy support section - rename Easy
+ support root layout ( buttonBox -> easySupport) - implement Easysupport
+ Button ( Alarm, network, setting,
+ lockscreen) - BlueTooth Button is implmented but its feature is not
+ implmented yet
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js        | 174 ++++++++++++++++++---
+ .../img/tos_desktop_ic_alarm_alarm.svg             |  16 ++
+ .../img/tos_desktop_ic_alarm_arrow_down.svg        |  14 ++
+ .../img/tos_desktop_ic_alarm_arrow_up.svg          |  16 ++
+ .../img/tos_desktop_ic_alarm_edit.svg              |  16 ++
+ .../img/tos_desktop_ic_alarm_hit.svg               |  16 ++
+ .../img/tos_desktop_ic_alarm_lock.svg              |  16 ++
+ .../img/tos_desktop_ic_alarm_refresh.svg           |  16 ++
+ .../img/tos_desktop_ic_alarm_setting.svg           |  16 ++
+ .../img/tos_desktop_ic_alarm_wifi.svg              |  16 ++
+ .../img/tos_ic_alram_blutooth.svg                  |  15 ++
+ extensions/notification-center/stylesheet.css      |  73 ++++++++-
+ 12 files changed, 378 insertions(+), 26 deletions(-)
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_alarm.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_arrow_down.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_arrow_up.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_edit.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_hit.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_lock.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_refresh.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_setting.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_wifi.svg
+ create mode 100644 extensions/notification-center/img/tos_ic_alram_blutooth.svg
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 61e6594..4243719 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -5,20 +5,19 @@ Version 22.03
+ 
+ */
+ 
+-const Clutter             = imports.gi.Clutter;
++const { Clutter, Gio, GObject, Gtk, Meta, Shell, St } = imports.gi;
++const SystemActions       = imports.misc.systemActions.getDefault();
++const Util                = imports.misc.util;
+ const Config              = imports.misc.config;
+ const ExtensionUtils      = imports.misc.extensionUtils;
+-const Gtk                 = imports.gi.Gtk;
+ const Gettext             = imports.gettext;
+-const Gio                 = imports.gi.Gio;
+ const LangClass           = imports.lang.Class;
+ const Main                = imports.ui.main;
+ const Me                  = imports.misc.extensionUtils.getCurrentExtension();
+-const MetaKeyBindingFlags = imports.gi.Meta.KeyBindingFlags;
++const MetaKeyBindingFlags = Meta.KeyBindingFlags;
+ const PanelMenuButton     = imports.ui.panelMenu.Button;
+ const PopupMenu           = imports.ui.popupMenu;
+-const ShellActionMode     = imports.gi.Shell.ActionMode;
+-const St                  = imports.gi.St;
++const ShellActionMode     = Shell.ActionMode;
+ const _                   = imports.gettext.domain('notification-center').gettext;
+ 
+ let notificationCenter = null;
+@@ -56,6 +55,65 @@ function reloadExtensionOnPrefsChange() {
+ 
+ }
+ 
++/*
++  SupportIcon is used to implment Easy support section
++  SupportIcon consists of its image, its title label, its status label.
++*/
++
++var SupportIcon = GObject.registerClass(
++class SupportIcon extends St.BoxLayout {
++    _init(iconName, name, isToggle) {
++        super._init({
++            style_class: 'notification-center-support-icon',
++            vertical: true,
++        });
++
++        this._button = new St.Button({
++            reactive: true,
++        });
++
++        if (isToggle)
++            this._button.set_style_class_name('notification-center-support-icon-toggle-button-on');
++        else
++            this._button.set_style_class_name('notification-center-support-icon-button');
++        this._isToggle = isToggle;
++        this._button.set_size(48, 48);
++
++        this._icon = new St.Icon({
++            gicon: Gio.icon_new_for_string(`${`${Me.path}/img/${iconName}`}`),
++            icon_size: 16,
++        });
++        this._button.set_child(this._icon);
++        this.add_child(this._button);
++
++        this._title = new St.Label({
++            style_class: 'notification-center-support-icon-label',
++            text: name,
++        });
++
++        this._status = new St.Label({
++            style_class: 'notification-center-support-icon-label',
++        });
++
++        if (isToggle)
++            this._status.set_text('On');
++        this.add_child(this._title);
++        this.add_child(this._status);
++    }
++
++    setStatus(_status) {
++        if (this._isToggle) {
++            if (_status) {
++                this._button.set_style_class_name('notification-center-support-icon-toggle-button-on');
++                this._status.set_text('On');
++            } else {
++                this._button.set_style_class_name('notification-center-support-icon-toggle-button-off');
++                this._status.set_text('Off');
++            }
++        }
++    }
++});
++
+ const NotificationCenter = new LangClass({
+ 
+     Name: 'NotificationCenter',
+@@ -67,6 +125,7 @@ const NotificationCenter = new LangClass({
+         this.prefs = ExtensionUtils.getSettings('org.gnome.shell.extensions.notification-center');
+         this.parent(1 - 0.5 * this.prefs.get_enum('indicator-pos'), 'NotificationCenter');
+ 
++        this._systemActions         = SystemActions;
+         this._messageList           = Main.panel.statusArea.dateMenu._messageList;
+         this.mediaSection           = this._messageList._mediaSection;
+         this.notificationSection    = this._messageList._notificationSection;
+@@ -106,12 +165,41 @@ const NotificationCenter = new LangClass({
+         this._indicator        = new St.BoxLayout({ style_class: 'panel-status-menu-box', style: 'spacing:0.0em' });
+         this.box               = new St.BoxLayout({ style_class: 'notification-center-message-list', vertical: true });
+         this.titleBox          = new St.BoxLayout({ style_class: 'notification-center-title-box', vertical: false, y_align: Clutter.ActorAlign.START, x_expand: true });
+-        this.buttonBox         = new St.BoxLayout({ style_class: 'notification-center-button-box', vertical: true, y_align: Clutter.ActorAlign.END, y_expand: true });
+         this.clearButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Clear'), can_focus: true, visible: false, x_expand: true });
+-        this.dndItem           = new PopupMenu.PopupSwitchMenuItem(this._messageList._dndButton.label_actor.text, true, {});
+ 
+-        let scaleFactor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+-        this.scrollView = new St.ScrollView({ hscrollbar_policy: 2, style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.monitors[0].height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;` });
++        this.easySupport       = new St.BoxLayout({ style_class: 'notification-center-easy-support', vertical: true, y_align: Clutter.ActorAlign.END, y_expand: true });
++        this.supportControl    = new St.BoxLayout({ style_class: 'notification-center-support-control-row' });
++
++        this.supportControlUpArrow  = new St.Icon({ gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_arrow_up.svg`),
++            icon_size: 24 });
++        this.supportControlDownArrow  = new St.Icon({
++            gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_arrow_down.svg`),
++            icon_size: 24,
++        });
++        this.supportControlEdit = new St.Icon({
++            gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_edit.svg`),
++            icon_size: 16,
++            x_align: Clutter.ActorAlign.END,
++            x_expand: true,
++        });
++        this.supportControlRefresh = new St.Icon({
++            gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_refresh.svg`),
++            icon_size: 24,
++            x_align: Clutter.ActorAlign.END,
++            x_expand: true,
++        });
++        this.supportControlDone = new St.Label({
++            text: '완료',
++            style_class: 'notification-center-support-control-done',
++            x_align: Clutter.ActorAlign.END,
++        });
++
++        this.supportIconRow = new St.BoxLayout({ style_class: 'notification-center-support-icon-row' });
++        this.dndItem        = new PopupMenu.PopupSwitchMenuItem(this._messageList._dndButton.label_actor.text, false, {});
++        this.alarmIcon      = new SupportIcon('tos_desktop_ic_alarm_alarm.svg', '알람', true);
++
++        let scaleFactor     = St.ThemeContext.get_for_stage(global.stage).scale_factor;
++        this.scrollView     = new St.ScrollView({ hscrollbar_policy: 2, style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.monitors[0].height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;` });
+ 
+         this.add_style_class_name('notification-center-panel-button');
+         this.notificationIcon.set_pivot_point(0.5, 0);
+@@ -174,13 +262,22 @@ const NotificationCenter = new LangClass({
+ 
+     },
+ 
++    /*
++  loadDndStatus is legacy code, but we need to use this function, then renaming later.
++  it means that rename from loadDndStatus to loadAlarmStatus.
++
++  If show-banner is true, then Do not disturb function is disabled
++  So, If show banners is true, than 'Do not disturb' is off
++  Above reason, isDndoff = get_value(show-banners)
++*/
+     loadDndStatus() {
+ 
+         this.isDndOff = this.dndpref.get_boolean('show-banners');
+ 
+-        if (this.dndPos > 0)
++        /*
++        if (this.dndPos < 0)
+             this.dndItem.setToggleState(!this.isDndOff);
+-
++        */
+ 
+         this.blinkIconStopIfBlinking();
+         this.manageAutohide();
+@@ -188,6 +285,7 @@ const NotificationCenter = new LangClass({
+         this.notificationIcon.icon_name = this.notificationIconName;
+ 
+         if (this.isDndOff) {
++            this.alarmIcon.setStatus(true);
+             this.notificationIcon.set_opacity(255);
+             this.manageLabel();
+             return false;
+@@ -200,7 +298,7 @@ const NotificationCenter = new LangClass({
+         } else {
+             this.notificationIcon.set_opacity(150);
+         }
+-
++        this.alarmIcon.setStatus(false);
+         Main.messageTray._bannerBin.hide();
+         this.notificationLabel.hide();
+         this.eventsLabel.hide();
+@@ -230,7 +328,7 @@ const NotificationCenter = new LangClass({
+         this.blinkTime                    = this.prefs.get_int('blink-time');
+         this.blinkCount                   = this.prefs.get_int('blink-icon') * 2;
+         this.showLabel                    = this.prefs.get_boolean('show-label');
+-        this.dndPos                       = this.prefs.get_enum('dnd-position');
++        // this.dndPos                       = this.prefs.get_enum('dnd-position');
+         this.changeIcons                  = this.prefs.get_boolean('change-icons');
+ 
+     },
+@@ -481,17 +579,19 @@ const NotificationCenter = new LangClass({
+ 
+     startNotificationCenter() {
+ 
++        this.add_child(this._indicator);
++
+         this._indicator.add_child(this.eventsIcon);
+         this._indicator.add_child(this.eventsLabel);
+         this._indicator.add_child(this.mediaIcon);
+         this._indicator.add_child(this.notificationIcon);
+         this._indicator.add_child(this.notificationLabel);
++
+         this.menu.box.add_actor(this.titleBox);
+ 
+         this.setNotificationIconName();
+         this.iconThemeChangeSig = this.textureCache.connect('icon-theme-changed', this.iconThemeChanged.bind(this));
+ 
+-        this.add_child(this._indicator);
+         Main.panel.addToStatusArea('NotificationCenter', this, this.prefs.get_int('indicator-index'), this.prefs.get_string('indicator-pos'));
+         // this.rebuildMessageList();
+         this._messageListParent.remove_actor(this._messageList);
+@@ -530,19 +630,47 @@ const NotificationCenter = new LangClass({
+         this.titleBox.add_actor(this.titleLabel);
+         this.titleBox.add_actor(this.clearButton);
+ 
+-        if (this.dndPos > 0) {
++        this.menu.box.add_actor(this.easySupport);
++        this.menu.box.style = 'padding-bottom:0px;';
++
++        /*
++        if (this.dndPos < 0) {
+             this.dndItem._delegate = this;
+             this.dndItem.connect('toggled', () => this.dndToggle());
+             this._messageList._dndSwitch.hide();
+             this._messageList._dndButton.label_actor.hide();
+ 
+-            this.menu.box.add_actor(this.buttonBox);
+-            this.buttonBox.add_actor(this.dndItem);
+-            this.menu.box.style = 'padding-bottom: 0px;';
+-
+-            //            this.menu.box.insert_child_at_index(this.dndItem,  this.dndPos === 1 ? 0 : 2);
+-            //            this.menu.box.insert_child_at_index(new PopupMenu.PopupSeparatorMenuItem(), this.dndPos);
++            this.easySupport.add_actor(this.dndItem);
+         }
++        */
++
++        this.easySupport.add_child(this.supportControl);
++
++        // this.supportControl.add_actor(this.supportControlUpArrow);
++        this.supportControl.add_child(this.supportControlDownArrow);
++        // this.supportControl.add_actor(this.supportControlEdit);
++        // this.supportControl.add_actor(this.supportControlRefresh);
++        // this.supportControl.add_actor(this.supportControlDone);
++
++        // this.supportControlUpArrow.hide();
++        // this.supportControlEdit.hide();
++        // this.supportControlDownArrow.hide();
++        // this.supportControlRefresh.hide();
++        // this.supportControlDone.hide();
++
++        this.easySupport.add_child(this.supportIconRow);
++
++        this.supportIconRow.add_child(this.alarmIcon);
++        this.supportIconRow.add_child(new SupportIcon('tos_ic_alram_blutooth.svg', '블루투스', true));
++        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_wifi.svg', '네트워크', false));
++        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_setting.svg', '제어판', false));
++        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_lock.svg', '잠금화면', false));
++
++        // Because button is designed private property, we need to connectButton method in SupportIcon class.
++        this.alarmIcon._button.connect('clicked', () => this.dndToggle());
++        this.supportIconRow.get_child_at_index(2)._button.connect('clicked', () =>  Util.spawnCommandLine('gnome-control-center network'));
++        this.supportIconRow.get_child_at_index(3)._button.connect('clicked', () =>  Util.spawnCommandLine('gnome-control-center info-overview'));
++        this.supportIconRow.get_child_at_index(4)._button.connect('clicked', () =>  this._systemActions.activateLockScreen());
+ 
+         this.loadDndStatus();
+         this.resetIndicator();
+@@ -730,7 +858,7 @@ const NotificationCenter = new LangClass({
+         this.emptyIcon.destroy();
+         this.emptyLabel.destroy();
+         this.titleLabel.destroy();
+-        this.buttonBox.destroy();
++        this.easySupport.destroy();
+         this.titleBox.destroy();
+ 
+         this.prefs.disconnect(this.reloadSignal);
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_alarm.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_alarm.svg
+new file mode 100644
+index 0000000..fd4c823
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_alarm.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_alarm</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-80.000000, -603.000000)">
++            <g id="Group" transform="translate(48.000000, 539.000000)">
++                <g id="Group-7" transform="translate(20.000000, 52.000000)">
++                    <g id="alarm-24px" transform="translate(12.000000, 12.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M15.87,15.25 L12.5,13.25 L12.5,8.72 C12.5,8.32 12.18,8 11.78,8 L11.72,8 C11.32,8 11,8.32 11,8.72 L11,13.44 C11,13.79 11.18,14.12 11.49,14.3 L15.14,16.49 C15.48,16.69 15.92,16.59 16.12,16.25 C16.33,15.9 16.22,15.45 15.87,15.25 L15.87,15.25 Z M21.18,5.01 L18.1,2.45 C17.68,2.1 17.05,2.15 16.69,2.58 C16.34,3 16.4,3.63 16.82,3.99 L19.89,6.55 C20.31,6.9 20.94,6.85 21.3,6.42 C21.66,6 21.6,5.37 21.18,5.01 L21.18,5.01 Z M4.1,6.55 L7.17,3.99 C7.6,3.63 7.66,3 7.3,2.58 C6.95,2.15 6.32,2.1 5.9,2.45 L2.82,5.01 C2.4,5.37 2.34,6 2.7,6.42 C3.05,6.85 3.68,6.9 4.1,6.55 Z M12,4 C7.03,4 3,8.03 3,13 C3,17.97 7.03,22 12,22 C16.97,22 21,17.97 21,13 C21,8.03 16.97,4 12,4 Z M12,20 C8.14,20 5,16.86 5,13 C5,9.14 8.14,6 12,6 C15.86,6 19,9.14 19,13 C19,16.86 15.86,20 12,20 Z" id="Shape" fill="#FFFFFF"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_arrow_down.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_arrow_down.svg
+new file mode 100644
+index 0000000..654da9b
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_arrow_down.svg
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_arrow_down</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="0.8">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-518.000000, -616.000000)">
++            <g id="Group-5" transform="translate(426.000000, 539.000000)">
++                <g id="chevron_left-24px" transform="translate(92.000000, 77.000000)">
++                    <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                    <path d="M14.9975,6.71 C14.6075,6.32 13.9775,6.32 13.5875,6.71 L8.9975,11.3 C8.6075,11.69 8.6075,12.32 8.9975,12.71 L13.5875,17.3 C13.9775,17.69 14.6075,17.69 14.9975,17.3 C15.3875,16.91 15.3875,16.28 14.9975,15.89 L11.1175,12 L14.9975,8.12 C15.3875,7.73 15.3775,7.09 14.9975,6.71 Z" id="Path" fill="#FFFFFF" transform="translate(11.997500, 12.005000) rotate(-90.000000) translate(-11.997500, -12.005000) "></path>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_arrow_up.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_arrow_up.svg
+new file mode 100644
+index 0000000..a3c9151
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_arrow_up.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_arrow_up</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="0.8">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-550.000000, -616.000000)">
++            <g id="Group-5" transform="translate(426.000000, 539.000000)">
++                <g id="Group-10" transform="translate(92.000000, 77.000000)">
++                    <g id="chevron_left-24px" transform="translate(32.000000, 0.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M14.9975,6.6975 C14.6075,6.3075 13.9775,6.3075 13.5875,6.6975 L8.9975,11.2875 C8.6075,11.6775 8.6075,12.3075 8.9975,12.6975 L13.5875,17.2875 C13.9775,17.6775 14.6075,17.6775 14.9975,17.2875 C15.3875,16.8975 15.3875,16.2675 14.9975,15.8775 L11.1175,11.9875 L14.9975,8.1075 C15.3875,7.7175 15.3775,7.0775 14.9975,6.6975 Z" id="Path" fill="#FFFFFF" transform="translate(11.997500, 11.992500) rotate(-270.000000) translate(-11.997500, -11.992500) "></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_edit.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_edit.svg
+new file mode 100644
+index 0000000..46d71d0
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_edit.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="19px" height="18px" viewBox="0 0 19 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_edit</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="0.8">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-538.000000, -712.000000)">
++            <g id="Group-5" transform="translate(426.000000, 539.000000)">
++                <g id="Group-10-Copy" transform="translate(99.000000, 170.000000)">
++                    <g id="edit-24px" transform="translate(13.000000, 3.000000)">
++                        <polygon id="Path" points="0 0 18 0 18 18 0 18"></polygon>
++                        <path d="M2.25,13.095 L2.25,15.375 C2.25,15.585 2.415,15.75 2.625,15.75 L4.905,15.75 C5.0025,15.75 5.1,15.7125 5.1675,15.6375 L13.3575,7.455 L10.545,4.6425 L2.3625,12.825 C2.2875,12.9 2.25,12.99 2.25,13.095 Z M15.5325,5.28 C15.825,4.9875 15.825,4.515 15.5325,4.2225 L13.7775,2.4675 C13.485,2.175 13.0125,2.175 12.72,2.4675 L11.3475,3.84 L14.16,6.6525 L15.5325,5.28 Z" id="Shape" fill="#FFFFFF"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_hit.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_hit.svg
+new file mode 100644
+index 0000000..9813258
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_hit.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_hit</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-140.000000, -603.000000)">
++            <g id="Group" transform="translate(48.000000, 539.000000)">
++                <g id="Group-8" transform="translate(80.000000, 52.000000)">
++                    <g id="Group" transform="translate(12.000000, 12.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M12,19 C13.1045695,19 14,19.8954305 14,21 C14,22.1045695 13.1045695,23 12,23 C10.8954305,23 10,22.1045695 10,21 C10,19.8954305 10.8954305,19 12,19 Z M4.22182541,16.9497475 C5.00287399,16.1686989 6.26920395,16.1686989 7.05025253,16.9497475 C7.83130112,17.7307961 7.83130112,18.997126 7.05025253,19.7781746 C6.26920395,20.5592232 5.00287399,20.5592232 4.22182541,19.7781746 C3.44077682,18.997126 3.44077682,17.7307961 4.22182541,16.9497475 Z M16.9497475,16.9497475 C17.7307961,16.1686989 18.997126,16.1686989 19.7781746,16.9497475 C20.5592232,17.7307961 20.5592232,18.997126 19.7781746,19.7781746 C18.997126,20.5592232 17.7307961,20.5592232 16.9497475,19.7781746 C16.1686989,18.997126 16.1686989,17.7307961 16.9497475,16.9497475 Z M10.9739396,14.8190779 C11.4929175,15.0079704 11.7605046,15.5818127 11.571612,16.1007906 C11.3827195,16.6197685 10.8088772,16.8873556 10.2898993,16.6984631 C9.77092138,16.5095706 9.5033343,15.9357282 9.69222681,15.4167503 C9.88111932,14.8977724 10.4549617,14.6301854 10.9739396,14.8190779 Z M14.5967808,15.2026129 C14.8301865,15.7031529 14.6136313,16.2981333 14.1130913,16.5315389 C13.6125513,16.7649446 13.0175709,16.5483894 12.7841653,16.0478494 C12.5507596,15.5473094 12.7673148,14.952329 13.2678548,14.7189234 C13.7683948,14.4855177 14.3633752,14.7020729 14.5967808,15.2026129 Z M9.28107664,13.2678548 C9.51448226,13.7683948 9.29792708,14.3633752 8.79738711,14.5967808 C8.29684714,14.8301865 7.70186669,14.6136313 7.46846106,14.1130913 C7.23505544,13.6125513 7.45161062,13.0175709 7.95215059,12.7841653 C8.45269056,12.5507596 9.04767102,12.7673148 9.28107664,13.2678548 Z M16.1007906,12.428388 C16.6197685,12.6172805 16.8873556,13.1911228 16.6984631,13.7101007 C16.5095706,14.2290786 15.9357282,14.4966657 15.4167503,14.3077732 C14.8977724,14.1188807 14.6301854,13.5450383 14.8190779,13.0260604 C15.0079704,12.5070825 15.5818127,12.2394954 16.1007906,12.428388 Z M3,10 C4.1045695,10 5,10.8954305 5,12 C5,13.1045695 4.1045695,14 3,14 C1.8954305,14 1,13.1045695 1,12 C1,10.8954305 1.8954305,10 3,10 Z M21,10 C22.1045695,10 23,10.8954305 23,12 C23,13.1045695 22.1045695,14 21,14 C19.8954305,14 19,13.1045695 19,12 C19,10.8954305 19.8954305,10 21,10 Z M12,11 C12.5522847,11 13,11.4477153 13,12 C13,12.5522847 12.5522847,13 12,13 C11.4477153,13 11,12.5522847 11,12 C11,11.4477153 11.4477153,11 12,11 Z M8.58324966,9.69222681 C9.10222756,9.88111932 9.36981465,10.4549617 9.18092214,10.9739396 C8.99202963,11.4929175 8.41818728,11.7605046 7.89920937,11.571612 C7.38023147,11.3827195 7.11264439,10.8088772 7.3015369,10.2898993 C7.49042941,9.77092138 8.06427176,9.5033343 8.58324966,9.69222681 Z M16.5315389,9.88690869 C16.7649446,10.3874487 16.5483894,10.9824291 16.0478494,11.2158347 C15.5473094,11.4492404 14.952329,11.2326852 14.7189234,10.7321452 C14.4855177,10.2316052 14.7020729,9.63662479 15.2026129,9.40321917 C15.7031529,9.16981355 16.2981333,9.38636872 16.5315389,9.88690869 Z M11.2158347,7.95215059 C11.4492404,8.45269056 11.2326852,9.04767102 10.7321452,9.28107664 C10.2316052,9.51448226 9.63662479,9.29792708 9.40321917,8.79738711 C9.16981355,8.29684714 9.38636872,7.70186669 9.88690869,7.46846106 C10.3874487,7.23505544 10.9824291,7.45161062 11.2158347,7.95215059 Z M13.7101007,7.3015369 C14.2290786,7.49042941 14.4966657,8.06427176 14.3077732,8.58324966 C14.1188807,9.10222756 13.5450383,9.36981465 13.0260604,9.18092214 C12.5070825,8.99202963 12.2394954,8.41818728 12.428388,7.89920937 C12.6172805,7.38023147 13.1911228,7.11264439 13.7101007,7.3015369 Z M16.9497475,4.22182541 C17.7307961,3.44077682 18.997126,3.44077682 19.7781746,4.22182541 C20.5592232,5.00287399 20.5592232,6.26920395 19.7781746,7.05025253 C18.997126,7.83130112 17.7307961,7.83130112 16.9497475,7.05025253 C16.1686989,6.26920395 16.1686989,5.00287399 16.9497475,4.22182541 Z M4.22182541,4.22182541 C5.00287399,3.44077682 6.26920395,3.44077682 7.05025253,4.22182541 C7.83130112,5.00287399 7.83130112,6.26920395 7.05025253,7.05025253 C6.26920395,7.83130112 5.00287399,7.83130112 4.22182541,7.05025253 C3.44077682,6.26920395 3.44077682,5.00287399 4.22182541,4.22182541 Z M12,1 C13.1045695,1 14,1.8954305 14,3 C14,4.1045695 13.1045695,5 12,5 C10.8954305,5 10,4.1045695 10,3 C10,1.8954305 10.8954305,1 12,1 Z" id="Combined-Shape" fill="#FFFFFF"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_lock.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_lock.svg
+new file mode 100644
+index 0000000..f7d96ad
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_lock.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_lock</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-80.000000, -701.000000)">
++            <g id="Group" transform="translate(48.000000, 539.000000)">
++                <g id="Group-13-Copy" transform="translate(18.000000, 150.000000)">
++                    <g id="Group" transform="translate(14.000000, 12.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M21,3 C22.05,3 22.9177686,3.81092975 22.9944872,4.85006292 L23,5 L23,17 C23,18.05 22.1799587,18.9177686 21.1486946,18.9944872 L21,19 L15,19 L15,20 L16,20 C16.5522847,20 17,20.4477153 17,21 C17,21.5522847 16.5522847,22 16,22 L8,22 C7.44771525,22 7,21.5522847 7,21 C7,20.4477153 7.44771525,20 8,20 L9,20 L9,19 L3,19 C1.95,19 1.0822314,18.1799587 1.00551277,17.1486946 L1,17 L1,5 C1,3.95 1.82004132,3.0822314 2.85130541,3.00551277 L3,3 L21,3 Z M20,5 L4,5 C3.45,5 3,5.45 3,6 L3,6 L3,16 C3,16.55 3.45,17 4,17 L4,17 L20,17 C20.55,17 21,16.55 21,16 L21,16 L21,6 C21,5.45 20.55,5 20,5 L20,5 Z M12,7 C13.3807119,7 14.5,8.11928813 14.5,9.5 C14.5,10.5248383 13.8833391,11.4056476 13.00083,11.7916153 L13,14 C13,14.5522847 12.5522847,15 12,15 C11.4477153,15 11,14.5522847 11,14 L11.0001748,11.7920545 C10.1171291,11.4063162 9.5,10.5252272 9.5,9.5 C9.5,8.11928813 10.6192881,7 12,7 Z" id="Combined-Shape" fill="#000000"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_refresh.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_refresh.svg
+new file mode 100644
+index 0000000..cda4772
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_refresh.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_refresh</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="0.8">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-850.000000, -676.000000)">
++            <g id="Group" transform="translate(819.000000, 539.000000)">
++                <g id="Group-10" transform="translate(21.000000, 137.000000)">
++                    <g id="refresh-24px" transform="translate(10.000000, 0.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M17.65,6.35 C16.02,4.72 13.71,3.78 11.17,4.04 C7.5,4.41 4.48,7.39 4.07,11.06 C3.52,15.91 7.27,20 12,20 C15.19,20 17.93,18.13 19.21,15.44 C19.53,14.77 19.05,14 18.31,14 C17.94,14 17.59,14.2 17.43,14.53 C16.3,16.96 13.59,18.5 10.63,17.84 C8.41,17.35 6.62,15.54 6.15,13.32 C5.31,9.44 8.26,6 12,6 C13.66,6 15.14,6.69 16.22,7.78 L14.71,9.29 C14.08,9.92 14.52,11 15.41,11 L19,11 C19.55,11 20,10.55 20,10 L20,6.41 C20,5.52 18.92,5.07 18.29,5.7 L17.65,6.35 Z" id="Path" fill="#FFFFFF"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_setting.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_setting.svg
+new file mode 100644
+index 0000000..32ffbf9
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_setting.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_setting</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-320.000000, -603.000000)">
++            <g id="Group" transform="translate(48.000000, 539.000000)">
++                <g id="Group-14" transform="translate(260.000000, 52.000000)">
++                    <g id="Group" transform="translate(12.000000, 12.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M13,2 C13.5522847,2 14,2.44771525 14,3 L14.0003581,4.25212715 C14.7342764,4.4410611 15.4274316,4.73152463 16.0639579,5.10765191 L16.9497475,4.22182541 C17.3402718,3.83130112 17.9734367,3.83130112 18.363961,4.22182541 L19.7781746,5.63603897 C20.1686989,6.02656326 20.1686989,6.65972824 19.7781746,7.05025253 L18.8923481,7.93604206 C19.2686466,8.5728581 19.5592033,9.26635459 19.7481308,10.000644 L21,10 C21.5522847,10 22,10.4477153 22,11 L22,13 C22,13.5522847 21.5522847,14 21,14 L19.7478729,14.0003581 C19.5589389,14.7342764 19.2684754,15.4274316 18.8923481,16.0639579 L19.7781746,16.9497475 C20.1686989,17.3402718 20.1686989,17.9734367 19.7781746,18.363961 L18.363961,19.7781746 C17.9734367,20.1686989 17.3402718,20.1686989 16.9497475,19.7781746 L16.0639579,18.8923481 C15.4274316,19.2684754 14.7342764,19.5589389 14.0003581,19.7478729 L14,21 C14,21.5522847 13.5522847,22 13,22 L11,22 C10.4477153,22 10,21.5522847 10,21 L10.000644,19.7481308 C9.26635459,19.5592033 8.5728581,19.2686466 7.93604206,18.8923481 L7.05025253,19.7781746 C6.65972824,20.1686989 6.02656326,20.1686989 5.63603897,19.7781746 L4.22182541,18.363961 C3.83130112,17.9734367 3.83130112,17.3402718 4.22182541,16.9497475 L5.10765191,16.0639579 C4.73152463,15.4274316 4.4410611,14.7342764 4.25212715,14.0003581 L3,14 C2.44771525,14 2,13.5522847 2,13 L2,11 C2,10.4477153 2.44771525,10 3,10 L4.25186923,10.000644 C4.44079671,9.26635459 4.73135344,8.5728581 5.10765191,7.93604206 L4.22182541,7.05025253 C3.83130112,6.65972824 3.83130112,6.02656326 4.22182541,5.63603897 L5.63603897,4.22182541 C6.02656326,3.83130112 6.65972824,3.83130112 7.05025253,4.22182541 L7.93604206,5.10765191 C8.5728581,4.73135344 9.26635459,4.44079671 10.000644,4.25186923 L10,3 C10,2.44771525 10.4477153,2 11,2 L13,2 Z M12,7 C9.23857625,7 7,9.23857625 7,12 C7,14.7614237 9.23857625,17 12,17 C14.7614237,17 17,14.7614237 17,12 C17,9.23857625 14.7614237,7 12,7 Z" id="Combined-Shape" fill="#000000"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_wifi.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_wifi.svg
+new file mode 100644
+index 0000000..b0b79da
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_wifi.svg
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_wifi</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-260.000000, -603.000000)">
++            <g id="Group" transform="translate(48.000000, 539.000000)">
++                <g id="Group-13" transform="translate(197.000000, 52.000000)">
++                    <g id="Group" transform="translate(15.000000, 12.000000)">
++                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                        <path d="M18.5,2 L18.5,4 L20.5,4 L20.5,2 L21.75,2 C22.1625,2 22.5,2.3375 22.5,2.75 L22.5,7.25 C22.5,7.6625 22.1625,8 21.75,8 L20.499,8 L20.5,20 C20.5,20.5522847 20.0522847,21 19.5,21 C18.9477153,21 18.5,20.5522847 18.5,20 L18.499,8 L17.25,8 C16.8375,8 16.5,7.6625 16.5,7.25 L16.5,2.75 C16.5,2.3375 16.8375,2 17.25,2 L18.5,2 Z M12.19,16.3 C13.4050264,16.3 14.39,17.2849736 14.39,18.5 C14.39,19.7150264 13.4050264,20.7 12.19,20.7 C10.9749736,20.7 9.99,19.7150264 9.99,18.5 C9.99,17.2849736 10.9749736,16.3 12.19,16.3 Z M12.0908281,11.9 C13.9258692,11.9 15.6431304,12.6541537 16.880838,13.959519 C17.298838,14.4003685 17.2803149,15.0966036 16.8394654,15.5146037 C16.3986158,15.9326037 15.7023807,15.9140806 15.2843807,15.4732311 C14.4579125,14.601585 13.315768,14.1 12.0908281,14.1 C10.8434839,14.1 9.19058519,14.9671868 8.4219833,16.0741306 L8.31348647,16.2418919 C8.00114843,16.7629651 7.32553514,16.9321784 6.80446196,16.6198403 C6.28338877,16.3075023 6.11417549,15.631889 6.42651353,15.1108158 C7.54231535,13.2493249 10.0217707,11.9 12.0908281,11.9 Z M12.0918177,7.6 C13.7548368,7.6 15.3652681,7.98409222 16.8221893,8.71170013 C17.3656928,8.98313381 17.586249,9.64377094 17.3148153,10.1872745 C17.0433816,10.730778 16.3827445,10.9513342 15.839241,10.6799005 C14.6858696,10.1038898 13.4117129,9.8 12.0918177,9.8 C9.45510576,9.8 7.02255395,11.0214996 5.44042668,13.0690413 C5.06897365,13.5497647 4.37814818,13.6383458 3.8974248,13.2668928 C3.41670142,12.8954398 3.3281203,12.2046143 3.69957332,11.7238909 C5.69396187,9.14281299 8.76639234,7.6 12.0918177,7.6 Z M12.092179,3.3 C12.8220526,3.3 13.5455804,3.35364296 14.2586635,3.45978767 C14.8595561,3.54923247 15.2741665,4.10886153 15.1847217,4.70975416 C15.0952769,5.31064678 14.5356478,5.72525716 13.9347552,5.63581235 C13.3288153,5.54561624 12.7135505,5.5 12.092179,5.5 C8.30272234,5.5 4.79584604,7.20904117 2.45447106,10.0970756 C2.07188511,10.5689869 1.37917819,10.6413995 0.907266858,10.2588135 C0.435355522,9.87622756 0.362942989,9.18352064 0.745528939,8.7116093 C3.50028841,5.31367422 7.63225816,3.3 12.092179,3.3 Z" id="Combined-Shape" fill="#000000"></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/img/tos_ic_alram_blutooth.svg b/extensions/notification-center/img/tos_ic_alram_blutooth.svg
+new file mode 100644
+index 0000000..0601591
+--- /dev/null
++++ b/extensions/notification-center/img/tos_ic_alram_blutooth.svg
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_ic_alram_blutooth</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="05_03_02_TOS5_alarm" transform="translate(-609.000000, -412.000000)">
++            <g id="tos5_dialog/top" transform="translate(589.000000, 393.000000)">
++                <rect id="Rectangle" x="0" y="0" width="380" height="42"></rect>
++                <g id="bluetooth-24px" transform="translate(20.000000, 19.000000)">
++                    <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
++                    <path d="M17,7 L12.71,2.71 C12.08,2.08 11,2.52 11,3.41 L11,9.59 L7.11,5.7 C6.72,5.31 6.09,5.31 5.7,5.7 C5.31,6.09 5.31,6.72 5.7,7.11 L10.59,12 L5.7,16.89 C5.31,17.28 5.31,17.91 5.7,18.3 C6.09,18.69 6.72,18.69 7.11,18.3 L11,14.41 L11,20.59 C11,21.48 12.08,21.93 12.71,21.3 L17,17 C17.39,16.61 17.39,15.98 17,15.59 L13.41,12 L17,8.42 C17.39,8.03 17.39,7.39 17,7 Z M13,5.83 L14.88,7.71 L13,9.59 L13,5.83 Z M14.88,16.29 L13,18.17 L13,14.41 L14.88,16.29 L14.88,16.29 Z" id="Shape" fill="#FFFFFF"></path>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index c003a80..d6e225a 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -54,11 +54,78 @@
+   border-radius: 16px;
+ }
+ 
+-.notification-center-button-box {
++.notification-center-easy-support {
+   background-color: rgba(41, 41, 41, 255);
+-  width: 328px;
+-  height: 92px;
+   border-radius: 14px;
++  padding: 4px 20px;
++  spacing: 3px
++}
++
++.notification-center-support-control-row {
++    background-color: rgba(0,255,0,0);
++    spacing: 5px;
++}
++
++.notification-center-support-icon-row {
++    spacing: 11px;
++}
++
++.notification-center-support-control-done {
++    padding : 5px 15px;
++    border-radius: 12px;
++    background-color: #3961CA;
++    font-size: 14px;
++}
++
++.notification-center-support-icon {
++    spacing: 2px;
++}
++
++.notification-center-support-icon-label {
++    width: 48px;
++    font-size: 13px;
++    text-align: center;
++}
++.notification-center-support-icon-button {
++    background-color : #EAEBF1;
++    border-radius: 18px
++}
++.notification-center-support-icon-button:hover {
++    background-color : #FFFFFF;
++    border-radius: 18px
++}
++.notification-center-support-icon-button:active {
++    background-color : rgba(234,235,241,0.8);
++    border-radius: 18px
++}
++.notification-center-support-icon-toggle-button-on {
++    background-color : #3961CA;
++    border-radius: 18px;
++}
++
++.notification-center-support-icon-toggle-button-on:hover {
++    background-color : #004FFF;
++    border-radius: 18px;
++}
++
++.notification-center-support-icon-toggle-button-on:active {
++    background-color : #284DB1;
++    border-radius: 18px;
++}
++
++.notification-center-support-icon-toggle-button-off {
++    background-color : rgba(234,235,241,0.2);
++    border-radius: 18px;
++}
++
++.notification-center-support-icon-toggle-button-off:hover {
++    background-color : rgba(234,235,241,0.7);
++    border-radius: 18px;
++}
++
++.notification-center-support-icon-toggle-button-off:active {
++    background-color : rgba(234,235,241,0.5);
++    border-radius: 18px;
+ }
+ 
+ .notification-center-empty-icon {

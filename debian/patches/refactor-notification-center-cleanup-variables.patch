@@ -1,0 +1,110 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 2 Nov 2021 11:36:33 +0900
+Subject: [refactor] notification-center: cleanup variables
+
+- cleanup codes, less arrays
+- added comments for revert function
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 59 ++++++++++++++++-------------
+ 1 file changed, 32 insertions(+), 27 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index a540c2d..9b6b548 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -954,31 +954,32 @@ const NotificationCenter = new LangClass({
+         if (global.dashToPanel.panels.length < 2)
+             return false;
+ 
+-        this.subMessageLists = [];
+-        this.subMessageListParents = [];
+-        this.subDtActors = [];
+-        this.subDtActorParents = [];
+-        this.subIndicators = [];
++        this.subPanelElements = [];
+         global.dashToPanel.panels.forEach(panel => {
+             if (panel === Main.panel.get_parent())
+                 return;
+ 
+-            // remove messagelist from datemenu in sub panel
+-            const messageList = panel.statusArea.dateMenu._messageList;
+-            this.subMessageLists.push(messageList);
+-            this.subMessageListParents.push(messageList.get_parent());
+-            messageList.get_parent().remove_actor(messageList);
+-
+-            // remove dots and borders from sub panel datemenu
+-            const dtActor = panel.statusArea.dateMenu.get_children()[0].get_children()[0];
+-            const dtActorParent = panel.statusArea.dateMenu.get_children()[0];
+-            const indicator = panel.statusArea.dateMenu._indicator;
+-            this.subDtActors.push(dtActor);
+-            this.subDtActorParents.push(dtActorParent);
+-            this.subIndicators.push(indicator);
++            // remove messagelist, dots and borders of datemenu in sub panel
++            // each elements saved as [messageList, messageListParent, dtActor, dtActorParents, indicators]
++            let subPanelElement = [];
++            let messageList = panel.statusArea.dateMenu._messageList;
++            let messageListParent = messageList.get_parent();
++            let dtActor = panel.statusArea.dateMenu.get_children()[0].get_children()[0];
++            let dtActorParent = panel.statusArea.dateMenu.get_children()[0];
++            let indicator = panel.statusArea.dateMenu._indicator;
++
++            subPanelElement.push(messageList);
++            subPanelElement.push(messageListParent);
++            subPanelElement.push(dtActor);
++            subPanelElement.push(dtActorParent);
++            subPanelElement.push(indicator);
++
++            messageListParent.remove_actor(messageList);
+             dtActorParent.remove_actor(dtActor);
+             dtActorParent.remove_actor(indicator);
+ 
++            this.subPanelElements.push(subPanelElement);
++
+             // use same default visitility value of main panel
+             panel.statusArea.dateMenu._weatherItem.visible = !this.prefs.get_boolean('hide-weather-section') && this.defaultWeatherItemVisibility;
+             panel.statusArea.dateMenu._clocksItem.visible =  !this.prefs.get_boolean('hide-clock-section') && this.defaultClocksItemVisibility;
+@@ -989,6 +990,7 @@ const NotificationCenter = new LangClass({
+     },
+ 
+     changeSubPanelUILater() {
++        // register callback function for later load of dash-to-panel
+         this.subPanelId =  Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+             if (extension.uuid === 'dash-to-panel@tmax-shell-extensions' && extension.state === 1)
+                 this.changeSubPanelUI();
+@@ -1008,13 +1010,17 @@ const NotificationCenter = new LangClass({
+             if (panel === Main.panel.get_parent())
+                 return;
+ 
+-            // revert messagelist of datemenu in sub panel
+-            this.subMessageListParents.shift().insert_child_at_index(this.subMessageLists.shift(), 0);
+-
+-            // revert dots and borders from sub panel datemenu
+-            const dtActorParent = this.subDtActorParents.shift();
+-            dtActorParent.insert_child_at_index(this.subDtActors.shift(), 0);
+-            dtActorParent.add_actor(this.subIndicators.shift());
++            // revert messagelist, dots and borders of datemenu in sub panel
++            // uses elements saved as [messageList, messageListParent, dtActor, dtActorParents, indicators] in changeSubPanel()
++            // subPanelElement[0] => original messagelist in sub panel
++            // subPanelElement[1] => parent of original messagelist
++            // subPanelElement[2] => border of datemenu
++            // subPanelElement[3] => datemenu actor
++            // subPanelElement[4] => dot of datemenu, indicator
++            let subPanelElement = this.subPanelElements.shift();
++            subPanelElement[1].insert_child_at_index(subPanelElement[0], 0);
++            subPanelElement[3].insert_child_at_index(subPanelElement[2], 0);
++            subPanelElement[3].add_actor(subPanelElement[4]);
+ 
+             // revert visibility of items
+             panel.statusArea.dateMenu._weatherItem.visible = this.defaultWeatherItemVisibility;
+@@ -1024,8 +1030,7 @@ const NotificationCenter = new LangClass({
+     },
+ 
+     undoChanges() {
+-        if (this.subPanelId)
+-            Main.extensionManager.disconnect(this.subPanelId);
++        Main.extensionManager.disconnect(this.subPanelId);
+         this.revertSubPanelUI();
+ 
+         this.blinkIconStopIfBlinking();

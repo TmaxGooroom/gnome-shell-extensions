@@ -1,0 +1,39 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 14 Sep 2021 14:26:21 +0900
+Subject: [bugfix] search : Handle Mouse Click When typing Hangul
+
+- In clutter, when you click the mouse, it doesn't care about the letters being combined, only the cursor moves and ends. If you press the space bar in that situation, the 'preedit string' currently being edited is committed to the moved mouse location.
+- To solve this problem, the search extension receives a mouse click event directly and processes the commit logic before the mouse moves.
+
+[IMS] 268816
+---
+ extensions/search/menuWidgets.js | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index fd74583..1dab819 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -858,6 +858,22 @@ var SearchBox = class ArcMenuSearchBox {
+     }
+ 
+     _onButtonPress() {
++        // When the mouse button is clicked while inputting Hangul,
++        // to commit the character being input. clutter text.
++
++        let preedit = Main.inputMethod._preeditStr;
++        let cursorPosition = this._text.get_cursor_position();
++
++        // In case of simply performing reset after commit, the commit event is pushed back
++        // than moving the mouse cursor and malfunctions.
++        // So, it directly accesses the clutter text and performs the insert operation.
++        this._text.insert_text(preedit, cursorPosition);
++
++        // Setting a flag to prevent committing again in the reset operation
++        Main.inputMethod._context.set_client_commit_preedit(true);
++        Main.inputMethod._context.reset();
++        Main.inputMethod._context.set_client_commit_preedit(false);
++
+         if (!this.menuLayout.searchMenu.isOpen)
+             this.menuLayout.searchMenu.open();
+ 

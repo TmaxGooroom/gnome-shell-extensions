@@ -1,0 +1,31 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 29 Apr 2021 10:20:55 +0900
+Subject: [refactor] change variable type
+
+- change variable type to const
+
+[IMS] N/A
+---
+ extensions/search/constants.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/search/constants.js b/extensions/search/constants.js
+index 93a838b..6737c5e 100644
+--- a/extensions/search/constants.js
++++ b/extensions/search/constants.js
+@@ -25,13 +25,13 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const _ = Gettext.gettext;
+ 
+-var TooltipLocation = { // eslint-disable-line no-unused-vars
++const TooltipLocation = { // eslint-disable-line no-unused-vars
+     TOP_CENTERED: 0,
+     BOTTOM_CENTERED: 1,
+     BOTTOM: 2,
+ };
+ 
+-var Action = { // eslint-disable-line no-unused-vars
++const Action = { // eslint-disable-line no-unused-vars
+     OPEN: 0,
+     ADMIN_EXECUTE: 1,
+     ADD_TO_FAVORITES: 2,

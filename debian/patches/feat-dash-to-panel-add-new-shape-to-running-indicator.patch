@@ -1,0 +1,142 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 3 Nov 2021 15:10:00 +0900
+Subject: [feat] dash-to-panel: add new shape to running indicator
+
+ - added 'rounded-rectangle' shape to running indicator
+ - modify spacing between app icon
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/Settings.ui               |  2 ++
+ extensions/dash-to-panel/appIcons.js               | 41 ++++++++++++++++++++--
+ .../schemas/10_dash-to-panel.gschema.override      |  7 ++--
+ ...nome.shell.extensions.dash-to-panel.gschema.xml |  1 +
+ 4 files changed, 47 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/dash-to-panel/Settings.ui b/extensions/dash-to-panel/Settings.ui
+index 2549f07..7ce31ec 100644
+--- a/extensions/dash-to-panel/Settings.ui
++++ b/extensions/dash-to-panel/Settings.ui
+@@ -5327,6 +5327,7 @@
+                                   <item id="SOLID" translatable="yes">Solid</item>
+                                   <item id="CILIORA" translatable="yes">Ciliora</item>
+                                   <item id="METRO" translatable="yes">Metro</item>
++                                  <item id="ROUNDED_RECTANGLE" translatable="yes">Rounded Rectangle</item>
+                                 </items>
+                               </object>
+                               <packing>
+@@ -5388,6 +5389,7 @@
+                               <item id="SOLID" translatable="yes">Solid</item>
+                               <item id="CILIORA" translatable="yes">Ciliora</item>
+                               <item id="METRO" translatable="yes">Metro</item>
++                              <item id="ROUNDED_RECTANGLE" translatable="yes">Rounded Rectangle</item>
+                             </items>
+                           </object>
+                           <packing>
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index eb86848..ec055a2 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -59,7 +59,7 @@ const TITLE_RIGHT_PADDING = 8;
+ 
+ let LABEL_GAP = 5;
+ let MAX_INDICATORS = 4;
+-var DEFAULT_PADDING_SIZE = 4;
++var DEFAULT_PADDING_SIZE = 0;
+ 
+ let DOT_STYLE = {
+     DOTS: 'DOTS',
+@@ -69,6 +69,7 @@ let DOT_STYLE = {
+     CILIORA: 'CILIORA',
+     METRO: 'METRO',
+     SOLID: 'SOLID',
++    ROUNDED_RECTANGLE: 'ROUNDED_RECTANGLE',
+ };
+ 
+ let DOT_POSITION = {
+@@ -1102,7 +1103,6 @@ var taskbarAppIcon = Utils.defineClass({
+ 
+             if (position === DOT_POSITION.RIGHT)
+                 startX = areaWidth - size;
+-
+         }
+ 
+         if (type === DOT_STYLE.SOLID || type === DOT_STYLE.METRO) {
+@@ -1135,6 +1135,43 @@ var taskbarAppIcon = Utils.defineClass({
+                 cr.rectangle(...isHorizontalDots ? [solidDarkLength, 0, darkenedLength, size] : [0, solidDarkLength, size, darkenedLength]);
+                 cr.fill();
+             }
++        } else if (type === DOT_STYLE.ROUNDED_RECTANGLE) {
++            // NOTE : Guidelines according to the position of running indicator are not implemented. Therefore, assume it is located at bottom unconditionally.
++            [startX, startY] = [0, areaSize - size];
++
++            if (n === 1) {
++                Clutter.cairo_set_source_color(cr, bodyColor);
++                cr.translate(startX, startY);
++                cr.moveTo(0, size);
++                cr.arc(size, size, size, Math.PI, 3 * Math.PI / 2);
++                cr.lineTo(areaSize - size, 0);
++                cr.arc(areaSize - size, size, size, 3 * Math.PI / 2, 0);
++                cr.lineTo(size, size);
++                cr.fill();
++            } else {
++                let darkenedLength =  13 / 44  * areaSize;
++                let [h, l, s] = bodyColor.to_hls();
++
++                l -= 0.1;
++                let darkenedColor = Clutter.color_from_hls(h, l, s);
++                darkenedColor.alpha = 0xff;
++
++                cr.translate(startX, startY);
++                Clutter.cairo_set_source_color(cr, bodyColor);
++                cr.moveTo(0, size); // newSubPath?
++                cr.arc(size, size, size, Math.PI, 3 * Math.PI / 2);
++                cr.lineTo(areaSize - darkenedLength, 0);
++                cr.lineTo(areaSize - darkenedLength, size);
++                cr.lineTo(size, size);
++                cr.fill();
++
++                Clutter.cairo_set_source_color(cr, darkenedColor);
++                cr.moveTo(areaSize - darkenedLength, 0);
++                cr.lineTo(areaSize - size, 0);
++                cr.arc(areaSize - size, size, size, 3 * Math.PI / 2, 0);
++                cr.lineTo(areaSize - darkenedLength, size);
++                cr.fill();
++            }
+         } else {
+             let spacing = Math.ceil(areaSize / 18); // separation between the indicators
+             let length;
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index f5fade5..1c5c59f 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -1,12 +1,15 @@
+ [org.gnome.shell.extensions.dash-to-panel]
+-dot-style-focused = 'METRO'
+-dot-style-unfocused = 'METRO'
++panel-size = 44
++dot-style-focused = 'ROUNDED_RECTANGLE'
++dot-style-unfocused = 'ROUNDED_RECTANGLE'
+ dot-color-override = true
+ dot-color-1 = '#80a7ff'
+ dot-color-2 = '#80a7ff'
+ dot-color-3 = '#80a7ff'
+ dot-color-4 = '#80a7ff'
+ dot-size = 4
++appicon-padding = 9
++appicon-margin = 3
+ trans-use-custom-bg = true
+ trans-use-custom-opacity = true
+ trans-panel-opacity = 1.0
+diff --git a/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml b/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
+index 5cf666d..17f3ce8 100644
+--- a/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
++++ b/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
+@@ -8,6 +8,7 @@
+     <value value='4' nick='SOLID'/>
+     <value value='5' nick='CILIORA'/>
+     <value value='6' nick='METRO'/>
++    <value value='7' nick='ROUNDED_RECTANGLE'/>
+   </enum>
+   <enum id='org.gnome.shell.extensions.dash-to-panel.clickAction'>
+     <value value='0' nick='RAISE'/>

@@ -1,0 +1,156 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 28 Sep 2021 17:03:30 +0900
+Subject: [feat] desktop-icons-ng : Add sortUtil.js file and separate function
+ for sorting
+
+- add sortUtil.js for separating function
+- make an exception for sysyem folder sorting to be sorted to the front
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 42 +++++++--------------------
+ extensions/desktop-icons-ng/fileItem.js       |  6 ++++
+ extensions/desktop-icons-ng/meson.build       |  1 +
+ extensions/desktop-icons-ng/sortUtil.js       | 39 +++++++++++++++++++++++++
+ 4 files changed, 56 insertions(+), 32 deletions(-)
+ create mode 100644 extensions/desktop-icons-ng/sortUtil.js
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index f471f66..1d5d28c 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -28,6 +28,7 @@ const DesktopGrid = imports.desktopGrid;
+ const DesktopIconsUtil = imports.desktopIconsUtil;
+ const Prefs = imports.preferences;
+ const Enums = imports.enums;
++const SortUtil = imports.sortUtil;
+ const DBusUtils = imports.dbusUtils;
+ const AskNamePopup = imports.askNamePopup;
+ const AskRenamePopup = imports.askRenamePopup;
+@@ -757,43 +758,20 @@ var DesktopManager = class {
+     }
+ 
+     _doSort(criteria, order) {
+-        for (let fileItem of this._fileList) {
++        let len = this._fileList.length;
++
++        for (let i = 0; i < len; i++) {
++            let fileItem = this._fileList[i];
+             fileItem.removeFromGrid();
+             fileItem.savedCoordinates = null;
+         }
+ 
+-        switch (criteria) {
+-        case Enums.SortingCriteria.Name:
+-            this._fileList.sort((a, b) => {
+-                let compVal;
+-                compVal = a.displayName > b.displayName;
+-                return order === compVal ? 1 : -1;
+-            });
+-            break;
+-        case Enums.SortingCriteria.Size:
+-            this._fileList.sort((a, b) => {
+-                let compVal;
+-                compVal = a.fileSize > b.fileSize;
+-                return order === compVal ? 1 : -1;
+-            });
+-            break;
+-        case Enums.SortingCriteria.Type:
+-            this._fileList.sort((a, b) => {
+-                let compVal;
+-                compVal = a.contentType > b.contentType;
+-                return order === compVal ? 1 : -1;
+-            });
+-            break;
+-        case Enums.SortingCriteria.Time:
+-            this._fileList.sort((a, b) => {
+-                let compVal;
+-                compVal = a.modifiedTime > b.modifiedTime;
+-                return order === compVal ? 1 : -1;
+-            });
+-            break;
+-        }
++        this._fileList.sort((a, b) => {
++            let compVal = SortUtil.compareValue(a, b, criteria);
++            return order === compVal ? 1 : -1;
++        });
+ 
+-        this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.PRESERVE);
++        this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.OVERWRITE);
+ 
+         this._orderAscending = order;
+         this._currentSorting = criteria;
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index d1b92d3..45f60c1 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -1085,6 +1085,12 @@ var FileItem = class {
+         return this._isSpecial;
+     }
+ 
++    get isSystemFolder() {
++        return this._fileExtra === Enums.FileType.USER_DIRECTORY_TRASH ||
++        this._fileExtra === Enums.FileType.USER_DIRECTORY_HOME ||
++        this._fileExtra === Enums.FileType.EXTERNAL_DRIVE;
++    }
++
+     get state() {
+         return this._state;
+     }
+diff --git a/extensions/desktop-icons-ng/meson.build b/extensions/desktop-icons-ng/meson.build
+index af482e6..7227ed9 100644
+--- a/extensions/desktop-icons-ng/meson.build
++++ b/extensions/desktop-icons-ng/meson.build
+@@ -24,6 +24,7 @@ extension_sources += files(
+     'selectionCalculator.js',
+     'showErrorPopup.js',
+     'templateManager.js',
++    'sortUtil.js',
+ )
+ 
+ subdir('po')
+diff --git a/extensions/desktop-icons-ng/sortUtil.js b/extensions/desktop-icons-ng/sortUtil.js
+new file mode 100644
+index 0000000..d8f31f5
+--- /dev/null
++++ b/extensions/desktop-icons-ng/sortUtil.js
+@@ -0,0 +1,39 @@
++/* exported compareValue */
++const Enums = imports.enums;
++
++function compareValue(item1, item2, criteria) {
++    if (item1.isSystemFolder)
++        return 1;
++
++
++    if (item2.isSystemFolder)
++        return 0;
++
++
++    let ret;
++    switch (criteria) {
++    case Enums.SortingCriteria.Name:
++        // NOTE : The ascending order should be as follow
++        // 1. Special characters (punctuation, unicode except Korean)
++        // 2. Number (0~9)
++        // 3. Uppercase alphabet (A~Z)
++        // 4. Lowercase alphabet (a~z)
++        // 5. Korean (가~)
++        ret = item1.displayName > item2.displayName;
++        break;
++
++    case Enums.SortingCriteria.Size:
++        ret = item1.fileSize > item2.fileSize;
++        break;
++
++    case Enums.SortingCriteria.Type:
++        ret = item1.contentType > item2.contentType;
++        break;
++
++    case Enums.SortingCriteria.Time:
++        ret = item1.modifiedTime > item2.modifiedTime;
++        break;
++    }
++
++    return ret;
++}

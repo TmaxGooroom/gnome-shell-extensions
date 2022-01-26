@@ -1,0 +1,101 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 26 Jul 2021 11:20:28 +0900
+Subject: [feat] Greeter: add customized AuthPrompt
+
+- Delete existing AuthPrompt and add customized AuthPrompt.
+- It inherited existing AuthPrompt class and is planning to implement additional functions.
+
+[IMS] N/A
+---
+ extensions/greeter/authPrompt.js  | 27 +++++++++++++++++++++++++++
+ extensions/greeter/loginDialog.js | 20 ++++++++++++++++++++
+ extensions/greeter/meson.build    |  3 ++-
+ 3 files changed, 49 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/greeter/authPrompt.js
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+new file mode 100644
+index 0000000..e43f288
+--- /dev/null
++++ b/extensions/greeter/authPrompt.js
+@@ -0,0 +1,27 @@
++// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++/* exported LoginDialog */
++/*
++ * Copyright 2011 Red Hat, Inc
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2, or (at your option)
++ * any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, see <http://www.gnu.org/licenses/>.
++ */
++const { GObject } = imports.gi;
++const GnomeAuthPrompt = imports.gdm.authPrompt;
++
++var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.AuthPrompt { // eslint-disable-line no-unused-vars
++    _init(gdmClient, mode) {
++        super._init(gdmClient, mode);
++        this.style = 'background-color:rgb(255, 128, 0);';
++    }
++});
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 76d09b6..7c6342f 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -16,16 +16,36 @@
+  * You should have received a copy of the GNU General Public License
+  * along with this program; if not, see <http://www.gnu.org/licenses/>.
+  */
++const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const { GObject, Clutter } = imports.gi;
+ const Main = imports.ui.main;
+ const GnomeLoginDialog = imports.gdm.loginDialog;
++const GnomeAuthPrompt = imports.gdm.authPrompt;
+ const CtrlAltTab = imports.ui.ctrlAltTab;
+ 
++const AuthPrompt = Me.imports.authPrompt;
++
+ const Gettext = imports.gettext;
+ const _ = Gettext.gettext;
+ 
+ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDialog.LoginDialog {
++    _init(parentActor) {
++        super._init(parentActor);
++
++        this._addCustomizedAuthPrompt();
++    }
++
++    _addCustomizedAuthPrompt() {
++        this.remove_child(this._authPrompt);
++
++        this._authPrompt = new AuthPrompt.AuthPrompt(this._gdmClient, GnomeAuthPrompt.AuthPromptMode.UNLOCK_OR_LOG_IN);
++        this._authPrompt.connect('prompted', this._onPrompted.bind(this));
++        this._authPrompt.connect('reset', this._onReset.bind(this));
++        this._authPrompt.hide();
++        this.add_child(this._authPrompt);
++    }
++
+     open() {
+         Main.ctrlAltTabManager.addGroup(this,
+             _('Login Window'),
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+index 1c1f7a3..20025ce 100644
+--- a/extensions/greeter/meson.build
++++ b/extensions/greeter/meson.build
+@@ -5,5 +5,6 @@ extension_data += configure_file(
+ )
+ 
+ extension_sources += files(
+-    'loginDialog.js'
++    'loginDialog.js',
++    'authPrompt.js'
+ )

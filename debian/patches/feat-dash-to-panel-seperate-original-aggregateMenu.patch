@@ -1,0 +1,181 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 8 Jun 2021 14:25:49 +0900
+Subject: [feat] dash-to-panel : seperate original aggregateMenu
+
+ - created Tray class to deal with some business logic about aggregateMenu. This class mainly does,
+ - remove event callback function of aggregateMenu and added it to each tray icon
+ - show only the menu item corresponding to the clicked tray icon
+ - removed hover effect on aggregateMenu and applied it to each tray icon
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/meson.build    |  1 +
+ extensions/dash-to-panel/panel.js       |  6 ++-
+ extensions/dash-to-panel/stylesheet.css |  8 ++++
+ extensions/dash-to-panel/tray.js        | 74 +++++++++++++++++++++++++++++++++
+ 4 files changed, 88 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/dash-to-panel/tray.js
+
+diff --git a/extensions/dash-to-panel/meson.build b/extensions/dash-to-panel/meson.build
+index 30583a9..d83121a 100644
+--- a/extensions/dash-to-panel/meson.build
++++ b/extensions/dash-to-panel/meson.build
+@@ -17,6 +17,7 @@ extension_sources += files(
+     'progress.js',
+     'proximity.js',
+     'taskbar.js',
++    'tray.js',
+     'transparency.js',
+     'update.js',
+     'utils.js',
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index 148b5d7..2b8b5de 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -50,6 +50,7 @@ const DateMenu = imports.ui.dateMenu;
+ const Volume = imports.ui.status.volume;
+ const Progress = Me.imports.progress;
+ 
++const Tray = Me.imports.tray;
+ const Intellihide = Me.imports.intellihide;
+ const Transparency = Me.imports.transparency;
+ const _ = imports.gettext.domain(Me.imports.utils.TRANSLATION_DOMAIN).gettext;
+@@ -157,6 +158,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             this.statusArea = Main.panel.statusArea;
+             this.menuManager = Main.panel.menuManager;
+ 
++
+             setMenuArrow(this.statusArea.aggregateMenu._indicators.get_last_child(), position);
+ 
+             panelBoxes.forEach(p => (this[p] = Main.panel[p]));
+@@ -217,7 +219,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+         Main.ctrlAltTabManager.addGroup(this, `${_('Top Bar')} ${monitor.index}`, 'focus-top-bar-symbolic',
+             { sortGroup: CtrlAltTab.SortGroup.TOP });
+-
++        this.tray = new Tray.Tray();
+     },
+ 
+     enable() {
+@@ -444,6 +446,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         this.set_offscreen_redirect(Clutter.OffscreenRedirect.ALWAYS);
+ 
+         this._initProgressManager();
++        this.tray.enable(this.statusArea.aggregateMenu);
+     },
+ 
+     disable() {
+@@ -543,6 +546,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         }
+ 
+         Main.ctrlAltTabManager.removeGroup(this);
++        this.tray.disable();
+     },
+ 
+     handleDragOver(source, actor, x, y, time) { // eslint-disable-line no-unused-vars
+diff --git a/extensions/dash-to-panel/stylesheet.css b/extensions/dash-to-panel/stylesheet.css
+index a9156b5..1c23f61 100644
+--- a/extensions/dash-to-panel/stylesheet.css
++++ b/extensions/dash-to-panel/stylesheet.css
+@@ -74,6 +74,10 @@
+ 	text-align: center;
+ }
+ 
++.panel-button:hover {
++  color: #ccc;
++}
++
+ .dashtopanelMainPanel.vertical .panel-button.vertical *,
+ .dashtopanelMainPanel.vertical .panel-button.clock-display * {
+ 	padding: 0;
+@@ -86,6 +90,10 @@
+ 	padding: 8px 0;
+ }
+ 
++.panel-status-indicators-box:hover {
++  color : white;
++}
++
+ #dashtopanelThumbnailList {
+ 	spacing: 0em;
+ 	padding: 0 1em;
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+new file mode 100644
+index 0000000..04b2cee
+--- /dev/null
++++ b/extensions/dash-to-panel/tray.js
+@@ -0,0 +1,74 @@
++const { Clutter } = imports.gi;
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++const Utils = Me.imports.utils;
++
++const Signals = imports.signals;
++
++class Tray {
++    enable(aggregateMenu) {
++        this._originalTray = aggregateMenu;
++        this._menu = this._originalTray.menu;
++        this._indicators = this._originalTray._indicators;
++        this._originalMenuItems = this._menu._getMenuItems();
++
++        this._originalEventFunc = this._originalTray.vfunc_event;
++        // remove original event function when aggregateMenu is pressed
++        Utils.hookVfunc(Object.getPrototypeOf(this._originalTray), 'event', () => {
++            return Clutter.EVENT_PROPAGATE;
++        });
++
++        let indicators = this._indicators.get_children();
++        indicators.forEach(indicator => {
++            let id = indicator.connect('event', this._onTrayClicked.bind(this));
++            this.connect('disabled', indicator.disconnect.bind(indicator, id));
++            indicator.track_hover = true;
++        });
++    }
++
++    disable() {
++        Utils.hookVfunc(Object.getPrototypeOf(this._originalTray), 'event', this._originalEventFunc);
++        this._restoreOriginalMenu();
++
++        this._originalTray = null;
++        this._menu = null;
++        this._indicators = null;
++        this._originalMenuItems = null;
++        this._originalEventFunc = null;
++
++        this.emit('disabled');
++    }
++
++    _restoreOriginalMenu() {
++        this._clearMenu();
++        this._originalMenuItems.forEach(menuItem => {
++            this._menu.addMenuItem(menuItem);
++        });
++    }
++
++    _clearMenu() {
++        let menus = this._menu._getMenuItems();
++        menus.forEach(menu => {
++            this._menu.box.remove_child(menu.actor);
++        });
++    }
++
++    _onTrayClicked(actor, event) {
++        if (event.type() === Clutter.EventType.TOUCH_BEGIN ||
++           event.type() === Clutter.EventType.BUTTON_PRESS) {
++            this._clearMenu();
++
++            if (!actor.menu)
++                return;
++
++            this._menu.addMenuItem(actor.menu);
++            if (actor === this._originalTray._power)
++                this._menu.addMenuItem(this._originalTray._system.menu);
++
++            this._menu.sourceActor = actor;
++            this._menu.toggle(true);
++        }
++    }
++}
++
++Signals.addSignalMethods(Tray.prototype);

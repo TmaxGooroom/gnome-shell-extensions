@@ -1,0 +1,150 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 7 Apr 2021 17:17:12 +0900
+Subject: [feat] Arc Menu, Search : Define arc menu position in schema.xml
+
+- Add position-in-panel value in schema.xml
+- Receive a signal when changing position-in-panel schema value, and modify GUI immediately.
+
+[IMS] N/A
+---
+ extensions/arc-menu/controller.js                  | 11 +++++-----
+ .../org.gnome.shell.extensions.arcmenu.gschema.xml |  5 +++++
+ extensions/search/controller.js                    | 24 ++++++++++++++++------
+ extensions/search/extension.js                     |  1 +
+ .../org.gnome.shell.extensions.search.gschema.xml  |  5 +++++
+ 5 files changed, 34 insertions(+), 12 deletions(-)
+
+diff --git a/extensions/arc-menu/controller.js b/extensions/arc-menu/controller.js
+index 260dd7b..4eb2eb5 100644
+--- a/extensions/arc-menu/controller.js
++++ b/extensions/arc-menu/controller.js
+@@ -71,6 +71,7 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+             this._settings.connect('changed::hot-corners', this._updateHotCornerManager.bind(this)),
+             this._settings.connect('changed::recently-installed-apps', this._reload.bind(this)),
+             this._settings.connect('changed::pinned-app-list', this._updateFavorites.bind(this)),
++            this._settings.connect('changed::position-in-panel', this._setButtonPosition.bind(this)),
+         ];
+     }
+ 
+@@ -271,11 +272,6 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+         this._menuButton.style = null;
+     }
+ 
+-    // Get the current position of the menu button and its associated position order
+-    _getMenuPositionTuple() {
+-        return ['left', 0];
+-    }
+-
+     // Check if the activities button is present on the main panel
+     _isActivitiesButtonPresent() {
+         // Thanks to lestcape @github.com for the refinement of this method.
+@@ -303,7 +299,10 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+ 
+     // Add the menu button to the main panel
+     _addMenuButtonToMainPanel() {
+-        let [menuPosition, order] = this._getMenuPositionTuple();
++        let positionInPanel = this._settings.get_value('position-in-panel').deep_unpack();
++        let menuPosition = positionInPanel[0];
++        let order = positionInPanel[1];
++
+         this.panel.addToStatusArea('ArcMenu', this._menuButton, order, menuPosition);
+     }
+ 
+diff --git a/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml b/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
+index 2f511ea..2e55394 100644
+--- a/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
++++ b/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
+@@ -38,5 +38,10 @@
+       <summary>List of Apps Pinned to Menu</summary>
+       <description>List of Apps Pinned to Menu</description>
+     </key>
++    <key name="position-in-panel" type="(si)">
++      <default>('left', 0)</default>
++      <summary>Menu position in Dash To Panel</summary>
++      <description>Menu position in Dash To Panel</description>
++    </key>
+   </schema>
+ </schemalist>
+diff --git a/extensions/search/controller.js b/extensions/search/controller.js
+index 8d1ee5b..1e475fa 100644
+--- a/extensions/search/controller.js
++++ b/extensions/search/controller.js
+@@ -42,6 +42,13 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+         this._settingsControllers = settingsControllers;
+     }
+ 
++    // Bind the callbacks for handling the settings changes to the event signals
++    bindSettingsChanges() {
++        this.settingsChangeIds = [
++            this._settings.connect('changed::position-in-panel', this._setButtonPosition.bind(this)),
++        ];
++    }
++
+     _reload() {
+         this._menuButton.reload();
+     }
+@@ -85,11 +92,6 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+         this._menuButton.updateHeight();
+     }
+ 
+-    // Get the current position of the menu button and its associated position order
+-    _getMenuPositionTuple() {
+-        return ['left', 1];
+-    }
+-
+     // Check if the activities button is present on the main panel
+     _isActivitiesButtonPresent() {
+         // Thanks to lestcape @github.com for the refinement of this method.
+@@ -117,7 +119,10 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+ 
+     // Add the menu button to the main panel
+     _addMenuButtonToMainPanel() {
+-        let [menuPosition, order] = this._getMenuPositionTuple();
++        let positionInPanel = this._settings.get_value('position-in-panel').deep_unpack();
++        let menuPosition = positionInPanel[0];
++        let order = positionInPanel[1];
++
+         this.panel.addToStatusArea('Search', this._menuButton, order, menuPosition);
+     }
+ 
+@@ -127,6 +132,13 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+         this.panel.statusArea['Search'] = null;
+     }
+ 
++    _setButtonPosition() {
++        if (this._isButtonEnabled()) {
++            this._removeMenuButtonFromMainPanel();
++            this._addMenuButtonToMainPanel();
++        }
++    }
++
+     // Enable the menu button
+     enableButton() {
+         this._removeActivitiesButtonFromMainPanel();
+diff --git a/extensions/search/extension.js b/extensions/search/extension.js
+index 3d2a1bf..8b87cda 100644
+--- a/extensions/search/extension.js
++++ b/extensions/search/extension.js
+@@ -166,6 +166,7 @@ function _enableButtons() {
+                 panel._amDestroyId = panel.connect('destroy', () => onPanelDestroyed(settingsController));
+ 
+             settingsController.enableButton();
++            settingsController.bindSettingsChanges();
+             settingsControllers.push(settingsController);
+         }
+     }
+diff --git a/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml b/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
+index ef75431..c95cc5e 100644
+--- a/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
++++ b/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
+@@ -11,5 +11,10 @@
+       <summary>Display on all monitors</summary>
+       <description>Display the menu on all monitors when using Dash to Panel.</description>
+     </key>
++    <key name="position-in-panel" type="(si)">
++      <default>('left', 1)</default>
++      <summary>Menu position in Dash To Panel</summary>
++      <description>Menu position in Dash To Panel</description>
++    </key>
+   </schema>
+ </schemalist>

@@ -1,0 +1,349 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 26 May 2021 10:55:47 +0900
+Subject: [bugfix] fix main dock does not following main monitor
+
+- fixed bug which main dock never changes position when main monitor changed in gnome-control-center
+- applied ESlint
+- added dummy notification center icon in sub monitor(not visible)
+
+[IMS] 261706
+---
+ extensions/dash-to-panel/panel.js        |  6 ++-
+ extensions/dash-to-panel/panelManager.js | 92 ++++++++++++++++----------------
+ 2 files changed, 52 insertions(+), 46 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index 58c2ada..5c03373 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -146,6 +146,10 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             this.panel.add_child(this._leftBox);
+             this.panel.add_child(this._centerBox);
+             this.panel.add_child(this._rightBox);
++
++            // add empty St.BoxLayout for sub monitor
++            this._dummynoti = this.panel._dummynoti = new St.BoxLayout({ name: 'dummy' });
++            this.panel.add_child(this._dummynoti);
+         } else {
+             this.panel = Main.panel;
+             this.statusArea = Main.panel.statusArea;
+@@ -903,7 +907,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
+         else
+         // NotificationCenter is not displayed on additional monitor
+-            setMap(Pos.NOTI_CENTER, new St.BoxLayout({ name: 'dummy' }));
++            setMap(Pos.NOTI_CENTER, this._dummynoti);
+ 
+         // setmap when notificationcenter loaded after dtpPanel
+ 
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index 2ab5646..ad7380d 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -32,12 +32,9 @@ const Overview = Me.imports.overview;
+ const Panel = Me.imports.panel;
+ const Pos = Me.imports.panelPositions;
+ const Proximity = Me.imports.proximity;
+-const Taskbar = Me.imports.taskbar;
+ const Utils = Me.imports.utils;
+ 
+ const Config = imports.misc.config;
+-const Lang = imports.lang;
+-const Gi = imports._gi;
+ const GLib = imports.gi.GLib;
+ const Clutter = imports.gi.Clutter;
+ const Meta = imports.gi.Meta;
+@@ -55,7 +52,7 @@ const Layout = imports.ui.layout;
+ const WM = imports.ui.windowManager;
+ const WorkspacesView = imports.ui.workspacesView;
+ 
+-var dtpPanelManager = Utils.defineClass({
++var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+     Name: 'DashToPanel.PanelManager',
+ 
+     _init() {
+@@ -85,7 +82,7 @@ var dtpPanelManager = Utils.defineClass({
+         this.overview.enable(this.primaryPanel);
+ 
+         if (Me.settings.get_boolean('multi-monitors')) {
+-            Main.layoutManager.monitors.filter(m => m != this.dtpPrimaryMonitor).forEach(m => {
++            Main.layoutManager.monitors.filter(m => m !== this.dtpPrimaryMonitor).forEach(m => {
+                 this.allPanels.push(this._createPanel(m, true));
+             });
+         }
+@@ -95,7 +92,7 @@ var dtpPanelManager = Utils.defineClass({
+ 
+         this.allPanels.forEach(p => {
+             let panelPosition = p.getPosition();
+-            let leftOrRight = panelPosition == St.Side.LEFT || panelPosition == St.Side.RIGHT;
++            let leftOrRight = panelPosition === St.Side.LEFT || panelPosition === St.Side.RIGHT;
+ 
+             p.panelBox.set_size(
+                 leftOrRight ? -1 : p.geom.w + p.geom.lrPadding,
+@@ -129,9 +126,9 @@ var dtpPanelManager = Utils.defineClass({
+             return;
+ 
+         this._oldViewSelectorAnimateIn = Main.overview.viewSelector._animateIn;
+-        Main.overview.viewSelector._animateIn = Lang.bind(this.primaryPanel, newViewSelectorAnimateIn);
++        Main.overview.viewSelector._animateIn = newViewSelectorAnimateIn.bind(this.primaryPanel);
+         this._oldViewSelectorAnimateOut = Main.overview.viewSelector._animateOut;
+-        Main.overview.viewSelector._animateOut = Lang.bind(this.primaryPanel, newViewSelectorAnimateOut);
++        Main.overview.viewSelector._animateOut = newViewSelectorAnimateOut.bind(this.primaryPanel);
+ 
+         if (Config.PACKAGE_VERSION > '3.35.1') {
+             this._oldDoSpringAnimation = AppDisplay.BaseAppView.prototype._doSpringAnimation;
+@@ -147,7 +144,7 @@ var dtpPanelManager = Utils.defineClass({
+         Main.layoutManager._updatePanelBarrier();
+ 
+         this._oldUpdateHotCorners = Main.layoutManager._updateHotCorners;
+-        Main.layoutManager._updateHotCorners = Lang.bind(Main.layoutManager, newUpdateHotCorners);
++        Main.layoutManager._updateHotCorners = newUpdateHotCorners.bind(Main.layoutManager);
+         Main.layoutManager._updateHotCorners();
+ 
+         this._forceHotCornerId = Me.settings.connect('changed::stockgs-force-hotcorner', () => Main.layoutManager._updateHotCorners());
+@@ -157,10 +154,10 @@ var dtpPanelManager = Utils.defineClass({
+ 
+ 
+         this._oldOverviewRelayout = Main.overview._relayout;
+-        Main.overview._relayout = Lang.bind(Main.overview, this._newOverviewRelayout);
++        Main.overview._relayout = this._newOverviewRelayout.bind(Main.overview);
+ 
+         this._oldUpdateWorkspacesViews = Main.overview.viewSelector._workspacesDisplay._updateWorkspacesViews;
+-        Main.overview.viewSelector._workspacesDisplay._updateWorkspacesViews = Lang.bind(Main.overview.viewSelector._workspacesDisplay, this._newUpdateWorkspacesViews);
++        Main.overview.viewSelector._workspacesDisplay._updateWorkspacesViews = this._newUpdateWorkspacesViews.bind(Main.overview.viewSelector._workspacesDisplay);
+ 
+         this._oldGetShowAppsButton = Main.overview.getShowAppsButton;
+         Main.overview.getShowAppsButton = this._newGetShowAppsButton.bind(this);
+@@ -173,7 +170,7 @@ var dtpPanelManager = Utils.defineClass({
+ 
+         // Since Gnome 3.8 dragging an app without having opened the overview before cause the attemp to
+         // animate a null target since some variables are not initialized when the viewSelector is created
+-        if (Main.overview.viewSelector._activePage == null)
++        if (Main.overview.viewSelector._activePage === null)
+             Main.overview.viewSelector._activePage = Main.overview.viewSelector._workspacesPage;
+ 
+         LookingGlass.LookingGlass.prototype._oldResize = LookingGlass.LookingGlass.prototype._resize;
+@@ -194,7 +191,7 @@ var dtpPanelManager = Utils.defineClass({
+                 [
+                     Utils.DisplayWrapper.getScreen(),
+                     'window-entered-monitor',
+-                    () => this._needsIconAllocate = 1,
++                    () => (this._needsIconAllocate = 1),
+                 ]
+             );
+ 
+@@ -209,7 +206,7 @@ var dtpPanelManager = Utils.defineClass({
+                             v.control,
+                             'clicked',
+                             () => {
+-                                this._needsIconAllocate = currentAppsView != v;
++                                this._needsIconAllocate = currentAppsView !== v;
+                                 currentAppsView = v;
+                             },
+                         ]
+@@ -220,12 +217,12 @@ var dtpPanelManager = Utils.defineClass({
+                     [
+                         v.view,
+                         'notify::visible',
+-                        () => this._needsIconAllocate = !(currentAppsView != v && !v.view.visible),
++                        () => (this._needsIconAllocate = !(currentAppsView !== v && !v.view.visible)),
+                     ],
+                     [
+                         v.view._grid,
+                         'animation-done',
+-                        () => this._needsIconAllocate = 0,
++                        () => (this._needsIconAllocate = 0),
+                     ]
+                 );
+             });
+@@ -258,6 +255,9 @@ var dtpPanelManager = Utils.defineClass({
+                 Utils.DisplayWrapper.getMonitorManager(),
+                 'monitors-changed',
+                 () => {
++                    // Update primary monitor to update primary dock position
++                    Me.settings.set_int('primary-monitor', Main.layoutManager.primaryMonitor.index);
++
+                     if (Main.layoutManager.primaryMonitor) {
+                         this._saveMonitors();
+                         this._reset();
+@@ -397,12 +397,12 @@ var dtpPanelManager = Utils.defineClass({
+         let primaryIndex = Main.layoutManager.primaryIndex;
+         let monitors = [primaryIndex];
+ 
+-        Main.layoutManager.monitors.filter(m => m.index != primaryIndex).forEach(m => monitors.push(m.index));
++        Main.layoutManager.monitors.filter(m => m.index !== primaryIndex).forEach(m => monitors.push(m.index));
+         Me.settings.set_value('available-monitors', new GLib.Variant('ai', monitors));
+     },
+ 
+     checkIfFocusedMonitor(monitor) {
+-        return Main.overview.viewSelector._workspacesDisplay._primaryIndex == monitor.index;
++        return Main.overview.viewSelector._workspacesDisplay._primaryIndex === monitor.index;
+     },
+ 
+     _createPanel(monitor, isStandalone) {
+@@ -463,7 +463,7 @@ var dtpPanelManager = Utils.defineClass({
+     _getBoxPointerPreferredHeight(boxPointer, alloc, monitor) {
+         if (boxPointer._dtpInPanel && boxPointer.sourceActor && Me.settings.get_boolean('intellihide')) {
+             monitor = monitor || Main.layoutManager.findMonitorForActor(boxPointer.sourceActor);
+-            let panel = Utils.find(global.dashToPanel.panels, p => p.monitor == monitor);
++            let panel = Utils.find(global.dashToPanel.panels, p => p.monitor === monitor);
+             let excess = alloc.natural_size + panel.dtpSize + 10 - monitor.height; // 10 is arbitrary
+ 
+             if (excess > 0)
+@@ -545,7 +545,7 @@ var dtpPanelManager = Utils.defineClass({
+         for (let i = 0; i < monitors.length; i++) {
+             let workspaces;
+             let view;
+-            if (this._workspacesOnlyOnPrimary && i != Main.layoutManager.primaryIndex) {
++            if (this._workspacesOnlyOnPrimary && i !== Main.layoutManager.primaryIndex) {
+                 view = new WorkspacesView.ExtraWorkspaceView(i);
+                 view.getActiveWorkspace = view.getActiveWorkspace || function () {
+                     return this._workspace;
+@@ -558,13 +558,13 @@ var dtpPanelManager = Utils.defineClass({
+ 
+             Utils.wrapActor(view);
+             view.actor.connect('scroll-event', this._onScrollEvent.bind(this));
+-            if (i == Main.layoutManager.primaryIndex && view.scrollAdjustment) {
++            if (i === Main.layoutManager.primaryIndex && view.scrollAdjustment) {
+                 this._scrollAdjustment = view.scrollAdjustment;
+                 this._scrollAdjustment.connect('notify::value',
+                     this._scrollValueChanged.bind(this));
+             }
+ 
+-            workspaces.forEach(w => w.setFullGeometry = geom => w._fullGeometry = geom);
++            workspaces.forEach(w => (w.setFullGeometry = geom => (w._fullGeometry = geom)));
+             this._workspacesViews.push(view);
+         }
+ 
+@@ -589,14 +589,14 @@ var dtpPanelManager = Utils.defineClass({
+     },
+ 
+     _newDashItemContainerAllocate(box, flags) {
+-        if (this.child == null)
++        if (this.child === null)
+             return;
+ 
+         Utils.setAllocation(this, box, flags);
+ 
+         let availWidth = box.x2 - box.x1;
+         let availHeight = box.y2 - box.y1;
+-        let [minChildWidth, minChildHeight, natChildWidth, natChildHeight] = this.child.get_preferred_size();
++        let [minChildWidth, minChildHeight, natChildWidth, natChildHeight] = this.child.get_preferred_size(); // eslint-disable-line no-unused-vars
+         let [childScaleX, childScaleY] = this.child.get_scale();
+ 
+         let childWidth = Math.min(natChildWidth * childScaleX, availWidth);
+@@ -622,7 +622,7 @@ function newViewSelectorAnimateIn(oldPage) {
+ 
+     vs._activePage.show();
+ 
+-    if (vs._activePage == vs._appsPage && oldPage == vs._workspacesPage) {
++    if (vs._activePage === vs._appsPage && oldPage === vs._workspacesPage) {
+         // Restore opacity, in case we animated via _fadePageOut
+         vs._activePage.opacity = 255;
+         let animate = Me.settings.get_boolean('animate-show-apps');
+@@ -637,18 +637,19 @@ function newViewSelectorAnimateOut(page) {
+     let oldPage = page;
+     let vs = Main.overview.viewSelector;
+ 
+-    if (page == vs._appsPage &&
+-        vs._activePage == vs._workspacesPage &&
++    if (page === vs._appsPage &&
++        vs._activePage === vs._workspacesPage &&
+         !Main.overview.animationInProgress) {
+         let animate = Me.settings.get_boolean('animate-show-apps');
+         if (animate) {
+-            vs.appDisplay.animate(IconGrid.AnimationDirection.OUT, Lang.bind(this,
+-                () => {
+-                    vs._animateIn(oldPage);
+-                }));
++            vs.appDisplay.animate(IconGrid.AnimationDirection.OUT, () => {
++                vs._animateIn(oldPage);
++            });
++        // vs.appDisplay.animate(IconGrid.AnimationDirection.OUT, Lang.bind(this, () => { vs._animateIn(oldPage); }) );
+         } else {
+             vs._animateIn(oldPage);
+         }
++
+     } else {
+         vs._fadePageOut(page);
+     }
+@@ -657,12 +658,12 @@ function newViewSelectorAnimateOut(page) {
+ function newGetPositionForDirection(direction, fromWs, toWs) {
+     let [xDest, yDest] = WM.WindowManager.prototype._getPositionForDirection(direction, fromWs, toWs);
+ 
+-    if (direction == Meta.MotionDirection.UP ||
+-        direction == Meta.MotionDirection.UP_LEFT ||
+-        direction == Meta.MotionDirection.UP_RIGHT)
++    if (direction === Meta.MotionDirection.UP ||
++        direction === Meta.MotionDirection.UP_LEFT ||
++        direction === Meta.MotionDirection.UP_RIGHT)
+         yDest -= Main.panel.height;
+-    else if (direction != Meta.MotionDirection.LEFT &&
+-               direction != Meta.MotionDirection.RIGHT)
++    else if (direction !== Meta.MotionDirection.LEFT &&
++               direction !== Meta.MotionDirection.RIGHT)
+         yDest += Main.panel.height;
+ 
+ 
+@@ -701,9 +702,9 @@ function newUpdateHotCorners() {
+ 
+     // build new hot corners
+     for (let i = 0; i < this.monitors.length; i++) {
+-        let panel = Utils.find(global.dashToPanel.panels, p => p.monitor.index == i);
++        let panel = Utils.find(global.dashToPanel.panels, p => p.monitor.index === i);
+         let panelPosition = panel ? panel.getPosition() : St.Side.BOTTOM;
+-        let panelTopLeft = panelPosition == St.Side.TOP || panelPosition == St.Side.LEFT;
++        let panelTopLeft = panelPosition === St.Side.TOP || panelPosition === St.Side.LEFT;
+         let monitor = this.monitors[i];
+         let cornerX = this._rtl ? monitor.x + monitor.width : monitor.x;
+         let cornerY = monitor.y;
+@@ -714,7 +715,7 @@ function newUpdateHotCorners() {
+         // hot corner unless it is actually a top left panel. Otherwise, it stops the mouse
+         // as you are dragging across. In the future, maybe we will automatically move the
+         // hotcorner to the bottom when the panel is positioned at the bottom
+-        if (i != this.primaryIndex || !panelTopLeft && !Me.settings.get_boolean('stockgs-force-hotcorner')) {
++        if (i !== this.primaryIndex || !panelTopLeft && !Me.settings.get_boolean('stockgs-force-hotcorner')) {
+             // Check if we have a top left (right for RTL) corner.
+             // I.e. if there is no monitor directly above or to the left(right)
+             let besideX = this._rtl ? monitor.x + 1 : cornerX - 1;
+@@ -723,7 +724,7 @@ function newUpdateHotCorners() {
+             let aboveY = cornerY - 1;
+ 
+             for (let j = 0; j < this.monitors.length; j++) {
+-                if (i == j)
++                if (i === j)
+                     continue;
+                 let otherMonitor = this.monitors[j];
+                 if (besideX >= otherMonitor.x &&
+@@ -746,7 +747,8 @@ function newUpdateHotCorners() {
+         if (haveTopLeftCorner) {
+             let corner = new Layout.HotCorner(this, monitor, cornerX, cornerY);
+ 
+-            corner.setBarrierSize = size => corner.__proto__.setBarrierSize.call(corner, Math.min(size, 32));
++            corner.setBarrierSize = size => Object.getPrototypeOf(corner).setBarrierSize.call(corner, Math.min(size, 32));
++            // corner.setBarrierSize = size => corner.__proto__.setBarrierSize.call(corner, Math.min(size, 32));
+             corner.setBarrierSize(panel ? panel.dtpSize : 32);
+             this.hotCorners.push(corner);
+         } else {
+@@ -808,8 +810,8 @@ function newUpdatePanelBarrier(panel) {
+     for (let k in this.hotCorners) {
+         let hc = this.hotCorners[k];
+ 
+-        if (hc && hc._monitor == panel.monitor &&
+-            (fixed1 == hc._x || fixed2 == hc._x || fixed1 == hc._y || fixed2 == hc._y)) {
++        if (hc && hc._monitor === panel.monitor &&
++            (fixed1 === hc._x || fixed2 === hc._x || fixed1 === hc._y || fixed2 === hc._y)) {
+             delete barriers._leftPanelBarrier;
+             break;
+         }
+@@ -830,8 +832,8 @@ function newUpdatePanelBarrier(panel) {
+ }
+ 
+ function _newLookingGlassResize() {
+-    let primaryMonitorPanel = Utils.find(global.dashToPanel.panels, p => p.monitor == Main.layoutManager.primaryMonitor);
+-    let topOffset = primaryMonitorPanel.getPosition() == St.Side.TOP ? primaryMonitorPanel.dtpSize + 8 : 32;
++    let primaryMonitorPanel = Utils.find(global.dashToPanel.panels, p => p.monitor === Main.layoutManager.primaryMonitor);
++    let topOffset = primaryMonitorPanel.getPosition() === St.Side.TOP ? primaryMonitorPanel.dtpSize + 8 : 32;
+ 
+     this._oldResize();
+     Utils.wrapActor(this);

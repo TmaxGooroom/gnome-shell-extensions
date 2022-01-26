@@ -1,0 +1,109 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 2 Sep 2021 15:05:34 +0900
+Subject: [refactor] tos-hotkey : modified the process of searching common
+ mode for both monitors
+
+ - Previous process iterated all list of modes to find common mode. This
+   can be efficient, but the code is less readable. The running time of
+   new process varies depending on the conditions, but is more readable.
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 55 +++++++++++++---------------------
+ 1 file changed, 20 insertions(+), 35 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 9946f76..9bb3b7c 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -22,7 +22,7 @@ const SECONDARY_MODE_LABEL_TEXT = _('Screen 2 only');
+ const META_MONITORS_CONFIG_METHOD_PERSISTENT = 2;
+ 
+ class Monitor {
+-    _findClosestMode(width, height, refreshRate) {
++    findClosestMode(width, height, refreshRate) {
+         let closest = null;
+ 
+         for (let mode of this.possibleModes) {
+@@ -167,54 +167,39 @@ class DisplayConfig {
+         }
+     }
+ 
+-    _gatherMirrorModes() {
+-        if (this._outputs.length < 2)
+-            return null;
+-
+-        let modesInCommon = [];
+-        for (let mode of this.primaryOutput.possibleModes) {
+-            let [width, height, refreshRate] = [mode.width, mode.height, mode.refreshRate];
+-
+-            let possible = true;
+-            for (let output of this._outputs) {
+-                if (output.isPrimary)
+-                    continue;
+-
+-                let closestMode = output._findClosestMode(width, height, refreshRate);
++    _checkModeIsCommon(mode) {
++        let found = true;
++        for (let output of this._outputs) {
++            let closestMode = output.findClosestMode(mode.width, mode.height, mode.refreshRate);
+ 
+-                if (!closestMode) {
+-                    possible = false;
+-                    break;
+-                }
++            if (!closestMode) {
++                found = false;
++                break;
+             }
+-
+-            if (possible)
+-                modesInCommon.push(mode);
+-
+         }
+ 
+-        return modesInCommon;
++        return found;
+     }
+ 
+     getModeForMirror() {
+         // The mode priority is following.
+         // currentMode > preferredMode > the first element of modes in common.
+         // Remember that this is just the most resonable option at this point, so can be modified.
+-        let modesInCommon = this._gatherMirrorModes();
+-        if (!modesInCommon)
+-            return null;
++        if (this._checkModeIsCommon(this.primaryOutput.currentMode))
++            return this.primaryOutput.currentMode;
+ 
+-        let best = modesInCommon[0] || null;
+ 
+-        for (let mode of modesInCommon) {
+-            if (mode.modeID === this.primaryOutput.currentMode)
+-                best = mode;
++        if (this._checkModeIsCommon(this.primaryOutput.preferredMode))
++            return this.primaryOutput.preferredMode;
++
++
++        for (let mode of this.primaryOutput.possibleModes) {
++            if (this._checkModeIsCommon(mode))
++                return mode;
+ 
+-            if (mode.modeID === this.primaryOutput.preferredMode)
+-                best = best || mode;
+         }
+ 
+-        return best;
++        return null;
+     }
+ 
+ }
+@@ -253,7 +238,7 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+ 
+         let logicalMonitor = [];
+         displayConfig._outputs.forEach(output => {
+-            let modeID = output._findClosestMode(mode.width, mode.height, mode.refreshRate).modeID;
++            let modeID = output.findClosestMode(mode.width, mode.height, mode.refreshRate).modeID;
+ 
+             let properties = {
+                 'enable_underscanning': output['underscanning'] ? output['underscanning'] : new GLib.Variant('b', false),

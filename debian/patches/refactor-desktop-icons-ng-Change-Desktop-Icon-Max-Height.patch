@@ -1,0 +1,24 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 13 Oct 2021 13:23:39 +0900
+Subject: [refactor] desktop-icons-ng : Change Desktop Icon Max Height
+
+- Icon height change according to system default font change
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/enums.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/desktop-icons-ng/enums.js b/extensions/desktop-icons-ng/enums.js
+index a0ecaa3..3ff78dc 100644
+--- a/extensions/desktop-icons-ng/enums.js
++++ b/extensions/desktop-icons-ng/enums.js
+@@ -19,7 +19,7 @@
+ 
+ var ICON_SIZE = { 'small': 28, 'standard': 46, 'large': 80 };
+ var ICON_WIDTH = { 'small': 90, 'standard': 90, 'large': 108 };
+-var ICON_HEIGHT = { 'small': 108, 'standard': 124, 'large': 172 };
++var ICON_HEIGHT = { 'small': 102, 'standard': 118, 'large': 166 };
+ var LABEL_STYLE = { 'small': 'file-label-small', 'standard': 'file-label-standard', 'large': 'file-label-large' };
+ var ICON_STYLE = { 'small': 'file-icon-small', 'standard': 'file-icon-standard', 'large': 'file-icon-large' };
+ 

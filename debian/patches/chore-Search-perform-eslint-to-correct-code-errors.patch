@@ -1,0 +1,224 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 20 Apr 2021 10:49:32 +0900
+Subject: [chore] Search : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/search/search.js | 53 +++++++++++++++++++++------------------------
+ 1 file changed, 25 insertions(+), 28 deletions(-)
+
+diff --git a/extensions/search/search.js b/extensions/search/search.js
+index e013d72..76f18ba 100644
+--- a/extensions/search/search.js
++++ b/extensions/search/search.js
+@@ -25,14 +25,12 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const { Clutter, Gio, GLib, GObject, Shell, St } = imports.gi;
+ const AppDisplay = imports.ui.appDisplay;
+ const appSys = Shell.AppSystem.get_default();
+-const Constants = Me.imports.constants;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
++const Text = imports.gettext;
+ const MW = Me.imports.menuWidgets;
+-const PopupMenu = imports.ui.popupMenu;
+ const RemoteSearch = imports.ui.remoteSearch;
+ const Signals = imports.signals;
+ const SystemActions = imports.misc.systemActions;
+-const Utils =  Me.imports.utils;
+ const _ = Gettext.gettext;
+ 
+ const SEARCH_PROVIDERS_SCHEMA = 'org.gnome.desktop.search-providers';
+@@ -40,11 +38,9 @@ const SEARCH_PROVIDERS_SCHEMA = 'org.gnome.desktop.search-providers';
+ var MAX_LIST_SEARCH_RESULTS_ROWS = 6;
+ var MAX_APPS_SEARCH_RESULTS_ROWS = 6;
+ 
+-var LARGE_ICON_SIZE = 36;
+-var MEDIUM_ICON_SIZE = 25;
+ var SMALL_ICON_SIZE = 16;
+ 
+-var ListSearchResult = class Arc_Menu_ListSearchResult {
++var ListSearchResult = class ListSearchResult {
+     constructor(provider, metaInfo, resultsView) {
+         this._menuLayout = resultsView._menuLayout;
+         this._resultsView = resultsView;
+@@ -53,7 +49,7 @@ var ListSearchResult = class Arc_Menu_ListSearchResult {
+         this._settings = this._menuLayout._settings;
+         this._app = appSys.lookup_app(this.metaInfo['id']);
+ 
+-        if (this.provider.id == 'org.gnome.Nautilus.desktop')
++        if (this.provider.id === 'org.gnome.Nautilus.desktop')
+             this.menuItem = new MW.SearchResultItem(this._menuLayout, appSys.lookup_app(this.provider.id), this.metaInfo['description']);
+         else if (this._app)
+             this.menuItem = new MW.SearchResultItem(this._menuLayout, this._app);
+@@ -90,7 +86,7 @@ var ListSearchResult = class Arc_Menu_ListSearchResult {
+             this.menuItem.box.add_child(icon);
+ 
+         this.menuItem.box.add_child(labelBox);
+-        if (this.metaInfo['description'] && this.provider.appInfo.get_name() == 'Calculator' && !labelBox.contains(descriptionLabel))
++        if (this.metaInfo['description'] && this.provider.appInfo.get_name() === 'Calculator' && !labelBox.contains(descriptionLabel))
+             this.label.text = `${this.metaInfo['name']}   ${this.metaInfo['description']}`;
+ 
+         this.menuItem.connect('activate', this.activate.bind(this));
+@@ -106,9 +102,10 @@ var ListSearchResult = class Arc_Menu_ListSearchResult {
+         let markup = this._resultsView.highlightTerms(this.metaInfo['description'].split('\n')[0]);
+         this._descriptionLabel.clutter_text.set_markup(markup);
+     }
+-}; Signals.addSignalMethods(ListSearchResult.prototype);
++};
++Signals.addSignalMethods(ListSearchResult.prototype);
+ 
+-var AppSearchResult = class Arc_Menu_AppSearchResult {
++var AppSearchResult = class AppSearchResult {
+     constructor(provider, metaInfo, resultsView) {
+         this._menuLayout = resultsView._menuLayout;
+         this.metaInfo = metaInfo;
+@@ -116,7 +113,6 @@ var AppSearchResult = class Arc_Menu_AppSearchResult {
+         this._settings = this._menuLayout._settings;
+         this._resultsView = resultsView;
+         this._app = appSys.lookup_app(this.metaInfo['id']);
+-        let iconSize;
+         this.label = new St.Label({
+             text: this._app ? this._app.get_name() : this.metaInfo['name'],
+             y_expand: true,
+@@ -152,9 +148,10 @@ var AppSearchResult = class Arc_Menu_AppSearchResult {
+         this.emit('activate', this.metaInfo.id);
+     }
+ 
+-}; Signals.addSignalMethods(AppSearchResult.prototype);
++};
++Signals.addSignalMethods(AppSearchResult.prototype);
+ 
+-var SearchResultsBase = class Arc_Menu_SearchResultsBase {
++var SearchResultsBase = class SearchResultsBase {
+     constructor(provider, resultsView) {
+         this.provider = provider;
+         this._resultsView = resultsView;
+@@ -221,7 +218,7 @@ var SearchResultsBase = class Arc_Menu_SearchResultsBase {
+         }
+     }
+ 
+-    _setMoreCount(count) {
++    _setMoreCount(/* count*/) {
+     }
+ 
+     _ensureResultActors(results, callback) {
+@@ -242,7 +239,7 @@ var SearchResultsBase = class Arc_Menu_SearchResultsBase {
+                     callback(false);
+                     return;
+                 }
+-                if (metas.length != metasNeeded.length) {
++                if (metas.length !== metasNeeded.length) {
+                     log(`Wrong number of result metas returned by search provider ${this.provider.id
+                     }: expected ${metasNeeded.length} but got ${metas.length}`);
+                     callback(false);
+@@ -268,7 +265,7 @@ var SearchResultsBase = class Arc_Menu_SearchResultsBase {
+ 
+     updateSearch(providerResults, terms, callback) {
+         this._terms = terms;
+-        if (providerResults.length == 0) {
++        if (providerResults.length === 0) {
+             this._clearResultDisplay();
+             this.actor.hide();
+             callback();
+@@ -301,7 +298,7 @@ var SearchResultsBase = class Arc_Menu_SearchResultsBase {
+     }
+ };
+ 
+-var ListSearchResults = class Arc_Menu_ListSearchResults extends SearchResultsBase {
++var ListSearchResults = class ListSearchResults extends SearchResultsBase {
+     constructor(provider, resultsView) {
+         super(provider, resultsView);
+         this._menuLayout = resultsView._menuLayout;
+@@ -370,7 +367,7 @@ var ListSearchResults = class Arc_Menu_ListSearchResults extends SearchResultsBa
+     }
+ };
+ Signals.addSignalMethods(ListSearchResults.prototype);
+-var AppSearchResults = class Arc_Menu_AppSearchResults extends SearchResultsBase {
++var AppSearchResults = class AppSearchResults extends SearchResultsBase {
+     constructor(provider, resultsView) {
+         super(provider, resultsView);
+         this._parentContainer = resultsView.actor;
+@@ -412,7 +409,7 @@ var AppSearchResults = class Arc_Menu_AppSearchResults extends SearchResultsBase
+ };
+ Signals.addSignalMethods(AppSearchResults.prototype);
+ 
+-var SearchResults = class Arc_Menu_SearchResults {
++var SearchResults = class SearchResults {
+     constructor(menuLayout) {
+         this._menuLayout = menuLayout;
+ 
+@@ -607,7 +604,7 @@ var SearchResults = class Arc_Menu_SearchResults {
+         // search while the previous search is still active.
+         let searchString = terms.join(' ');
+         let previousSearchString = this._terms.join(' ');
+-        if (searchString == previousSearchString)
++        if (searchString === previousSearchString)
+             return;
+ 
+         this._startingSearch = true;
+@@ -615,20 +612,20 @@ var SearchResults = class Arc_Menu_SearchResults {
+         this._cancellable.cancel();
+         this._cancellable.reset();
+ 
+-        if (terms.length == 0) {
++        if (terms.length === 0) {
+             this._reset();
+             return;
+         }
+ 
+         let isSubSearch = false;
+         if (this._terms.length > 0)
+-            isSubSearch = searchString.indexOf(previousSearchString) == 0;
++            isSubSearch = searchString.indexOf(previousSearchString) === 0;
+ 
+         this._terms = terms;
+         this._isSubSearch = isSubSearch;
+         this._updateSearchProgress();
+ 
+-        if (this._searchTimeoutId == 0)
++        if (this._searchTimeoutId === 0)
+             this._searchTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, this._onSearchTimeout.bind(this));
+ 
+         let escapedTerms = this._terms.map(term => Shell.util_regex_escape(term));
+@@ -677,7 +674,7 @@ var SearchResults = class Arc_Menu_SearchResults {
+             }
+         }
+ 
+-        if (newDefaultResult != this._defaultResult) {
++        if (newDefaultResult !== this._defaultResult) {
+             this._setSelected(this._defaultResult, false);
+             this._setSelected(newDefaultResult, this._highlightDefault);
+ 
+@@ -695,7 +692,7 @@ var SearchResults = class Arc_Menu_SearchResults {
+     _updateSearchProgress() {
+         let haveResults = this._providers.some(provider => {
+             let display = provider.display;
+-            return display.getFirstResult() != null;
++            return display.getFirstResult() !== null;
+         });
+ 
+         this._statusBin.visible = !haveResults;
+@@ -753,7 +750,7 @@ var SearchResults = class Arc_Menu_SearchResults {
+ };
+ Signals.addSignalMethods(SearchResults.prototype);
+ 
+-var SearchProviderInfo = GObject.registerClass(class Search_Menu_SearchProviderInfo extends MW.SearchMenuPopupBaseMenuItem {
++var SearchProviderInfo = GObject.registerClass(class SearchProviderInfo extends MW.SearchMenuPopupBaseMenuItem {
+     _init(provider, menuLayout) {
+         super._init(menuLayout);
+         this.provider = provider;
+@@ -788,11 +785,11 @@ var SearchProviderInfo = GObject.registerClass(class Search_Menu_SearchProviderI
+     }
+ 
+     animateLaunch() {
+-        let app = appSys.lookup_app(this.provider.appInfo.get_id());
++        let app_ = appSys.lookup_app(this.provider.appInfo.get_id());
+     }
+ 
+     setMoreCount(count) {
+-        this._moreText = ngettext('%d more', '%d more', count).format(count);
++        this._moreText = Text.ngettext('%d more', '%d more', count).format(count);
+ 
+         if (count > 0)
+             this.label.text = `${this.provider.appInfo.get_name()}  (${this._moreText})`;

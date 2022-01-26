@@ -1,0 +1,33 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 12 Oct 2021 18:09:25 +0900
+Subject: [feat] ArcMenu : Remove specific apps from applist
+
+- Remove apps(yelp, xinput_calibrator) from applist
+
+[IMS] 271626
+---
+ extensions/arc-menu/arc-applications.menu | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/arc-menu/arc-applications.menu b/extensions/arc-menu/arc-applications.menu
+index 50bd326..1f31df1 100644
+--- a/extensions/arc-menu/arc-applications.menu
++++ b/extensions/arc-menu/arc-applications.menu
+@@ -413,6 +413,9 @@
+           </Not>
+         </And>
+       </Include>
++      <Exclude>
++          <Filename>xinput_calibrator.desktop</Filename>
++      </Exclude>
+     </Menu>
+   </Menu>   <!-- End System Tools -->
+ 
+@@ -446,7 +449,6 @@
+       <Filename>org.gnome.Terminal.desktop</Filename>
+       <Filename>org.gnome.Usage.desktop</Filename>
+       <Filename>vinagre.desktop</Filename>
+-      <Filename>yelp.desktop</Filename>
+     </Include>
+     <Exclude>
+       <Filename>org.gnome.Logs.desktop</Filename>

@@ -1,0 +1,142 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 31 May 2021 16:05:28 +0900
+Subject: [bugfix] Arc Menu : Fix error thar pinned app title is not applied
+ by language
+
+- Modify to use language-specified app name set by the app.
+- If there is no shell app, exclude it from the pinned app list.
+
+[IMS] 261372
+---
+ extensions/arc-menu/baseMenuLayout.js |  4 +--
+ extensions/arc-menu/menuWidgets.js    | 57 ++++++++++++-----------------------
+ 2 files changed, 21 insertions(+), 40 deletions(-)
+
+diff --git a/extensions/arc-menu/baseMenuLayout.js b/extensions/arc-menu/baseMenuLayout.js
+index 714bc51..39d9ea4 100644
+--- a/extensions/arc-menu/baseMenuLayout.js
++++ b/extensions/arc-menu/baseMenuLayout.js
+@@ -193,8 +193,8 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         let pinnedApps = this._settings.get_strv('pinned-app-list');
+         this.favoritesArray = [];
+         for (let i = 0; i < pinnedApps.length; i += 3) {
+-            let favoritesMenuItem = new MW.FavoritesMenuItem(
+-                this, pinnedApps[i], pinnedApps[i + 1], pinnedApps[i + 2]);
++            let desktopFileId = pinnedApps[i + 2];
++            let favoritesMenuItem = new MW.FavoritesMenuItem(this, desktopFileId);
+             favoritesMenuItem.connect('saveSettings', () => {
+                 let array = [];
+                 for (let j = 0; j < this.favoritesArray.length; j++) {
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index 125d662..bac1eaf 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -1386,35 +1386,20 @@ var UserMenuIcon = class ArcMenuUserMenuIcon { // eslint-disable-line no-unused-
+ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused-vars
+     Signals: {  'saveSettings': {} },
+ }, class ArcMenuFavoritesMenuItem extends ArcMenuPopupBaseMenuItem {
+-    _init(menuLayout, name, icon, command) {
++    _init(menuLayout, desktopFileId) {
+         super._init(menuLayout);
+         this._menuLayout = menuLayout;
+         this._menuButton = menuLayout.menuButton;
+-        this._settings = this._menuLayout._settings;
+-        this._command = command;
+-        this._iconString = this._iconPath = icon;
+-        this._name = name;
+-        this._app = Shell.AppSystem.get_default().lookup_app(this._command);
++        this.iconString = '';
++        this.name = '';
++        this.app = Shell.AppSystem.get_default().lookup_app(desktopFileId);
+         this.hasContextMenu = true;
+ 
+-        // Modifiy the Default Pinned Apps---------------------
+-        if (this._name === 'ArcMenu Settings')
+-            this._name = _('ArcMenu Settings');
+-        else if (this._name === 'Terminal')
+-            this._name = _('Terminal');
+-
+-        if (this._iconPath === 'ArcMenu_ArcMenuIcon' || this._iconPath ===  `${Me.path}/media/icons/arc-menu-symbolic.svg`)
+-            this._iconString = this._iconPath = `${Me.path}/media/icons/menu_icons/arc-menu-symbolic.svg`;
+-
+-        // -------------------------------------------------------
+-
+-        if (this._app && this._iconPath === '') {
+-            let appIcon = this._app.create_icon_texture(MEDIUM_ICON_SIZE);
+-            if (appIcon instanceof St.Icon) {
+-                this._iconString = appIcon.gicon ? appIcon.gicon.to_string() : appIcon.fallback_icon_name;
+-                if (!this._iconString)
+-                    this._iconString = '';
+-            }
++        if (this.app) {
++            this.iconString = this.app.get_icon().to_string();
++            this.name = this.app.get_name();
++        } else {
++            this.shouldShow = false;
+         }
+ 
+         this.actor.style = 'width: 80px; height: 95px; text-align: center; padding: 5px; spacing: 0px;';
+@@ -1425,13 +1410,13 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+             style_class: 'favorites-menu-item',
+             track_hover: true,
+             reactive: true,
+-            gicon: Gio.icon_new_for_string(this._iconString),
++            gicon: Gio.icon_new_for_string(this.iconString),
+             icon_size: 55,
+         });
+         this.box.add_child(this._icon);
+ 
+         this.label = new St.Label({
+-            text: _(this._name),
++            text: this.name,
+             y_expand: true,
+             y_align: Clutter.ActorAlign.CENTER,
+         });
+@@ -1447,7 +1432,6 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+ 
+         this.box.vertical = true;
+         this.remove_child(this._ornamentLabel);
+-        this.setShouldShow();
+     }
+ 
+     _updateIcon() {
+@@ -1456,10 +1440,11 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+ 
+     popupContextMenu() {
+         if (this.contextMenu === undefined) {
+-            let app = this._app ? this._app : this._command;
+-            this.contextMenu = new ApplicationContextMenu(this.actor, app, this._menuLayout);
+-            this.contextMenu.centerBoxPointerPosition();
+-            this.contextMenu.isPinnedApp = true;
++            if (this.app) {
++                this.contextMenu = new ApplicationContextMenu(this.actor, this.app, this._menuLayout);
++                this.contextMenu.centerBoxPointerPosition();
++                this.contextMenu.isPinnedApp = true;
++            }
+         }
+         if (this.tooltip !== undefined)
+             this.tooltip.hide();
+@@ -1554,7 +1539,7 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+ 
+     getDragActor() {
+         let icon = new St.Icon({
+-            gicon: Gio.icon_new_for_string(this._iconString),
++            gicon: Gio.icon_new_for_string(this.iconString),
+             style_class: 'popup-menu-icon',
+             icon_size: 40,
+         });
+@@ -1567,12 +1552,8 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+     }
+ 
+     activate(event) {
+-        if (this._app)
+-            this._app.open_new_window(-1);
+-        else if (this._command === 'ArcMenu_ShowAllApplications')
+-            Main.overview.viewSelector._toggleAppsPage();
+-        else
+-            Util.spawnCommandLine(this._command);
++        if (this.app)
++            this.app.open_new_window(-1);
+ 
+         this._menuLayout.arcMenu.toggle();
+         super.activate(event);

@@ -1,0 +1,24 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 30 Apr 2021 12:12:15 +0900
+Subject: [bugfix] AlternateTab : Fix SwitcherPopup Width logic
+
+ - In particular situation there are wrong width allocated(Fixed)
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 0813a9f..db1bfa0 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -334,7 +334,7 @@ var WindowSwitcher = GObject.registerClass({
+         let [maxChildMin] = this._maxChildWidth(forHeight);
+         let [minListWidth] = this._lists[0].get_preferred_width(forHeight);
+ 
+-        for (let i = 1; i < this._rows; i++) {
++        for (let i = 1; i <= this._rows; i++) {
+             let [newListWidth] = this._lists[i].get_preferred_width(forHeight);
+             minListWidth = Math.max(minListWidth, newListWidth);
+         }

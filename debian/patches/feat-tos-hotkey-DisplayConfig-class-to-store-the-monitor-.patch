@@ -1,0 +1,102 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 21 May 2021 17:58:09 +0900
+Subject: [feat] tos-hotkey : DisplayConfig class to store the monitor
+ information
+
+ - created DisplayConfig class to store the monitor information
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 79 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 79 insertions(+)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 0406ef5..98db5b2 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -18,6 +18,85 @@ const MIRROR_MODE_LABEL_TEXT = _('Duplicate');
+ const JOIN_MODE_LABEL_TEXT = _('Expand');
+ const SECONDARY_MODE_LABEL_TEXT = _('Screen 2 only');
+ 
++var DisplayConfig = class { // eslint-disable-line no-unused-vars
++    constructor(resources, currentState) {
++        this._outputs = {}; // physical monitors
++        this._logicalMonitors = {};
++        if (resources)
++            this.setResources(resources);
++        if (currentState)
++            this.setCurrentState(currentState);
++    }
++
++    setResources(resources) {
++        this._serial = resources[0];
++        this._crtcs = [];
++        for (let crtc of resources[1]) {
++            this._crtcs.push({
++                'width': crtc[4],
++                'height': crtc[5],
++                'currentMode': crtc[6],
++                'currentTransform': crtc[7],
++                'possibleTransforms': crtc[8],
++            });
++        }
++        this._outputs = new Map();
++        for (let output of resources[2]) {
++            let productSerial = output[7]['serial'].deepUnpack();
++            this._outputs.set(productSerial, {
++                'currentCrtc': output[2],
++                'name': output[4],
++                'possibleModes': output[5],
++                'isPrimary': output[7]['primary'] ? output[7]['primary'].deepUnpack() : false,
++                'underscanning': output[7]['underscanning'] ? output[7]['underscanning'] : false,
++                'supportsUnderscanning': output[7]['supportsUnderscanning'] ? output[7]['supportsUnderscanning'] : false,
++            });
++
++            if (this._outputs.get(productSerial)['isPrimary'])
++                this._primaryMonitor = this._outputs.get(productSerial);
++        }
++        this._availableModes = resources[3];
++        this._maxScreenWidth = resources[4];
++        this._maxScreenHeight = resources[5];
++    }
++
++    setCurrentState(current) {
++        this._serial = current[0];
++        for (let monitor of current[1]) {
++            let serial = monitor[0][3];
++
++            let temp = this._outputs.has(serial) ? this._outputs.get(serial) : {};
++            // temp['possibleModes'] = []; monitor[1];
++            temp['connector'] = monitor[0][0];
++            for (let mode of monitor[1]) {
++                temp['possibleModes'].push({
++                    'modeID': mode[0],
++                    'preferredScale': mode[4],
++                    'possibleScale': mode[5],
++                    'isCurrent': mode[6]['is-current'] ? mode[6]['is-current'].deepUnpack() : false,
++                    'isPreferred': mode[6]['is-preferred'] ? mode[6]['is-preferred'].deepUnpack() : false,
++                });
++                if (mode[6]['is-current'] && mode[6]['is-current'].deepUnpack() === true)
++                    temp['currentMode'] = mode[0];
++                if (mode[6]['is-preferred'] && mode[6]['is-preferred'].deepUnpack() === true)
++                    temp['preferredMode'] = mode[0];
++            }
++            temp['is-builtin'] = monitor[2]['is-builtin'] ? monitor[2]['is-builtin'].deepUnpack() : false;
++            this._outputs.set(serial, temp);
++        }
++
++        for (let monitor of current[2]) {
++            let serial = monitor[5][0][3];
++            let temp = this._logicalMonitors[serial] ? this._logicalMonitors[serial] : {};
++
++            temp['scale'] = monitor[2];
++            temp['transform'] = monitor[3];
++
++            this._logicalMonitors[serial] = temp;
++        }
++    }
++};
++
+ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+     constructor() {
+         this._proxy = new Utils.MutterDisplayConfigProxy();

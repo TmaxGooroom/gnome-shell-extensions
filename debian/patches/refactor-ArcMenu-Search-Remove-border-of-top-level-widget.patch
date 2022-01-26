@@ -1,0 +1,38 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 15 Apr 2021 17:43:59 +0900
+Subject: [refactor] ArcMenu, Search : Remove border of top-level widget
+
+- remove border of top-level widget
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuButton.js | 2 +-
+ extensions/search/menuButton.js   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index 443ca53..0091cda 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -249,7 +249,7 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+         this.arcMenu.actor.style_class = 'popup-menu-boxpointer';
+         this.arcMenu.actor.add_style_class_name('popup-menu');
+ 
+-        this.arcMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px;';
++        this.arcMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 20px; -arrow-border-width: 0px;';
+         this.arcMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index 7b8c2da..e381fd7 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -142,7 +142,7 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+         this.searchMenu.actor.style_class = 'popup-menu-boxpointer';
+         this.searchMenu.actor.add_style_class_name('popup-menu');
+ 
+-        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 15px;';
++        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 20px; -arrow-border-width: 0px;';
+         this.searchMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)

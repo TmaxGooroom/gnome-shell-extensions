@@ -1,0 +1,111 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 5 Jul 2021 17:23:25 +0900
+Subject: [bugfix] sync clipcontainer and panelbox size
+
+- sync panelbox size and its parent actor clipcontainer
+
+[IMS] 262144
+---
+ extensions/dash-to-panel/panel.js        |  5 ++---
+ extensions/dash-to-panel/panelManager.js | 26 ++++++++++++++++----------
+ 2 files changed, 18 insertions(+), 13 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index 922768f..ad1ecb3 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -216,7 +216,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         if (Main.panel._onKeyPress)
+             this._signalsHandler.add([this.panel.actor, 'key-press-event', Main.panel._onKeyPress.bind(this)]);
+ 
+-
+         Main.ctrlAltTabManager.addGroup(this, `${_('Top Bar')} ${monitor.index}`, 'focus-top-bar-symbolic',
+             { sortGroup: CtrlAltTab.SortGroup.TOP });
+         this.tray = new Tray.Tray();
+@@ -229,7 +228,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         if (this.statusArea.aggregateMenu)
+             Utils.getIndicators(this.statusArea.aggregateMenu._volume)._dtpIgnoreScroll = 1;
+ 
+-
+         this.geom = this.getGeometry();
+ 
+         // The overview uses the panel height as a margin by way of a "ghost" transparent Clone
+@@ -1113,7 +1111,8 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             this.panel.actor[`${St.Side[p] === this.geom.position ? 'add' : 'remove'}_style_class_name`](cssName);
+         });
+ 
+-        this._setPanelClip(clipContainer);
++        // instead of queueing setclip function to mainloop, register setclip as callback of panelbox size change notify in panelManager.js
++        // this._setPanelClip(clipContainer);
+ 
+         Main.layoutManager._updateHotCorners();
+         Main.layoutManager._updatePanelBarrier(this);
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index e965401..d050998 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -91,10 +91,7 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             let panelPosition = p.getPosition();
+             let leftOrRight = panelPosition === St.Side.LEFT || panelPosition === St.Side.RIGHT;
+ 
+-            p.panelBox.set_size(
+-                leftOrRight ? -1 : p.geom.w + p.geom.lrPadding,
+-                leftOrRight ? p.geom.h + p.geom.tbPadding : -1
+-            );
++            p.panelBox.set_size(leftOrRight ? -1 : p.geom.w + p.geom.lrPadding, leftOrRight ? p.geom.h + p.geom.tbPadding : -1);
+ 
+             this._findPanelMenuButtons(p.panelBox).forEach(pmb => this._adjustPanelMenuButton(pmb, p.monitor, panelPosition));
+         });
+@@ -118,7 +115,6 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         if (this.primaryPanel.checkIfVertical())
+             Main.wm._getPositionForDirection = newGetPositionForDirection;
+ 
+-
+         if (reset)
+             return;
+ 
+@@ -164,7 +160,6 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         if (this._needsDashItemContainerAllocate)
+             Utils.hookVfunc(Dash.DashItemContainer.prototype, 'allocate', this._newDashItemContainerAllocate);
+ 
+-
+         // Since Gnome 3.8 dragging an app without having opened the overview before cause the attemp to
+         // animate a null target since some variables are not initialized when the viewSelector is created
+         if (Main.overview.viewSelector._activePage === null)
+@@ -291,6 +286,12 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+             let clipContainer = p.panelBox.get_parent();
+ 
++            // before clipcontainer disable, disconnect signals
++            if (clipContainer.setWidth)
++                p.panelBox.disconnect(clipContainer.setWidth);
++            if (clipContainer.setHeight)
++                p.panelBox.disconnect(clipContainer.setHeight);
++
+             Main.layoutManager._untrackActor(p.panelBox);
+             Main.layoutManager.removeChrome(clipContainer);
+ 
+@@ -420,14 +421,19 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         clipContainer.add_child(panelBox);
+         Main.layoutManager.trackChrome(panelBox, { trackFullscreen: true, affectsStruts: true, affectsInputRegion: true });
+ 
++        // sync clipcontainer size with panelbox using callback function to notify signal
++        clipContainer.setWidth = panelBox.connect('notify::width', () => {
++            Utils.setClip(clipContainer, clipContainer.x, clipContainer.y, panelBox.width, panelBox.height + panel.cornerSize);
++        });
++        clipContainer.setHeight = panelBox.connect('notify::height', () => {
++            Utils.setClip(clipContainer, clipContainer.x, clipContainer.y, panelBox.width, panelBox.height + panel.cornerSize);
++        });
++
+         panel = new Panel.dtpPanel(this, monitor, panelBox, isStandalone);
+         panelBox.add(panel);
+         panel.enable();
+ 
+-        panelBox.visible = true;
+-        if (monitor.inFullscreen)
+-            panelBox.visible = false;
+-
++        panelBox.visible = !monitor.inFullscreen;
+         panelBox.set_position(0, 0);
+ 
+         return panel;

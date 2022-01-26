@@ -1,0 +1,614 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 23 Apr 2021 17:59:05 +0900
+Subject: [feat] Search : Implement search detail view
+
+- Show detail information about result item
+- add detail view (image box, description box, actions box)
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js   |   5 +-
+ extensions/search/constants.js        |  22 +--
+ extensions/search/menuWidgets.js      | 331 +++++++++++++++++++++++++++++++++-
+ extensions/search/search.js           |  35 ++--
+ extensions/search/searchMenuLayout.js |   8 +-
+ extensions/search/stylesheet.css      |  17 ++
+ 6 files changed, 385 insertions(+), 33 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 05834ae..70c9419 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -58,7 +58,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         this.newSearch._reset();
+ 
+         this.resultScrollBox.hide();
+-        this.detailScrollBox.hide();
++        this.detailBox.hide();
+ 
+         // refresh (clear an existing items and replace it with a new one)
+         this._clearActorsFromBox(this.frequentAppItemsBox);
+@@ -149,7 +149,6 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+ 
+             // refresh (clear an existing items and replace it with a new one)
+             this._clearActorsFromBox(this.resultBox);
+-            this._clearActorsFromBox(this.detailBox);
+ 
+             let resultScrollBoxAdj = this.resultScrollBox.get_vscroll_bar().get_adjustment();
+             resultScrollBoxAdj.set_value(0);
+@@ -157,7 +156,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             this.resultBox.add(this.newSearch.actor);
+ 
+             this.resultScrollBox.show();
+-            this.detailScrollBox.show();
++            this.detailBox.show();
+ 
+             this.newSearch.actor.show();
+             this.newSearch.setTerms([searchString]);
+diff --git a/extensions/search/constants.js b/extensions/search/constants.js
+index 41843b6..93a838b 100644
+--- a/extensions/search/constants.js
++++ b/extensions/search/constants.js
+@@ -25,19 +25,19 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const _ = Gettext.gettext;
+ 
+-var DIRECTION = {
+-    UP: 0,
+-    DOWN: 1,
+-};
+-
+-var TooltipLocation = {
++var TooltipLocation = { // eslint-disable-line no-unused-vars
+     TOP_CENTERED: 0,
+     BOTTOM_CENTERED: 1,
+     BOTTOM: 2,
+ };
+ 
+-var GNU_SOFTWARE = '<span size="small">' +
+-    'This program comes with absolutely no warranty.\n' +
+-    'See the <a href="https://gnu.org/licenses/old-licenses/gpl-2.0.html">' +
+-	'GNU General Public License, version 2 or later</a> for details.' +
+-	'</span>';
++var Action = { // eslint-disable-line no-unused-vars
++    OPEN: 0,
++    ADMIN_EXECUTE: 1,
++    ADD_TO_FAVORITES: 2,
++    PIN_TO_DOCK: 3,
++    UNPIN_FROM_DOCK: 4,
++    REMOVE_APP: 5,
++    FOLDER_OPEN: 6,
++    COPY_PATH: 7,
++};
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index e4ca2af..fabc6ae 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -24,12 +24,15 @@
+ // Import Libraries
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const { Atk, Clutter, Gio, GLib, GObject, Gtk, Shell, St } = imports.gi;
++const AppFavorites = imports.ui.appFavorites;
++const appSys = Shell.AppSystem.get_default();
+ const Constants = Me.imports.constants;
+ const Dash = imports.ui.dash;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+ const PopupMenu = imports.ui.popupMenu;
+ const Signals = imports.signals;
++const SystemActions = imports.misc.systemActions;
+ const Util = imports.misc.util;
+ const Utils =  Me.imports.utils;
+ const _ = Gettext.gettext;
+@@ -791,7 +794,7 @@ var Tooltip = class ArcMenuTooltip { // eslint-disable-line no-unused-vars
+ 
+ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-vars
+     class ArcMenuSearchResultItem extends SearchMenuPopupBaseMenuItem {
+-        _init(menuLayout, app, path) {
++        _init(menuLayout, terms, metaInfo, provider, app, path) {
+             super._init(menuLayout);
+             this._menuLayout = menuLayout;
+             this._app = app;
+@@ -801,6 +804,10 @@ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-v
+             this.actor.style_class = 'search-result-item';
+             this.actor.y_align = Clutter.ActorAlign.START;
+             this.remove_child(this._ornamentLabel);
++
++            this.terms = terms;
++            this.metaInfo = metaInfo;
++            this.provider = provider;
+         }
+ 
+         _createIcon(iconSize) {
+@@ -822,9 +829,25 @@ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-v
+             }
+         }
+ 
++        vfunc_key_focus_in() {
++            super.vfunc_key_focus_in();
++
++            this.createDetailView();
++        }
++
+         _onHover() {
+             super._onHover();
+             this.actor.remove_style_pseudo_class('focus');
++
++            this.createDetailView();
++        }
++
++        createDetailView() {
++            this._menuLayout._clearActorsFromBox(this._menuLayout.detailBox);
++            this.detailView = new DetailView(this._menuLayout, this.terms, this.metaInfo, this.provider, this._app);
++            this.detailView.x_expand = true;
++            this.detailView.y_expand = true;
++            this._menuLayout.detailBox.add(this.detailView);
+         }
+     });
+ 
+@@ -1005,6 +1028,312 @@ var SearchBox = class ArcMenuSearchBox {
+ };
+ Signals.addSignalMethods(SearchBox.prototype);
+ 
++var DetailView = GObject.registerClass( // eslint-disable-line no-unused-vars
++ class DetailView extends SearchMenuPopupBaseMenuItem {
++     _init(menuLayout, terms, metaInfo, provider, app) {
++         super._init(menuLayout);
++         this._menuLayout = menuLayout;
++         this.terms = terms;
++         this.metaInfo = metaInfo;
++         this.provider = provider;
++         this.app = app;
++         this.box.vertical = true;
++
++         this.actor.style_class = null;
++         this.actor.can_focus = false;
++         this.remove_child(this._ornamentLabel);
++
++         // Image Box (icon, name, content type)
++         this.createImageBox();
++         this.box.add(this.createHorizontalSeparator());
++
++         // Description (file location, last modified time)
++         if (provider.id === 'org.gnome.Nautilus.desktop') {
++             this.createDescriptionBox();
++             this.box.add(this.createHorizontalSeparator());
++         }
++
++         // Actions Box (open, add to favorites, open file location..)
++         this.createActionsBox();
++     }
++
++     createImageBox() {
++         this.imageBox = new St.BoxLayout({ vertical: true });
++         this.imageBox.style = 'height: 140px; padding: 40px;';
++         this.box.add(this.imageBox);
++
++         let icon = this.metaInfo['createIcon'](80);
++         if (icon)
++             this.imageBox.add_actor(icon);
++
++         this.nameLabel = new St.Label({
++             text: this.metaInfo['name'],
++             x_align: Clutter.ActorAlign.CENTER,
++         });
++         this.nameLabel.style = 'font-weight: bold; font-size: 16px; margin: 15px 0px 10px 0px;';
++         this.imageBox.add(this.nameLabel);
++
++         this.categoryLabel = new St.Label({
++             x_align: Clutter.ActorAlign.CENTER,
++         });
++         this.categoryLabel.style = 'font-size: 14px; color: rgb(94, 94, 96);';
++         this.imageBox.add_actor(this.categoryLabel);
++         if (this.provider.appInfo)
++             this.categoryLabel.set_text(this.provider.appInfo.get_name());
++         else
++             this.categoryLabel.set_text('앱');
++
++     }
++
++     createDescriptionBox() {
++         this.descriptionBox = new St.BoxLayout({ vertical: true });
++         this.descriptionBox.style = 'padding: 16px; spacing: 10px;';
++         this.box.add(this.descriptionBox);
++
++         this.fileLocationBox = new St.BoxLayout({ vertical: false });
++         this.fileLocationBox.style = 'height: 20px; spacing: 10px; color: rgb(89, 89, 91);';
++         this.descriptionBox.add_actor(this.fileLocationBox);
++
++         this.locationLabelHeader = new St.Label({ text: '위치' });
++         this.locationLabelHeader.style = 'font-size: 13px; width: 70px;';
++         this.fileLocationBox.add(this.locationLabelHeader);
++
++         let filePath = this.metaInfo['description'];
++         let file = Gio.File.new_for_path(filePath);
++         let fileInfo = file.query_info('time::modified', Gio.FileQueryInfoFlags.None, null);
++         let dateTime = fileInfo.get_modification_date_time().to_local();
++         let time = dateTime.format('%Y.%m.%d %p %H:%M');
++
++         this.locationLabel = new St.Label({
++             text: filePath,
++             x_expand: true,
++         });
++         this.locationLabel.style = 'font-size: 13px;';
++         this.fileLocationBox.add(this.locationLabel);
++
++         this.lastModifiedTimeBox = new St.BoxLayout({ vertical: false });
++         this.lastModifiedTimeBox.style = 'height: 20px; spacing: 10px; color: rgb(89, 89, 91);';
++         this.descriptionBox.add_actor(this.lastModifiedTimeBox);
++
++         this.timeLabelHeader = new St.Label({ text: '마지막 수정' });
++         this.timeLabelHeader.style = 'font-size: 13px; width: 70px;';
++         this.lastModifiedTimeBox.add(this.timeLabelHeader);
++
++         this.timeLabel = new St.Label({
++             text: time.toString(),
++             x_expand: true,
++         });
++         this.timeLabel.style = 'font-size: 13px;';
++         this.lastModifiedTimeBox.add(this.timeLabel);
++     }
++
++     createActionsBox() {
++         this.actionsBox = new St.BoxLayout({
++             vertical: true,
++         });
++         this.actionsBox.style = 'padding: 4px 11px;';
++         this.box.add(this.actionsBox);
++
++         // common
++         let open = new ActionItem(this, Constants.Action.OPEN);
++         this.actionsBox.add_actor(open);
++
++         if (this.provider.id === 'applications') {
++             let removeApp = new ActionItem(this, Constants.Action.REMOVE_APP);
++
++             let item;
++             if (this.app) {
++                 let favs = AppFavorites.getAppFavorites();
++                 if (favs.isFavorite(this.app.get_id()))
++                     item = new ActionItem(this, Constants.Action.UNPIN_FROM_DOCK);
++                 else
++                     item = new ActionItem(this, Constants.Action.PIN_TO_DOCK);
++
++             }
++
++             this.actionsBox.add_actor(item);
++             this.actionsBox.add_actor(removeApp);
++
++             /* TODO(sohee, 21/04/27) : postponed action
++             let adminExecute = new ActionItem(this, Constants.Action.ADMIN_EXECUTE);
++             let addToFavorites = new ActionItem(this, Constants.Action.ADD_TO_FAVORITES);
++             this.actionsBox.add_actor(adminExecute);
++             this.actionsBox.add_actor(addToFavorites);
++             */
++         } else if (this.provider.id === 'org.gnome.Nautilus.desktop') {
++             let folderOpen = new ActionItem(this, Constants.Action.FOLDER_OPEN);
++             let copyPath = new ActionItem(this, Constants.Action.COPY_PATH);
++
++             this.actionsBox.add_actor(folderOpen);
++             this.actionsBox.add_actor(copyPath);
++         }
++     }
++
++     activateResult(id) {
++         if (this.provider.activateResult) {
++             this.provider.activateResult(id, this.terms);
++             this._menuLayout.searchMenu.toggle();
++         } else {
++             this._menuLayout.searchMenu.toggle();
++             if (id.endsWith('.desktop')) {
++                 let app = appSys.lookup_app(id);
++                 app.open_new_window(-1);
++             } else {
++                 SystemActions.getDefault().activateAction(id);
++             }
++         }
++     }
++
++     createHorizontalSeparator() {
++         let hSep = new SeparatorDrawingArea({
++             x_expand: true,
++             y_expand: false,
++             y_align: Clutter.ActorAlign.END,
++         });
++         hSep.queue_repaint();
++         return hSep;
++     }
++ });
++
++var SeparatorDrawingArea = GObject.registerClass(class SearchSeparatorDrawingArea extends St.DrawingArea {
++    _init(params) {
++        super._init(params);
++        this.set_height(1);
++    }
++
++    vfunc_repaint() {
++        let cr = this.get_context();
++        let [width, height_] = this.get_surface_size();
++        let color = 'rgb(216, 216, 216)';
++        let b_, stippleColor;
++        [b_, stippleColor] = Clutter.Color.from_string(color);
++        let stippleWidth = 1;
++        cr.moveTo(6, 0.5);
++        cr.lineTo(width - 6, 0.5);
++
++        Clutter.cairo_set_source_color(cr, stippleColor);
++        cr.setLineWidth(stippleWidth);
++        cr.stroke();
++        cr.$dispose();
++        return false;
++    }
++});
++
++var ActionItem = GObject.registerClass(class SearchActionItem extends SearchMenuPopupBaseMenuItem { // eslint-disable-line no-unused-vars
++    _init(detailView, action) {
++        super._init(detailView._menuLayout);
++        this.detailView = detailView;
++        this.action = action;
++
++        let resource;
++        switch (action) {
++        case Constants.Action.OPEN:
++            resource = ['/media/Open.png', '열기'];
++            break;
++        case Constants.Action.ADMIN_EXECUTE:
++            resource = ['/media/adminOpen.png', '관리자 권한으로 실행'];
++            break;
++        case Constants.Action.ADD_TO_FAVORITES:
++            resource = ['/media/fav.png', '즐겨찾기에 등록'];
++            break;
++        case Constants.Action.PIN_TO_DOCK:
++            resource = ['/media/fix.png', 'Dock에 고정'];
++            break;
++        case Constants.Action.UNPIN_FROM_DOCK:
++            resource = ['/media/fix.png', 'Dock에서 해제'];
++            break;
++        case Constants.Action.REMOVE_APP:
++            resource = ['/media/delete.png', '제거'];
++            break;
++        case Constants.Action.FOLDER_OPEN:
++            resource = ['/media/folderOpen.png', '파일 위치 열기'];
++            break;
++        case Constants.Action.COPY_PATH:
++            resource = ['/media/copy.png', '전체 경로 복사'];
++            break;
++        }
++
++        this.actor.y_align = Clutter.ActorAlign.START;
++        this.actor.style_class = 'detail-action-item';
++        this.remove_child(this._ornamentLabel);
++
++        // Image
++        let iconPath = Me.path + resource[0];
++        this._icon = new St.Icon({
++            gicon: Gio.icon_new_for_string(iconPath),
++            icon_size: 18,
++        });
++        this.box.add_child(this._icon);
++
++        // Label
++        this.label = new St.Label({
++            text: resource[1],
++            y_expand: true,
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++        this.label.style = 'font-size: 14px; color: rgb(28, 28, 28); margin-left: 8px;';
++        this.box.add_child(this.label);
++        this.box.label_actor = this.label;
++    }
++
++    activate() {
++        switch (this.action) {
++        case Constants.Action.OPEN:
++            this.detailView.activateResult(this.detailView.metaInfo['id']);
++            break;
++        case Constants.Action.ADMIN_EXECUTE:
++            break;
++        case Constants.Action.ADD_TO_FAVORITES:
++            break;
++        case Constants.Action.PIN_TO_DOCK:
++            if (this.detailView.app) {
++                let favs = AppFavorites.getAppFavorites();
++                favs.addFavorite(this.detailView.app.get_id());
++                this.detailView._menuLayout.searchMenu.toggle();
++            }
++            break;
++        case Constants.Action.UNPIN_FROM_DOCK:
++            if (this.detailView.app) {
++                let favs = AppFavorites.getAppFavorites();
++                favs.removeFavorite(this.detailView.app.get_id());
++                this.detailView._menuLayout.searchMenu.toggle();
++            }
++            break;
++        case Constants.Action.REMOVE_APP: {
++            if (Shell.AppSystem.get_default().lookup_app('org.gnome.Software.desktop') &&
++                this.detailView.app) {
++                let id = this.detailView.app.get_id();
++                let args = GLib.Variant.new('(ss)', [id, '']);
++                Gio.DBus.get(Gio.BusType.SESSION, null, (o, res) => {
++                    let bus = Gio.DBus.get_finish(res);
++                    bus.call('org.gnome.Software', '/org/gnome/Software', 'org.gtk.Actions',
++                        'Activate', GLib.Variant.new('(sava{sv})', ['details', [args], null]),
++                        null, 0, -1, null, null);
++                });
++                this.detailView._menuLayout.searchMenu.toggle();
++            }
++            break;
++        }
++        case Constants.Action.FOLDER_OPEN: {
++            let filePath = this.detailView.metaInfo['description'];
++            Util.spawnCommandLine(`nautilus "${filePath}"`);
++            this.detailView._menuLayout.searchMenu.toggle();
++            break;
++        }
++        case Constants.Action.COPY_PATH: {
++            let filePath = this.detailView.metaInfo['description'];
++            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, filePath);
++            break;
++        }
++        }
++    }
++
++    _onHover() {
++        super._onHover();
++        this.actor.remove_style_pseudo_class('focus');
++    }
++});
++
+ var FrequentAppItem = GObject.registerClass( // eslint-disable-line no-unused-vars
+  class SearchMenuFrequentAppItem extends SearchMenuPopupBaseMenuItem {
+      _init(menuLayout, app) {
+diff --git a/extensions/search/search.js b/extensions/search/search.js
+index ee6649c..d1f484d 100644
+--- a/extensions/search/search.js
++++ b/extensions/search/search.js
+@@ -37,11 +37,13 @@ const SEARCH_PROVIDERS_SCHEMA = 'org.gnome.desktop.search-providers';
+ 
+ var MAX_LIST_SEARCH_RESULTS_ROWS = 6;
+ var MAX_APPS_SEARCH_RESULTS_ROWS = 6;
+-
+ var RESULT_ICON_SIZE = 27;
+ 
++// not used search providers
++var PREVENTED_SEARCH_PROVIDERS = ['org.gnome.clocks.desktop', 'org.gnome.Characters.desktop'];
++
+ var ListSearchResult = class ListSearchResult {
+-    constructor(provider, metaInfo, resultsView) {
++    constructor(provider, metaInfo, resultsView, terms) {
+         this._menuLayout = resultsView._menuLayout;
+         this._resultsView = resultsView;
+         this.metaInfo = metaInfo;
+@@ -50,11 +52,11 @@ var ListSearchResult = class ListSearchResult {
+         this._app = appSys.lookup_app(this.metaInfo['id']);
+ 
+         if (this.provider.id === 'org.gnome.Nautilus.desktop')
+-            this.menuItem = new MW.SearchResultItem(this._menuLayout, appSys.lookup_app(this.provider.id), this.metaInfo['description']);
++            this.menuItem = new MW.SearchResultItem(this._menuLayout, terms, this.metaInfo, this.provider, appSys.lookup_app(this.provider.id), this.metaInfo['description']);
+         else if (this._app)
+-            this.menuItem = new MW.SearchResultItem(this._menuLayout, this._app);
++            this.menuItem = new MW.SearchResultItem(this._menuLayout, terms, this.metaInfo, this.provider, this._app);
+         else
+-            this.menuItem = new MW.SearchResultItem(this._menuLayout);
++            this.menuItem = new MW.SearchResultItem(this._menuLayout, terms, this.metaInfo, this.provider);
+ 
+         this.label = new St.Label({
+             text: this.metaInfo['name'],
+@@ -105,7 +107,7 @@ var ListSearchResult = class ListSearchResult {
+ Signals.addSignalMethods(ListSearchResult.prototype);
+ 
+ var AppSearchResult = class AppSearchResult {
+-    constructor(provider, metaInfo, resultsView) {
++    constructor(provider, metaInfo, resultsView, terms) {
+         this._menuLayout = resultsView._menuLayout;
+         this.metaInfo = metaInfo;
+         this.provider = provider;
+@@ -120,9 +122,9 @@ var AppSearchResult = class AppSearchResult {
+         });
+ 
+         if (this._app)
+-            this.menuItem = new MW.SearchResultItem(this._menuLayout, this._app);
++            this.menuItem = new MW.SearchResultItem(this._menuLayout, terms, this.metaInfo, this.provider, this._app);
+         else
+-            this.menuItem = new MW.SearchResultItem(this._menuLayout);
++            this.menuItem = new MW.SearchResultItem(this._menuLayout, terms, this.metaInfo, this.provider);
+ 
+         this.icon = this.metaInfo['createIcon'](RESULT_ICON_SIZE);
+         if (this.icon) {
+@@ -345,11 +347,11 @@ var ListSearchResults = class ListSearchResults extends SearchResultsBase {
+ 
+     _createResultDisplay(meta) {
+         return super._createResultDisplay(meta, this._resultsView) ||
+-               new ListSearchResult(this.provider, meta, this._resultsView);
++               new ListSearchResult(this.provider, meta, this._resultsView, this._terms);
+     }
+ 
+     _addItem(display) {
+-        this._content.add_actor(display.menuItem.actor);
++        this._content.add_actor(display.menuItem);
+     }
+ 
+     getFirstResult() {
+@@ -404,11 +406,11 @@ var AppSearchResults = class AppSearchResults extends SearchResultsBase {
+     }
+ 
+     _createResultDisplay(meta) {
+-        return new AppSearchResult(this.provider, meta, this._resultsView);
++        return new AppSearchResult(this.provider, meta, this._resultsView, this._terms);
+     }
+ 
+     _addItem(display) {
+-        this._grid.add_actor(display.menuItem.actor);
++        this._grid.add_actor(display.menuItem);
+     }
+ 
+     getFirstResult() {
+@@ -539,6 +541,14 @@ var SearchResults = class SearchResults {
+     }
+ 
+     _registerProvider(provider) {
++        var res = PREVENTED_SEARCH_PROVIDERS.some(element => {
++            return element === provider.id;
++        });
++
++        if (res)
++            return;
++
++
+         provider.searchInProgress = false;
+         this._providers.push(provider);
+         this._ensureProviderDisplay(provider);
+@@ -746,6 +756,7 @@ var SearchResults = class SearchResults {
+         if (!result || result === undefined || result === null)
+             return;
+         if (selected) {
++            result.createDetailView();
+             result.add_style_class_name('selected');
+             result.add_style_pseudo_class('selected');
+         } else {
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index fcebc8e..5b72cb9 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -95,14 +95,10 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         // Search Detail View
+         this.detailBox = new St.BoxLayout({
+             vertical: true,
++            x_align: Clutter.ActorAlign.CENTER,
+         });
+         this.detailBox.style = 'width: 362px; height: 550px; background-color: rgb(237, 237, 242); color: rgb(0, 0 ,0); border-radius: 0px 14px 14px 0px;';
+-        this.detailScrollBox = this._createScrollBox({
+-            y_align: Clutter.ActorAlign.START,
+-            overlay_scrollbars: true,
+-        });
+-        this.detailScrollBox.add_actor(this.detailBox);
+-        this.subMainBox.add(this.detailScrollBox);
++        this.subMainBox.add(this.detailBox);
+ 
+         this._loadRecentFiles();
+         this.setDefaultMenuView();
+diff --git a/extensions/search/stylesheet.css b/extensions/search/stylesheet.css
+index 0d8234a..efc12d0 100644
+--- a/extensions/search/stylesheet.css
++++ b/extensions/search/stylesheet.css
+@@ -350,3 +350,20 @@ background-color: rgb(204, 220, 255);
+ background-color: rgb(255, 255, 255);
+ box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
+ }
++
++.detail-action-item {
++background-color: rgb(237, 237, 242);
++border-radius: 12px;
++height: 43px;
++padding: 0px 20px;
++}
++.detail-action-item:hover {
++background-color: rgb(224, 233, 255);
++}
++.detail-action-item:active {
++background-color: rgb(204, 220, 255);
++}
++.detail-action-item:focus {
++background-color: rgb(237, 237, 242);
++box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
++}

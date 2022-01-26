@@ -1,0 +1,117 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 15 Sep 2021 09:06:10 +0900
+Subject: [refactor] osk-hangul : minor rafactors on keyboardWrapper
+
+ - Use key.keybutton to get the instance of keyboard layout's keys.
+ - Change variable name in for loop that clearly shows its usage
+ - Change _nextInputMethod to _switchInputMethod to clearly show its
+   meaning.
+ - remove eslint-disable-line and use exported
+ - add comments to korean charactor symbols
+
+[IMS] N/A
+---
+ extensions/osk-hangul/keyboardWrapper.js | 29 ++++++++++++++++++-----------
+ extensions/osk-hangul/utils.js           |  5 +++--
+ 2 files changed, 21 insertions(+), 13 deletions(-)
+
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index 4ba9789..f2a3d38 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -1,3 +1,4 @@
++/* exported BaseKeyboardWrapper, IbusKeyboardWrapper, XkbKeyboardWrapper */
+ /* eslint-disable no-invalid-this */
+ const { Clutter, IBus } = imports.gi;
+ 
+@@ -8,7 +9,9 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const QwertyKeysyms = Me.imports.xkbcommon_keysyms.QwertyMap;
+ const getIBusHangul = Me.imports.utils.getIBusHangul;
+ 
++// Korean Charactor that indicates kiyeog. First letter of korean key symbols.
+ const HangulKiyeog = 0x0ea1;
++// Korean Charactor that indicates yeorin higuh of jongseong that is last letter of Korean key symbols
+ const HangulJYeorinHieuh = 0x0efa;
+ 
+ function _isKoreanCharactor(keyval) {
+@@ -32,7 +35,7 @@ function _getCurrentGroup() {
+     return null;
+ }
+ 
+-function _nextInputMethod() {
++function _switchInputMethod() {
+     let ibusHangul = getIBusHangul();
+ 
+     if (!ibusHangul)
+@@ -69,6 +72,10 @@ class BaseKeyboardWrapper {
+         };
+     }
+ 
++    wrapAll(keyboard) {
++        this.wrap(keyboard, '_setAnimationWindow', () => {});
++    }
++
+     restoreAll() {
+         for (let info of this._originalFunctions) {
+             let { target, 'function': func } = info;
+@@ -76,8 +83,9 @@ class BaseKeyboardWrapper {
+         }
+     }
+ }
+-var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper { // eslint-disable-line no-unused-vars
++var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper {
+     wrapAll(keyboard, controller) {
++        super.wrapAll(keyboard, controller);
+         this.wrap(controller, 'keyvalPress', function (originalKeyvalPress, keyval) {
+             keyval = _krToUsKeysym(keyval);
+             return originalKeyvalPress.call(this, keyval);
+@@ -90,17 +98,16 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+ 
+         // change the functionality of flag icon
+         this.wrap(keyboard, '_popupLanguageMenu', () => {
+-            _nextInputMethod();
++            _switchInputMethod();
+         });
+ 
+-        this.wrap(keyboard, '_setAnimationWindow', () => {});
+         this.wrap(keyboard, '_createLayersForGroup', function (originalCreateLayersForGroup, groupname) {
+             let layers = originalCreateLayersForGroup.call(this, groupname);
+-            for (let l of Object.keys(layers)) {
+-                for (let container of layers[l]) {
+-                    let key = container.get_children()[0];
+-                    if (key.get_style_class_name().includes('layout-key'))
+-                        key.set_label('한/영');
++            for (let layer of Object.keys(layers)) {
++                for (let key of layers[layer]) {
++                    let button = key.keyButton;
++                    if (button.get_style_class_name().includes('layout-key'))
++                        button.set_label('한/영');
+                 }
+             }
+ 
+@@ -131,9 +138,9 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+     }
+ };
+ 
+-var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper { // eslint-disable-line no-unused-vars
++var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper {
+     wrapAll(keyboard) {
+-        this.wrap(keyboard, '_setAnimationWindow', () => {});
++        super.wrapAll(keyboard);
+         this.wrap(keyboard, '_setActiveLayer', function (originalSetActiveLayer, activeLevel) {
+             // make us keyboard layout if not exist
+             this._ensureKeysForGroup('us');
+diff --git a/extensions/osk-hangul/utils.js b/extensions/osk-hangul/utils.js
+index 603e606..2be17ba 100644
+--- a/extensions/osk-hangul/utils.js
++++ b/extensions/osk-hangul/utils.js
+@@ -1,6 +1,7 @@
+-let Main = imports.ui.main;
++/* exported getIBusHangul */
++const Main = imports.ui.main;
+ 
+-function getIBusHangul() {  // eslint-disable-line no-unused-vars
++function getIBusHangul() {
+     let inputSourceManager = Main.inputMethod._inputSourceManager;
+     let inputSources = inputSourceManager.inputSources;
+     if (!inputSources)

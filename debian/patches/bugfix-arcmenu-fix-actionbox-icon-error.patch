@@ -1,0 +1,385 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 14 May 2021 13:21:18 +0900
+Subject: [bugfix] arcmenu: fix actionbox icon error
+
+- Changed vertical icon alignment in actionbox from actoralign.FILL to actoralign.END
+- Applied Eslint to menuLayout.js
+
+[IMS] 260682
+---
+ extensions/arc-menu/menuLayout.js | 158 +++++++++++++++++++-------------------
+ 1 file changed, 81 insertions(+), 77 deletions(-)
+
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index 4f533a8..f434cc5 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -23,34 +23,32 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const {Clutter, GLib, Gio, Gtk, Shell, St} = imports.gi;
++const { Clutter, GLib, Gio, Shell, St } = imports.gi;
+ const BaseMenuLayout = Me.imports.baseMenuLayout;
+ const Constants = Me.imports.constants;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+ const MW = Me.imports.menuWidgets;
+-const PlaceDisplay = Me.imports.placeDisplay;
+ const PopupMenu = imports.ui.popupMenu;
+-const Utils =  Me.imports.utils;
+ const _ = Gettext.gettext;
++// const Gtk = imports.gi;
++// const PlaceDisplay = Me.imports.placeDisplay;
++// const Utils =  Me.imports.utils;
+ 
+ const COLUMN_SPACING = 10;
+ const ROW_SPACING = 10;
+ const COLUMN_COUNT = 3;
+ 
+-var createMenu = class extends BaseMenuLayout.BaseLayout{
+-    constructor(mainButton) {
+-        super(mainButton);
+-    }
+-    createLayout(){
++var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-line no-unused-vars
++    createLayout() {
+         this.actionsBox = new St.BoxLayout({
+             x_expand: true,
+             y_expand: true,
+             x_align: Clutter.ActorAlign.START,
+-            y_align: Clutter.ActorAlign.FILL,
+-            vertical: true
++            y_align: Clutter.ActorAlign.END,
++            vertical: true,
+         });
+-        this.actionsBox.style = "background-color:rgb(41, 41, 41); border-radius: 14px 0px 0px 14px; margin: 0px; spacing: 10px; padding: 440px 5px 0px 5px; width: 38px;";
++        this.actionsBox.style = 'background-color:rgb(41, 41, 41); border-radius: 14px 0px 0px 14px; margin: 0px; spacing: 10px; padding: 0px 5px 0px 5px; width: 38px;';
+         this.mainBox.add(this.actionsBox);
+ 
+         // User Button
+@@ -61,8 +59,8 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+ 
+         // Documents Button
+         let path = GLib.get_user_special_dir(imports.gi.GLib.UserDirectory.DIRECTORY_DOCUMENTS);
+-        if (path != null){
+-            let placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _("Documents"));
++        if (path !== null) {
++            let placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _('Documents'));
+             let placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+             this.actionsBox.add_actor(placeMenuItem.actor);
+         }
+@@ -83,7 +81,7 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+             x_expand: true,
+             y_expand: true,
+             y_align: Clutter.ActorAlign.START,
+-            vertical: true
++            vertical: true,
+         });
+         this.mainBox.add(this.subMainBox);
+ 
+@@ -91,36 +89,36 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+             x_expand: true,
+             y_expand: true,
+             y_align: Clutter.ActorAlign.START,
+-            overlay_scrollbars: true
++            overlay_scrollbars: true,
+         });
+-        this.favoritesScrollBox.style = "background-color: rgb(237, 237, 242); color: rgb(0, 0, 0); width: 330px; border-radius: 0px 14px 14px 0px; height: 650px;";
++        this.favoritesScrollBox.style = 'background-color: rgb(237, 237, 242); color: rgb(0, 0, 0); width: 330px; border-radius: 0px 14px 14px 0px; height: 650px;';
+ 
+         this.mainBox.add(this.favoritesScrollBox);
+         this.favoritesBox = new St.BoxLayout({
+             vertical: true,
+             x_expand: true,
+-            x_align: Clutter.ActorAlign.START
++            x_align: Clutter.ActorAlign.START,
+         });
+         this.favoritesScrollBox.add_actor(this.favoritesBox);
+ 
+         this.applicationsBox = new St.BoxLayout({
+-            vertical: true
++            vertical: true,
+         });
+ 
+         // Grid Layout
+         let layout = new Clutter.GridLayout({
+             orientation: Clutter.Orientation.VERTICAL,
+             column_spacing: COLUMN_SPACING,
+-            row_spacing: ROW_SPACING
++            row_spacing: ROW_SPACING,
+         });
+         this.grid = new St.Widget({
+             x_expand: false,
+             y_expand: false,
+             x_align: Clutter.ActorAlign.START,
+             y_align: Clutter.ActorAlign.START,
+-            layout_manager: layout
++            layout_manager: layout,
+         });
+-        this.grid.style = "margin-left: 20px;";
++        this.grid.style = 'margin-left: 20px;';
+         layout.hookup_style(this.grid);
+ 
+         this.applicationsScrollBox = this._createScrollBox({
+@@ -128,9 +126,9 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+             y_expand: false,
+             x_align: Clutter.ActorAlign.START,
+             y_align: Clutter.ActorAlign.START,
+-            overlay_scrollbars: true
++            overlay_scrollbars: true,
+         });
+-        this.applicationsScrollBox.style = "background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); width: 350px;";
++        this.applicationsScrollBox.style = 'background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); width: 350px;';
+ 
+         this.applicationsScrollBox.add_actor(this.applicationsBox);
+         this.subMainBox.add(this.applicationsScrollBox);
+@@ -142,48 +140,50 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+         this.setDefaultMenuView();
+     }
+ 
+-    createLabelRow(title){
++    createLabelRow(title) {
+         let labelRow = new PopupMenu.PopupMenuItem(_(title), {
+             hover: false,
+-            can_focus: false
++            can_focus: false,
+         });
+-        labelRow.actor.add_style_pseudo_class = () => { return false;};
++        labelRow.actor.add_style_pseudo_class = () => {
++            return false;
++        };
+         labelRow.label.style = 'font-weight: bold;';
+         return labelRow;
+     }
+ 
+-    _createLeaveMenu(){
+-        this.leaveMenu = new PopupMenu.PopupMenu(this.powerButton, 0.5 , St.Side.BOTTOM);
++    _createLeaveMenu() {
++        this.leaveMenu = new PopupMenu.PopupMenu(this.powerButton, 0.5, St.Side.BOTTOM);
+ 
+         let section = new PopupMenu.PopupMenuSection();
+         this.leaveMenu.addMenuItem(section);
+ 
+         let box = new St.BoxLayout({
+-            vertical: true
++            vertical: true,
+         });
+         box._delegate = box;
+         section.actor.add_actor(box);
+ 
+-        box.add(this.createLabelRow(_("Session")));
++        box.add(this.createLabelRow(_('Session')));
+ 
+-        this.lock = new MW.PlasmaPowerItem(this, Constants.PowerType.LOCK, _("Lock"), 'changes-prevent-symbolic');
++        this.lock = new MW.PlasmaPowerItem(this, Constants.PowerType.LOCK, _('Lock'), 'changes-prevent-symbolic');
+         this.lock._icon.icon_size = 16;
+         box.add(this.lock);
+-        this.logOut = new MW.PlasmaPowerItem(this, Constants.PowerType.LOGOUT, _("Log Out"), 'application-exit-symbolic');
++        this.logOut = new MW.PlasmaPowerItem(this, Constants.PowerType.LOGOUT, _('Log Out'), 'application-exit-symbolic');
+         this.logOut._icon.icon_size = 16;
+         box.add(this.logOut);
+ 
+-        box.add(this.createLabelRow(_("System")));
++        box.add(this.createLabelRow(_('System')));
+ 
+-        this.suspend = new MW.PlasmaPowerItem(this, Constants.PowerType.SUSPEND, _("Suspend"), 'media-playback-pause-symbolic');
++        this.suspend = new MW.PlasmaPowerItem(this, Constants.PowerType.SUSPEND, _('Suspend'), 'media-playback-pause-symbolic');
+         this.suspend._icon.icon_size = 16;
+         box.add(this.suspend);
+ 
+-        this.restart = new MW.PlasmaPowerItem(this, Constants.PowerType.RESTART, _("Restart..."), Me.path + Constants.RESTART_ICON.Path);
++        this.restart = new MW.PlasmaPowerItem(this, Constants.PowerType.RESTART, _('Restart...'), Me.path + Constants.RESTART_ICON.Path);
+         this.restart._icon.icon_size = 16;
+         box.add(this.restart);
+ 
+-        this.powerOff = new MW.PlasmaPowerItem(this, Constants.PowerType.POWEROFF, _("Power Off..."), 'system-shutdown-symbolic');
++        this.powerOff = new MW.PlasmaPowerItem(this, Constants.PowerType.POWEROFF, _('Power Off...'), 'system-shutdown-symbolic');
+         this.powerOff._icon.icon_size = 16;
+         box.add(this.powerOff);
+         this.subMenuManager.addMenu(this.leaveMenu);
+@@ -191,13 +191,13 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+         Main.uiGroup.add_actor(this.leaveMenu.actor);
+     }
+ 
+-    toggleLeaveMenu(){
+-      this.leaveMenu.actor.style_class = 'popup-menu-boxpointer';
+-      this.leaveMenu.actor.add_style_class_name('popup-menu');
+-      this.leaveMenu.toggle();
++    toggleLeaveMenu() {
++        this.leaveMenu.actor.style_class = 'popup-menu-boxpointer';
++        this.leaveMenu.actor.add_style_class_name('popup-menu');
++        this.leaveMenu.toggle();
+     }
+ 
+-    setDefaultMenuView(){
++    setDefaultMenuView() {
+         super.setDefaultMenuView();
+ 
+         this.displayAllApps();
+@@ -206,28 +206,30 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+         appsScrollBoxAdj.set_value(0);
+     }
+ 
+-    updateIcons(){
+-        for(let i = 0; i < this.frequentAppsList.length; i++){
++    updateIcons() {
++        for (let i = 0; i < this.frequentAppsList.length; i++) {
+             let item = this.frequentAppsList[i];
+             item._updateIcon();
+-        };
++        }
+         super.updateIcons();
+     }
+ 
+-    displayAllApps(){
++    displayAllApps() {
+         this._clearActorsFromBox();
+-        let frequentAppsLabel = new PopupMenu.PopupMenuItem(_("Frequent"), {
++        let frequentAppsLabel = new PopupMenu.PopupMenuItem(_('Frequent'), {
+             hover: false,
+-            can_focus: false
++            can_focus: false,
+         });
+-        frequentAppsLabel.actor.add_style_pseudo_class = () => { return false;};
++        frequentAppsLabel.actor.add_style_pseudo_class = () => {
++            return false;
++        };
+         frequentAppsLabel.label.style = 'font-weight: bold; margin: 6px 0px; font-size: 16px;';
+-        this.applicationsBox.add_actor(frequentAppsLabel.actor)
++        this.applicationsBox.add_actor(frequentAppsLabel.actor);
+ 
+         let mostUsed = Shell.AppUsage.get_default().get_most_used();
+         this.frequentAppsList = [];
+         for (let i = 0; i < mostUsed.length; i++) {
+-            if (mostUsed[i] && mostUsed[i].get_app_info().should_show()){
++            if (mostUsed[i] && mostUsed[i].get_app_info().should_show()) {
+                 let item = new MW.ApplicationMenuItem(this, mostUsed[i]);
+                 this.frequentAppsList.push(item);
+             }
+@@ -235,21 +237,21 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+         let activeMenuItemSet = false;
+         for (let i = 0; i < this.frequentAppsList.length; i++) {
+             let item = this.frequentAppsList[i];
+-            if(item.actor.get_parent())
++            if (item.actor.get_parent())
+                 item.actor.get_parent().remove_actor(item.actor);
+             if (!item.actor.get_parent())
+                 this.applicationsBox.add_actor(item.actor);
+-            if(!activeMenuItemSet){
++            if (!activeMenuItemSet) {
+                 activeMenuItemSet = true;
+                 this.activeMenuItem = item;
+-                if(this.arcMenu.isOpen){
++                if (this.arcMenu.isOpen)
+                     this.mainBox.grab_key_focus();
+-                }
++
+             }
+         }
+ 
+         let appList = [];
+-        this.applicationsMap.forEach((value,key,map) => {
++        this.applicationsMap.forEach((value, key, map) => { // eslint-disable-line no-unused-vars
+             appList.push(key);
+         });
+         appList.sort((a, b) => {
+@@ -273,11 +275,11 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+         super.loadCategories();
+     }
+ 
+-    _clearActorsFromBox(box){
++    _clearActorsFromBox(box) {
+         super._clearActorsFromBox(box);
+     }
+ 
+-    _displayAppList(apps){
++    _displayAppList(apps) {
+         let activeMenuItemSet = false;
+         let currentCharacter;
+ 
+@@ -286,45 +288,47 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+             let character;
+             let ascii = app.get_name().charCodeAt(0);
+ 
+-            if ((0xAC00 <= ascii && ascii <= 0xD7A3)) {
+-                var consonants = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ',
+-                                  'ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
++            if (ascii >= 0xAC00 && ascii <= 0xD7A3) {
++                var consonants = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ',
++                    'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+                 var offset = parseInt((ascii - 0xAC00) / 0x24C);
+                 character = consonants[offset];
+-            } else if ((0x61 <= ascii && ascii <= 0x7A) || (0x41 <= ascii && ascii <= 0x5A)) {
++            } else if (ascii >= 0x61 && ascii <= 0x7A || ascii >= 0x41 && ascii <= 0x5A) {
+                 character = app.get_name().charAt(0).toUpperCase();
+             } else {
+-                character = "#";
++                character = '#';
+             }
+ 
+-            if (currentCharacter !== character){
++            if (currentCharacter !== character) {
+                 currentCharacter = character;
+ 
+                 let characterLabel = new PopupMenu.PopupMenuItem(character, {
+                     hover: false,
+-                    can_focus: false
++                    can_focus: false,
+                 });
+-                characterLabel.actor.add_style_pseudo_class = () => { return false;};
++                characterLabel.actor.add_style_pseudo_class = () => {
++                    return false;
++                };
+                 characterLabel.label.style = 'font-weight: bold; margin: 7px 0px 0px 0px;';
+-                this.applicationsBox.add_actor(characterLabel.actor)
++                this.applicationsBox.add_actor(characterLabel.actor);
+             }
+             let item = this.applicationsMap.get(app);
+             if (!item) {
+                 item = new MW.ApplicationMenuItem(this, app);
+                 this.applicationsMap.set(app, item);
+             }
+-            if(item.actor.get_parent())
++            if (item.actor.get_parent())
+                 item.actor.get_parent().remove_actor(item.actor);
+ 
+-            if(!item.actor.get_parent())
++            if (!item.actor.get_parent())
+                 this.applicationsBox.add_actor(item.actor);
+ 
+-            if(!activeMenuItemSet){
++            if (!activeMenuItemSet) {
+                 activeMenuItemSet = true;
+                 this.activeMenuItem = item;
+-                if(this.arcMenu.isOpen){
++                if (this.arcMenu.isOpen)
+                     this.mainBox.grab_key_focus();
+-                }
++
+             }
+         }
+     }
+@@ -332,16 +336,16 @@ var createMenu = class extends BaseMenuLayout.BaseLayout{
+     displayFavorites() {
+         super._clearActorsFromBox(this.favoritesBox);
+         this.grid.remove_all_children();
+-        let label = this.createLabelRow(_("Pinned Apps"));
+-        label.style = "margin: 6px 0px 6px 20px; font-size: 16px;";
++        let label = this.createLabelRow(_('Pinned Apps'));
++        label.style = 'margin: 6px 0px 6px 20px; font-size: 16px;';
+         label.remove_actor(label._ornamentLabel);
+         this.favoritesBox.add_actor(label);
+         super._displayAppGridList(this.favoritesArray, COLUMN_COUNT, true, this.grid);
+-        if(!this.favoritesBox.contains(this.grid))
++        if (!this.favoritesBox.contains(this.grid))
+             this.favoritesBox.add(this.grid);
+-        if(this.arcMenu.isOpen){
++        if (this.arcMenu.isOpen)
+             this.mainBox.grab_key_focus();
+-        }
++
+         this.updateStyle();
+     }
+-}
++};

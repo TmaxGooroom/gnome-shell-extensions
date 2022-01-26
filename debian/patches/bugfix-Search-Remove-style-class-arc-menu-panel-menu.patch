@@ -1,0 +1,38 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 25 Jan 2022 17:18:02 +0900
+Subject: [bugfix] Search: Remove style class (arc-menu-panel-menu)
+
+- Remove style class because it's unnecessary.
+
+[IMS] N/A
+---
+ extensions/search/menuButton.js  | 1 -
+ extensions/search/stylesheet.css | 3 ---
+ 2 files changed, 4 deletions(-)
+
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index 201de26..cc53ba4 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -40,7 +40,6 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+         this._settings = settings;
+         this._panel = panel;
+         this.menu.destroy();
+-        this.add_style_class_name('arc-menu-panel-menu');
+         this.tooltipShowing = false;
+         this.tooltipHidingID = null;
+         this.tooltipShowingID = null;
+diff --git a/extensions/search/stylesheet.css b/extensions/search/stylesheet.css
+index efc12d0..d4b7f31 100644
+--- a/extensions/search/stylesheet.css
++++ b/extensions/search/stylesheet.css
+@@ -58,9 +58,6 @@ box-shadow: inset 0 0 0 1px rgba(250,250,249,0.1);
+ color: rgba(211,218,227,0.7);
+ }
+ 
+-.arc-menu-panel-menu:active{
+-}
+-
+ #arc-menu-plasma-button{
+ border-top-width: 2px;;
+ border-color: transparent;

@@ -1,0 +1,43 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 28 May 2021 14:05:20 +0900
+Subject: [refactor] tos-hotkey : modify variable name,
+ add terminating condition to for-loop
+
+ - modify variable name to reflect meaning
+ - added terminating condition to loop for more efficient work
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 30cdc0c..7805cfd 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -66,7 +66,7 @@ class DisplayConfig {
+         for (let monitor of current[1]) {
+             let serial = monitor[0][3];
+ 
+-            let index = this._outputs.findIndex(ele => ele['productSerial'] === serial);
++            let index = this._outputs.findIndex(output => output['productSerial'] === serial);
+             if (index === -1)
+                 return;
+ 
+@@ -229,13 +229,14 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+             let scale, transform;
+ 
+             let logicalMonitor = [];
+-            displayConfig._outputs.forEach(output => {
++            for (let output of displayConfig._outputs) {
+                 if (output['isPrimary']) {
+                     let crtcID = output['currentCrtc'];
+                     scale = displayConfig._crtcs[crtcID]['scale'];
+                     transform = displayConfig._crtcs[crtcID]['transform'];
++                    break;
+                 }
+-            });
++            }
+ 
+             let target = displayConfig._outputs[index];
+             if (!target)

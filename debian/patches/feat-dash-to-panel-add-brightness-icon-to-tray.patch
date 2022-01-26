@@ -1,0 +1,74 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 14 Jun 2021 16:37:00 +0900
+Subject: [feat] dash-to-panel : add brightness icon to tray
+
+ - create indicator for brightness
+ - make brightness indicator visible on panel
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 36 +++++++++++++++++++++++++++++-------
+ 1 file changed, 29 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 3d88123..7cf421d 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -17,14 +17,21 @@ class Tray {
+             return Clutter.EVENT_PROPAGATE;
+         });
+ 
+-        let indicators = this._indicators.get_children();
++        let brightness = this._originalTray._brightness;
++        let brightnessIndicator = brightness._addIndicator();
++        brightnessIndicator.icon_name = 'display-brightness-symbolic';
++        brightness._indicator = brightnessIndicator;
++
++        this._indicators.add_child(brightness);
++        this._indicators.set_child_at_index(brightness, 0);
++
++        brightness._oldSync = brightness._sync;
++        brightness._sync = () => {
++            brightness._oldSync();
++            brightness.visible = brightness._item.visible;
++        };
+ 
+-        this._connectedSignals = [];
+-        indicators.forEach(indicator => {
+-            let id = indicator.connect('event', this._onTrayEvent.bind(this));
+-            this._connectedSignals.push(id);
+-            indicator.track_hover = true;
+-        });
++        brightness._sync();
+ 
+         // make synchronize the visibility of menu item with icon
+         let power = this._originalTray._power;
+@@ -36,6 +43,15 @@ class Tray {
+ 
+         power._sync();
+ 
++        let indicators = this._indicators.get_children();
++
++        this._connectedSignals = [];
++        indicators.forEach(indicator => {
++            let id = indicator.connect('event', this._onTrayEvent.bind(this));
++            this._connectedSignals.push(id);
++            indicator.track_hover = true;
++        });
++
+         this._indicators.get_last_child().visible = false;
+     }
+ 
+@@ -49,6 +65,12 @@ class Tray {
+         power._sync = power._oldSync;
+         power.visible = true;
+ 
++        let brightness = this._originalTray._brightness;
++        brightness._sync = brightness._oldSync;
++        brightness._indicator.destroy();
++        brightness._indicator = null;
++        brightness.visible = false;
++
+         let indicators = this._indicators.get_children();
+         for (let i = 0; i < this._connectedSignals.length; i++) {
+             let indicator = indicators[i];

@@ -1,0 +1,29 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 28 Jul 2021 16:36:36 +0900
+Subject: [feat] Greeter: Prevent timed login from being performed
+
+- Due to security issues, we decided not to provide the timed login.
+- Don't handle anything in _onTimedLoginRequested() function.
+
+[IMS] N/A
+---
+ extensions/greeter/loginDialog.js | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 385fd70..22139f4 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -202,6 +202,12 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this._changeUser(this._user);
+     }
+ 
++    _onTimedLoginRequested() {
++        // NOTE(sohee, 210728): Due to security issues,
++        // we decided not to provide the timed login function.
++        // Therefore, it does not deal with anything here.
++    }
++
+     cancel() {}
+ 
+     open() {

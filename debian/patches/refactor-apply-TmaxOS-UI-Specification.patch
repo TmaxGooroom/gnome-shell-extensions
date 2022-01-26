@@ -1,0 +1,98 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 7 May 2021 15:03:58 +0900
+Subject: [refactor] apply TmaxOS UI Specification
+
+  - Adjust SwitcherList background color & opacity
+  - Adjust row layout spacing between previews
+  - Adjust SwitcherList maximum size ratio to meet TmaxOS UI Specification
+
+[IMS] N/A
+---
+ extensions/alternate-tab/stylesheet.css | 10 ++++++++++
+ extensions/alternate-tab/switcher.js    | 19 +++++++++++++------
+ 2 files changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/alternate-tab/stylesheet.css b/extensions/alternate-tab/stylesheet.css
+index 67c63f7..1e8d89a 100644
+--- a/extensions/alternate-tab/stylesheet.css
++++ b/extensions/alternate-tab/stylesheet.css
+@@ -1,4 +1,14 @@
+ /* This extensions requires no special styling */
++.tos-switcher-list{
++    background-color: rgba(41, 41, 41, 0.8);
++    padding: 12px;
++    border-radius: 16px;
++}
++
++.tos-switcher-list-item-container{
++    spacing: 20px
++}
++
+ .tos-item-box{
+ 	padding: 8px;
+ 	border-radius: 2px;
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 2b0fab5..4197576 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -12,8 +12,8 @@ const SwitcherPopup = imports.ui.switcherPopup;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ 
+-var MONITOR_HORIZON_PADDING_RATIO = 0.2;
+-var MONITOR_VERTICAL_PADDING_RATIO = 0.15;
++var MONITOR_HORIZON_PADDING_RATIO = 0.12;
++var MONITOR_VERTICAL_PADDING_RATIO = 0.204;
+ 
+ var POPUP_SCROLL_TIME = 100;
+ 
+@@ -30,7 +30,7 @@ var IMAGE_PATH = '/media/';
+ // Also need to scale below values.
+ // If there are another ways to load CSS value, update me
+ var BUTTON_PADDING = 8;
+-var ROW_SPACING = 12;
++var ROW_SPACING = 20;
+ 
+ var WINDOW_PREVIEW_SIZE = 180;
+ var APP_ICON_SIZE = 128;
+@@ -127,7 +127,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         childBox.x2 = Math.ceil(childBox.x1 + childNaturalWidth);
+ 
+         childBox.y1 = Math.max(primary.y + topPadding, primary.y + Math.floor((primary.height - childNaturalHeight) / 2));
+-        childBox.y2 = Math.min(primary.y + primary.height - bottomPadding, childBox.y1 + childNaturalHeight);
++        childBox.y2 = Math.min(primary.y + primary.height - bottomPadding, childBox.y1 + childNaturalHeight) + 1;
+ 
+         this._switcherList.allocate(childBox);
+     }
+@@ -301,6 +301,13 @@ var WindowSwitcher = GObject.registerClass({
+     _init(windows, mode) {
+         super._init(false);
+ 
++        // Reload style class that meets TmaxOS UI Specification.
++        this.remove_style_class_name('switcher-list');
++        this.set_style_class_name('tos-switcher-list');
++
++        this._list.remove_style_class_name('switcher-list-item-container');
++        this._list.set_style_class_name('tos-switcher-list-item-container');
++
+         this.visibleRows = -1;
+ 
+         this._topArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
+@@ -325,7 +332,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this._rows = 0;
+ 
+-        this._rowList = new St.BoxLayout({ style_class: 'switcher-list-item-container',
++        this._rowList = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
+             vertical: true,
+             x_expand: true,
+             y_expand: true });
+@@ -353,7 +360,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+             if (rowWidth + icon.preview.get_width() > this._maxWidth) {
+                 this._rows++;
+-                let newRow = new St.BoxLayout({ style_class: 'switcher-list-item-container',
++                let newRow = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
+                     vertical: false,
+                     x_expand: true,
+                     y_expand: true });

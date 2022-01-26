@@ -1,0 +1,400 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 11 May 2021 10:24:14 +0900
+Subject: [feat] tos-hotkey : added win + p widget
+
+ - created win + p widget(switchMonitorWidget)
+ - modified stylesheet according to UI/UX guidelines
+ - implemented new feature to switching monitor to single display, join, mirror display mode
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/extension.js     |  14 +++
+ extensions/tos-hotkey/meson.build      |   2 +
+ extensions/tos-hotkey/stylesheet.css   |  60 ++++++++++++
+ extensions/tos-hotkey/switchMonitor.js | 161 +++++++++++++++++++++++++++++++++
+ extensions/tos-hotkey/utils.js         |  85 +++++++++++++++++
+ 5 files changed, 322 insertions(+)
+ create mode 100644 extensions/tos-hotkey/switchMonitor.js
+ create mode 100644 extensions/tos-hotkey/utils.js
+
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+index e99fff3..39a39ea 100644
+--- a/extensions/tos-hotkey/extension.js
++++ b/extensions/tos-hotkey/extension.js
+@@ -5,12 +5,14 @@ const Main = imports.ui.main;
+ const ExtensionUtils = imports.misc.extensionUtils;
+ const Me = ExtensionUtils.getCurrentExtension();
+ const AltF4 = Me.imports.altF4;
++const SwitchMonitor = Me.imports.switchMonitor;
+ 
+ // const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
+ // const WM_KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
+ const SHELL_EXTENSIONS_TOS_HOTKEY = 'org.gnome.shell.extensions.tos-hotkey';
+ 
+ let systemWidget;
++let switchMonitor;
+ 
+ function _addKeybinding(key, schema, flags, action, handler) {
+     if (Main.wm._allowedKeybindings[key])
+@@ -72,10 +74,22 @@ function enable() { // eslint-disable-line no-unused-vars
+     Main.wm.setCustomKeybindingHandler('close',
+         Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         _handleAltF4);
++
++    Main.wm.setCustomKeybindingHandler('switch-monitor',
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
++        () => {
++            if (!switchMonitor)
++                switchMonitor = new SwitchMonitor.SwitchMonitorWidget();
++            switchMonitor.open();
++        });
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+     Main.wm.removeKeybinding('open-file-manager');
+     Main.wm.removeKeybinding('open-terminal');
+     Main.wm.removeKeybinding('open-task-manager');
++    Main.wm.setCustomKeybindingHandler('switch-monitor',
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
++        Main.wm._startSwitcher.bind(Main.wm)
++    );
+ }
+diff --git a/extensions/tos-hotkey/meson.build b/extensions/tos-hotkey/meson.build
+index c74a646..079da40 100644
+--- a/extensions/tos-hotkey/meson.build
++++ b/extensions/tos-hotkey/meson.build
+@@ -7,6 +7,8 @@ extension_data += configure_file(
+ extension_sources += files(
+ 'baseWidget.js',
+ 'altF4.js',
++'switchMonitor.js',
++'utils.js',
+ )
+ 
+ extension_dir = join_paths(extensiondir, uuid)
+diff --git a/extensions/tos-hotkey/stylesheet.css b/extensions/tos-hotkey/stylesheet.css
+index c4fb8e9..1b3ae29 100644
+--- a/extensions/tos-hotkey/stylesheet.css
++++ b/extensions/tos-hotkey/stylesheet.css
+@@ -65,3 +65,63 @@
+   line-height: 19px;
+   color: #000000;
+ }
++
++/* switch monitor widget */
++.switch-monitor-widget {
++  border-radius: 16px;
++  background-color: white;
++  width: 530px;
++  height: 200px;
++  box-shadow: 0 0 12px 0 rgba(0,0,0,0.30);
++  border: none;
++  margin: 0px;
++}
++
++.switch-monitor-widget-content-box {
++  height: 19px;
++  margin: 36px 0 0 0;
++  padding: 0px;
++}
++
++.switch-monitor-widget-button-box {
++  height: 100px;
++  margin: 20px 20px 0px 20px;
++}
++
++.switch-monitor-widget-button {
++  border: none;
++  border-radius: 16px;
++  background-color: white;
++
++  font-size: 13px;
++  color: #000000;
++  letter-spacing: 0;
++  text-align: center;
++  line-height: 19px;
++
++  width: 110px;
++  height: 100px;
++}
++
++.switch-monitor-widget-button:focus, .switch-monitor-widget-button:hover  {
++  background-color: rgba(0, 79, 255, 0.12);
++}
++
++.system-widget-button:active {
++  background-color: rgba(0, 79, 255, 0.2);
++}
++
++.switch-monitor-widget-button-image {
++  margin-top:15px;
++  width: 110px;
++  height: 52px;
++}
++
++.switch-monitor-widget-button-label {
++  margin-top: 5px;
++  font-size: 13px;
++  letter-spacing: 0;
++  text-align: center;
++  line-height: 19px;
++  color: #000000;
++}
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+new file mode 100644
+index 0000000..880d433
+--- /dev/null
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -0,0 +1,161 @@
++const { GObject, GLib, Meta } = imports.gi;
++
++const _ = imports.gettext.gettext;
++
++const SystemActions = imports.misc.systemActions;
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++const BaseWidget = Me.imports.baseWidget;
++const Utils = Me.imports.utils;
++
++const PRIMARY_ONLY_FILE_PATH = '/assets/tos_img_dualmonitor01.svg';
++const MIRROR_MODE_FILE_PATH = '/assets/tos_img_dualmonitor02.svg';
++const JOIN_MODE_FILE_PATH = '/assets/tos_img_dualmonitor03.svg';
++const SECONDARY_ONLY_FILE_PATH = '/assets/tos_img_dualmonitor04.svg';
++
++const PRIMARY_ONLY_LABEL_TEXT = _('1번 화면만');
++const MIRROR_MODE_LABEL_TEXT = _('복제');
++const JOIN_MODE_LABEL_TEXT = _('확장');
++const SECONDARY_MODE_LABEL_TEXT = _('2번 화면만');
++
++var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
++    constructor() {
++        this._proxy = new Utils.MutterDisplayConfigProxy();
++        this._monitorManager = Meta.MonitorManager.get();
++    }
++
++    canSwitchConfig() {
++        return this._monitorManager.can_switch_config();
++    }
++
++    setDisplayMirrored() {
++        this._monitorManager.switch_config(Meta.MonitorSwitchConfigType.ALL_MIRROR);
++    }
++
++    setDisplayJoined() {
++        this._monitorManager.switch_config(Meta.MonitorSwitchConfigType.ALL_LINEAR);
++    }
++
++    async setSingleDisplay(index = 1) {
++        let resources = await this._proxy.call('GetResources');
++        let currentState = await this._proxy.call('GetCurrentState');
++
++        let crtcId = resources[2][index][2];
++        let transform, scale, currentMode;
++        if (crtcId !== -1) {
++            transform = resources[1][crtcId][7];
++            currentMode = resources[1][crtcId][6];
++
++            // use preferred scale for given mode
++            scale = currentState[1][index][1][currentMode][4];
++        } else {
++            // if there is no crtc for given index, use default transform(0), preferred mode
++            transform = 0;
++            let possibleModes = currentState[1][index][1];
++
++            for (let idx in possibleModes) {
++                if (possibleModes[idx][6]['is-preferred'] && possibleModes[idx][6]['is-preferred'].get_boolean()) {
++                    currentMode = idx;
++                    scale = possibleModes[idx][4];
++                }
++            }
++            if (!currentMode) {
++                currentMode = 0;
++                scale = 1.0;
++            }
++        }
++
++        let properties = {};
++        if (!currentState[1][index][2]['is-underscanning'])
++            properties['underscanning'] = new GLib.Variant('b', false);
++        else
++            properties['underscanning'] = new GLib.Variant('b', true);
++
++        let logicalMonitor = [currentState[1][index][0][0], currentState[1][index][1][currentMode][0], properties]; // connector id, mode id(e.g. 1920x1080@60)
++
++
++        let logicalMonitors = [0, 0, scale, transform, true]; // x, y, scale, transform, is primary
++        logicalMonitors.push([logicalMonitor]);
++
++        try {
++            await this._proxy.call('ApplyMonitorsConfig', [currentState[0], 2, [logicalMonitors], [new GLib.Variant('a{sv}', {})]]);
++        } catch (e) {
++            log(e);
++        }
++    }
++};
++
++
++var SwitchMonitorWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
++    Properties: {
++        'can-switch-config': GObject.ParamSpec.boolean('can-switch-config', 'can-switch-config', 'can-switch-config',
++            GObject.ParamFlags.READABLE,
++            false),
++    },
++}, class SwitchMonitorWidget extends BaseWidget.BaseWidget {
++    _init() {
++        super._init({ style_class: 'switch-monitor-widget' });
++        this.systemActions = SystemActions.getDefault();
++        this._setTitle({ style_class: 'system-widget-title',
++            text: _('디스플레이 방식을 선택해 주세요') });
++
++        this._monitorManager = new SwitchMonitorManager();
++        this._canSwitchConfig = this._monitorManager.canSwitchConfig();
++        this._addActionToButtons();
++    }
++
++    get canSwitchConfig() {
++        return this._canSwitchConfig;
++    }
++
++    _createHandler(handler) {
++        if (!handler)
++            return;
++
++        let func = function func() {
++            this.close();
++            handler();
++        }.bind(this, handler);
++
++        return func;
++    }
++
++    _addActionToButtons() {
++        let button;
++        let bindFlags = GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE;
++
++        button = this.addButton({ style_class: 'switch-monitor-widget',
++            labelText: PRIMARY_ONLY_LABEL_TEXT,
++            iconName: Me.path + PRIMARY_ONLY_FILE_PATH,
++            handler: this._createHandler(this._monitorManager.setSingleDisplay.bind(this._monitorManager, 0)) });
++
++        // display mirror
++        button = this.addButton({ style_class: 'switch-monitor-widget',
++            labelText: MIRROR_MODE_LABEL_TEXT,
++            iconName: Me.path + MIRROR_MODE_FILE_PATH,
++            handler: this._createHandler(this._monitorManager.setDisplayMirrored.bind(this._monitorManager)) });
++        this.bind_property('can-switch-config', button, 'reactive', bindFlags);
++        this.bind_property('can-switch-config', button, 'can_focus', bindFlags);
++
++        // display join
++        button = this.addButton({ style_class: 'switch-monitor-widget',
++            labelText: JOIN_MODE_LABEL_TEXT,
++            iconName: Me.path + JOIN_MODE_FILE_PATH,
++            handler: this._createHandler(this._monitorManager.setDisplayJoined.bind(this._monitorManager)) });
++        this.bind_property('can-switch-config', button, 'reactive', bindFlags);
++        this.bind_property('can-switch-config', button, 'can_focus', bindFlags);
++
++        button = this.addButton({ style_class: 'switch-monitor-widget',
++            labelText: SECONDARY_MODE_LABEL_TEXT,
++            iconName: Me.path + SECONDARY_ONLY_FILE_PATH,
++            handler: this._createHandler(this._monitorManager.setSingleDisplay.bind(this._monitorManager, 1)) });
++        this.bind_property('can-switch-config', button, 'reactive', bindFlags);
++        this.bind_property('can-switch-config', button, 'can_focus', bindFlags);
++    }
++
++    open(onPrimary) {
++        this._canSwitchConfig = this._monitorManager.canSwitchConfig();
++        this.notify('can-switch-config');
++        super.open(onPrimary);
++    }
++});
+diff --git a/extensions/tos-hotkey/utils.js b/extensions/tos-hotkey/utils.js
+new file mode 100644
+index 0000000..7ff9a9f
+--- /dev/null
++++ b/extensions/tos-hotkey/utils.js
+@@ -0,0 +1,85 @@
++const { Gio, GLib } = imports.gi;
++
++const MutterDisplayConfigIface = `
++<node>
++<interface name="org.gnome.Mutter.DisplayConfig">
++    <method name="GetResources">
++      <arg name="serial" direction="out" type="u" />
++      <arg name="crtcs" direction="out" type="a(uxiiiiiuaua{sv})" />
++      <arg name="outputs" direction="out" type="a(uxiausauaua{sv})" />
++      <arg name="modes" direction="out" type="a(uxuudu)" />
++      <arg name="max_screen_width" direction="out" type="i" />
++      <arg name="max_screen_height" direction="out" type="i" />
++    </method>
++    <method name="GetCurrentState">
++      <arg name="serial" direction="out" type="u" />
++      <arg name="monitors" direction="out" type="a((ssss)a(siiddada{sv})a{sv})" />
++      <arg name="logical_monitors" direction="out" type="a(iiduba(ssss)a{sv})" />
++      <arg name="properties" direction="out" type="a{sv}" />
++    </method>
++    <method name="ApplyMonitorsConfig">
++      <arg name="serial" direction="in" type="u" />
++      <arg name="method" direction="in" type="u" />
++      <arg name="logical_monitors" direction="in" type="a(iiduba(ssa{sv}))" />
++      <arg name="properties" direction="in" type="a{sv}" />
++    </method>
++</interface>
++</node>`;
++
++Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
++
++const MutterDisplayConfigProxyIface = Gio.DBusProxy.makeProxyWrapper(MutterDisplayConfigIface);
++
++var MutterDisplayConfigProxy = class { // eslint-disable-line no-unused-vars
++    constructor() {
++        this._proxy = new MutterDisplayConfigProxyIface(
++            Gio.DBus.session,
++            'org.gnome.Mutter.DisplayConfig',
++            '/org/gnome/Mutter/DisplayConfig',
++            (proxy, error) => {
++                if (error)
++                    log('error connecting to Mutter');
++
++            }
++        );
++
++        this._methodsInfo = {};
++
++        for (let info of this._proxy.g_interface_info.methods)
++            this._methodsInfo[info.name] = info;
++
++    }
++
++    async call(methodName, params = []) {
++        if (!this._methodsInfo[methodName])
++            return;
++
++        if (params.length !== this._methodsInfo[methodName].in_args.length)
++            return;
++
++
++        let result;
++        if (this._methodsInfo[methodName].in_args.length === 0) {
++            try {
++                result = await this._proxy.call(methodName, null, Gio.DBusCallFlags.NONE, -1, null);
++            } catch (e) {
++                throw new Error(e);
++            }
++            return result.deepUnpack();
++        }
++
++        let inTypeString = '(';
++        for (let arg of this._methodsInfo[methodName].in_args)
++            inTypeString += arg.signature;
++
++        inTypeString += ')';
++
++        params = new GLib.Variant(inTypeString, params);
++        try {
++            result = await this._proxy.call(methodName, params, Gio.DBusCallFlags.NONE, -1, null);
++        } catch (e) {
++            throw new Error(e);
++        }
++        return result.deepUnpack();
++    }
++};

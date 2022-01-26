@@ -1,0 +1,50 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 9 Apr 2021 15:29:16 +0900
+Subject: [bugfix] Search : Correct errors in korean typing
+
+- This is because focus of the search box disappears when entering text, and it is initialized in English.
+- Delete logic that focused on mainBox when typing text.
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 5b7517c..343c31d 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -124,12 +124,12 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+     _onSearchBoxKeyPress(searchBox, event) {
+         let symbol = event.get_key_symbol();
+         if (!searchBox.isEmpty() && searchBox.hasKeyFocus()) {
+-            if (symbol === Clutter.Up) {
++            if (symbol === Clutter.KEY_Up) {
+                 this.newSearch.highlightDefault(false);
+-                return Clutter.EVENT_PROPAGATE;
+-            } else if (symbol === Clutter.Down) {
++                return this._onMainBoxKeyPress(this.mainBox, event);
++            } else if (symbol === Clutter.KEY_Down) {
+                 this.newSearch.highlightDefault(false);
+-                return Clutter.EVENT_PROPAGATE;
++                return this._onMainBoxKeyPress(this.mainBox, event);
+             }
+         }
+         return Clutter.EVENT_PROPAGATE;
+@@ -138,7 +138,6 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+     _onSearchBoxKeyFocusIn(searchBox) {
+         if (!searchBox.isEmpty())
+             this.newSearch.highlightDefault(false);
+-
+     }
+ 
+     _onSearchBoxChanged(searchBox, searchString) {
+@@ -155,8 +154,6 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             this.newSearch.actor.show();
+             this.newSearch.setTerms([searchString]);
+             this.newSearch.highlightDefault(true);
+-
+-            this.mainBox.grab_key_focus();
+         }
+     }
+ 

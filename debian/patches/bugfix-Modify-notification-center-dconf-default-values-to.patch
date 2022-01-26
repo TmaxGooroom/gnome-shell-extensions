@@ -1,0 +1,41 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Wed, 28 Apr 2021 20:54:42 +0900
+Subject: [bugfix] Modify notification center dconf default values to be
+ applied.
+
+ - Modify notification center dconf default values to be applied.
+
+[IMS] N/A
+---
+ .../schemas/10_notification-center.gschema.override               | 1 +
+ extensions/notification-center/schemas/meson.build                | 8 ++++++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/extensions/notification-center/schemas/10_notification-center.gschema.override b/extensions/notification-center/schemas/10_notification-center.gschema.override
+index 353a89c..1c2b7df 100644
+--- a/extensions/notification-center/schemas/10_notification-center.gschema.override
++++ b/extensions/notification-center/schemas/10_notification-center.gschema.override
+@@ -8,3 +8,4 @@ new-notification = 'count'
+ show-label = true
+ show-media = 0
+ show-events = 0
++sections-order = ['notification']
+diff --git a/extensions/notification-center/schemas/meson.build b/extensions/notification-center/schemas/meson.build
+index ee9fc17..e3e6c49 100644
+--- a/extensions/notification-center/schemas/meson.build
++++ b/extensions/notification-center/schemas/meson.build
+@@ -2,6 +2,14 @@ schema_name = metadata_conf.get('gschemaname')  + '.gschema.xml'
+ 
+ r = run_command('glib-compile-schemas', meson.current_source_dir())
+ 
++install_data([
++  'gschemas.compiled',
++  schema_name,
++  '10_notification-center.gschema.override'
++  ],
++  install_dir : join_paths(extensiondir, uuid, schema_data_dir)
++)
++
+ install_data([
+   '10_notification-center.gschema.override'
+   ],

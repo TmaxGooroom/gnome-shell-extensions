@@ -1,0 +1,60 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 4 Nov 2021 16:27:51 +0900
+Subject: [feat] osk-hangul: remove 'layout-key-type' signal
+
+ - removed 'layout-key-type' signal and directly call
+   _onKeyboardGroupsChanged in adapter
+
+[IMS] N/A
+---
+ extensions/osk-hangul/adapter.js | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
+
+diff --git a/extensions/osk-hangul/adapter.js b/extensions/osk-hangul/adapter.js
+index 8ea1849..ce9488a 100644
+--- a/extensions/osk-hangul/adapter.js
++++ b/extensions/osk-hangul/adapter.js
+@@ -1,7 +1,5 @@
+ /* exported Adapter */
+ 
+-const Signals = imports.signals;
+-
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const KeyboardWrapper = Me.imports.keyboardWrapper;
+@@ -29,16 +27,13 @@ var Adapter = class Adapter {
+         this._currentWrapper = null;
+     }
+ 
+-    get layoutKeyType() {
+-        return this._layoutKeyType;
+-    }
+-
+-    set layoutKeyType(type) {
+-        if (this.layoutKeyType === type)
++    _setLayoutKeyType(type) {
++        if (this._layoutKeyType === type)
+             return;
+ 
+         this._layoutKeyType = type;
+-        this.emit('layout-key-type');
++        const keyboard = imports.ui.main.keyboard._keyboard;
++        keyboard._onKeyboardGroupsChanged();
+     }
+ 
+     setInputMethod(inputMethod) {
+@@ -49,7 +44,7 @@ var Adapter = class Adapter {
+             this._currentInputMethod = inputMethod;
+             this._currentWrapper = newWrapper.wrapper;
+             this._currentWrapper.wrapAll();
+-            this.layoutKeyType = newWrapper.type;
++            this._setLayoutKeyType(newWrapper.type);
+         }
+     }
+ 
+@@ -58,5 +53,3 @@ var Adapter = class Adapter {
+             this._currentWrapper.restoreAll();
+     }
+ };
+-
+-Signals.addSignalMethods(Adapter.prototype);

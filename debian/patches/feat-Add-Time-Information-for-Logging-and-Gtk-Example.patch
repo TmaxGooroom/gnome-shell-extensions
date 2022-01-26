@@ -1,0 +1,112 @@
+From: junho_lee3 <junho_lee3>
+Date: Fri, 23 Apr 2021 14:43:52 +0900
+Subject: [feat] Add Time Information for Logging and Gtk Example
+
+ - Add time information in front of the logs
+ - Add Gtk example for testing
+
+[IMS] N/A
+---
+ logging/example/gtk.js | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ logging/logging.js     | 15 +++++++++++-
+ 2 files changed, 76 insertions(+), 1 deletion(-)
+ create mode 100644 logging/example/gtk.js
+
+diff --git a/logging/example/gtk.js b/logging/example/gtk.js
+new file mode 100644
+index 0000000..e9cc6e4
+--- /dev/null
++++ b/logging/example/gtk.js
+@@ -0,0 +1,62 @@
++imports.gi.versions.Gtk = '3.0';
++const Gtk = imports.gi.Gtk;
++
++imports.searchPath.unshift('..');
++const Logging = imports.logging;
++
++function getCurrentPath() {
++    try {
++        throw new Error();
++    } catch (e) {
++        let currentFileInfo = e.stack.split('\n')[0];
++        let filePath = currentFileInfo.split(':')[0].split('@')[1];
++        if (!filePath.includes('/'))
++            return '.';
++
++        return filePath.substr(0, filePath.lastIndexOf('/'));
++    }
++}
++
++Gtk.init(null);
++
++let debug = new Logging.Debugger(`${getCurrentPath()}/logging.json`);
++
++let win = new Gtk.Window({
++    type: Gtk.WindowType.TOPLEVEL,
++    title: 'A default title',
++    default_width: 300,
++    default_height: 250,
++    window_position: Gtk.WindowPosition.CENTER,
++});
++
++win.title = 'Hello World!';
++
++function onDeleteEvent() {
++    debug.printBacktrace('ALL', 'INFO');
++    return false;
++}
++
++win.connect('delete-event', onDeleteEvent);
++
++win.connect('destroy', () => {
++    debug.logging('ALL', 'INFO', 'Destory message is entered');
++    Gtk.main_quit();
++});
++
++// Create a button to close the window
++let button = new Gtk.Button({
++    label: 'Logging test',
++    visible: true,
++    valign: Gtk.Align.CENTER,
++    halign: Gtk.Align.CENTER,
++});
++
++button.connect('clicked', () => {
++    debug.logging('ALL', 'INFO', 'Button is clicked');
++});
++
++win.add(button);
++
++win.show();
++
++Gtk.main();
+diff --git a/logging/logging.js b/logging/logging.js
+index 3c2d485..ce236e2 100644
+--- a/logging/logging.js
++++ b/logging/logging.js
+@@ -125,11 +125,24 @@ var Debugger = class {
+         return true;
+     }
+ 
++    _getCurrentDateTime() {
++        let date = new Date();
++        let dateTimeStr = date.toLocaleDateString();
++        dateTimeStr += date.toLocaleTimeString('en-US', {
++            hour12: false,
++            hour: 'numeric',
++            minute: 'numeric',
++        });
++        dateTimeStr = `${dateTimeStr}:${date.getSeconds()}`;
++        return dateTimeStr.replace(/\s+/g, '');
++
++    }
++
+     _recordLogMessage(msg, logType) {
+         let logFile = Gio.File.new_for_path(this._output);
+         let outputStream = logFile.append_to(0, null);
+ 
+-        msg = `[${this._channel}][${this._levelToString(this._level)}][${logType}] ${msg}\n`;
++        msg = `[${this._channel}][${this._levelToString(this._level)}][${logType}][${this._getCurrentDateTime()}] ${msg}\n`;
+ 
+         let byteStream = ByteArray.fromString(msg);
+         outputStream.write(byteStream, null);

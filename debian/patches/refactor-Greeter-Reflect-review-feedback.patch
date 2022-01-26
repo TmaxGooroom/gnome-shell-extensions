@@ -1,0 +1,721 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 23 Aug 2021 11:39:24 +0900
+Subject: [refactor] Greeter: Reflect review feedback
+
+- reflect review feedback
+
+[IMS] N/A
+---
+ extensions/greeter/authPrompt.js   |  25 ++---
+ extensions/greeter/constants.js    |  16 ++-
+ extensions/greeter/loginDialog.js  |  33 +++---
+ extensions/greeter/meson.build     |   2 +-
+ extensions/greeter/userProfile.js  | 215 +++++++++++++++++++++++++++++++++++
+ extensions/greeter/userVerifier.js |   4 +-
+ extensions/greeter/userWidget.js   | 224 -------------------------------------
+ 7 files changed, 256 insertions(+), 263 deletions(-)
+ create mode 100644 extensions/greeter/userProfile.js
+ delete mode 100644 extensions/greeter/userWidget.js
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index 3cd5397..40a12a8 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -1,8 +1,5 @@
+-// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+-/* exported LoginDialog */
++/* exported AuthPrompt */
+ /*
+- * Copyright 2011 Red Hat, Inc
+- *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation; either version 2, or (at your option)
+@@ -22,14 +19,14 @@ const { Clutter, Gio, GObject, St } = imports.gi;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
+ const GdmUtil = imports.gdm.util;
+ 
+-const UserWidget = Me.imports.userWidget;
++const UserProfile = Me.imports.userProfile;
+ const UserVerifier = Me.imports.userVerifier;
+ const Constants = Me.imports.constants;
+ 
+ const Gettext = imports.gettext;
+ const _ = Gettext.gettext;
+ 
+-var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.AuthPrompt { // eslint-disable-line no-unused-vars
++var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.AuthPrompt {
+     _init(gdmClient, mode) {
+         super._init(gdmClient, mode);
+ 
+@@ -41,8 +38,8 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+ 
+         this.cancelButton.hide();
+ 
+-        this._userWidget = new UserWidget.UserWidget(null);
+-        this._userWell.set_child(this._userWidget);
++        this._userProfile = new UserProfile.UserProfile(null);
++        this._userWell.set_child(this._userProfile);
+ 
+         let reauthenticationOnly;
+         if (this._mode === GnomeAuthPrompt.AuthPromptMode.UNLOCK_ONLY)
+@@ -77,7 +74,7 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+ 
+         this.cancelButton.remove_style_class_name('cancel-button');
+         this.cancelButton.add_style_class_name('cancel');
+-        this.cancelButton.child.icon_size = 25;
++        this.cancelButton.child.icon_size = Constants.CANCEL_BTN_ICON_SIZE;
+         this.cancelButton.child.gicon = Gio.icon_new_for_string(Constants.CANCEL_BTN_ICON);
+     }
+ 
+@@ -111,7 +108,7 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+             iconName = Constants.PASSWD_HIDE_ICON;
+ 
+         secondary.gicon = Gio.icon_new_for_string(iconName);
+-        secondary.icon_size = 30;
++        secondary.icon_size = Constants.PASSWD_EYE_ICON_SIZE;
+     }
+ 
+     _onAskQuestion(verifier, serviceName, question, secret) {
+@@ -133,17 +130,17 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+     }
+ 
+     setUser(user) {
+-        this._userWidget.changeUser(user);
++        this._userProfile.changeUser(user);
+         if (!user)
+             this._updateEntry(false);
+     }
+ 
+     setUserList(userList) {
+-        this._userWidget.setUserList(userList);
++        this._userProfile.setUserList(userList);
+     }
+ 
+     hideUserListMenu() {
+-        if (this._userWidget._userListMenu.isOpen)
+-            this._userWidget._userListMenu.toggle();
++        if (this._userProfile._userListMenu.isOpen)
++            this._userProfile._userListMenu.toggle();
+     }
+ });
+diff --git a/extensions/greeter/constants.js b/extensions/greeter/constants.js
+index 3412427..4bfdafb 100644
+--- a/extensions/greeter/constants.js
++++ b/extensions/greeter/constants.js
+@@ -1,7 +1,13 @@
++/* exported AVATAR_ICON_SIZE PASSWD_EYE_ICON_SIZE CANCEL_BTN_ICON_SIZE USER_ITEM_ICON_SIZE USER_DEFAULT_ICON MENU_ARROW_DOWN PASSWD_HIDE_ICON PASSWD_SHOW_ICON CANCEL_BTN_ICON */
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const USER_DEFAULT_ICON = `${Me.path}/media/tos_login_ic_user_01.svg`; // eslint-disable-line no-unused-vars
+-const MENU_ARROW_DOWN = `${Me.path}/media/tos_login_ic_line_arrow_down.svg`; // eslint-disable-line no-unused-vars
+-const PASSWD_HIDE_ICON = `${Me.path}/media/tos_login_ic_hide.svg`; // eslint-disable-line no-unused-vars
+-const PASSWD_SHOW_ICON = `${Me.path}/media/tos_login_ic_show.svg`; // eslint-disable-line no-unused-vars
+-const CANCEL_BTN_ICON = `${Me.path}/media/tos_login_ic_line_arrow_backward.svg`; // eslint-disable-line no-unused-vars
++const AVATAR_ICON_SIZE = 160;
++const PASSWD_EYE_ICON_SIZE = 30;
++const CANCEL_BTN_ICON_SIZE = 25;
++const USER_ITEM_ICON_SIZE = 42;
++
++const USER_DEFAULT_ICON = `${Me.path}/media/tos_login_ic_user_01.svg`;
++const MENU_ARROW_DOWN = `${Me.path}/media/tos_login_ic_line_arrow_down.svg`;
++const PASSWD_HIDE_ICON = `${Me.path}/media/tos_login_ic_hide.svg`;
++const PASSWD_SHOW_ICON = `${Me.path}/media/tos_login_ic_show.svg`;
++const CANCEL_BTN_ICON = `${Me.path}/media/tos_login_ic_line_arrow_backward.svg`;
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 1cbdfa2..0b43d86 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -1,8 +1,5 @@
+-// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+ /* exported LoginDialog */
+ /*
+- * Copyright 2011 Red Hat, Inc
+- *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation; either version 2, or (at your option)
+@@ -73,7 +70,7 @@ var UserListItem = GObject.registerClass(class UserListItem extends GnomeLoginDi
+         let avatar = this._userWidget._avatar;
+         avatar.remove_style_class_name('user-icon');
+         avatar.add_style_class_name('user-avatar');
+-        avatar._iconSize = 42;
++        avatar._iconSize = Constants.USER_ITEM_ICON_SIZE;
+         avatar.update();
+ 
+         let label = this._userWidget._label._realNameLabel;
+@@ -156,7 +153,7 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this._userSelectionBox.remove_child(this._notListedButton);
+         this._userSelectionBox.visible = false;
+ 
+-        this._addCustomizedAuthPrompt();
++        this._replaceWithCustomizedAuthPrompt();
+ 
+         this._userList.destroy();
+         this._userList = new UserList();
+@@ -166,13 +163,12 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+ 
+         this._user = null;
+ 
+-        // notListedButton
+         this._customizeNotListedButton();
+         this._authPrompt.add_child(this._notListedButton);
+         this._notListedButton.hide();
+     }
+ 
+-    _addCustomizedAuthPrompt() {
++    _replaceWithCustomizedAuthPrompt() {
+         this.remove_child(this._authPrompt);
+ 
+         this._authPrompt = new AuthPrompt.AuthPrompt(this._gdmClient, GnomeAuthPrompt.AuthPromptMode.UNLOCK_OR_LOG_IN);
+@@ -262,12 +258,11 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         let lastLoginUserItem = items[keys[0]];
+         let lastLoginUser = lastLoginUserItem.user;
+ 
+-        this._user = lastLoginUser;
+         this._changeUser(lastLoginUser);
+     }
+ 
+     _changeUser(newUser) {
+-        this._authPrompt.setUser(newUser);
++        this._user = newUser;
+ 
+         let batch = new Batch.ConcurrentBatch(this,
+             [this._beginVerificationForUser(newUser)]);
+@@ -275,6 +270,8 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     _beginVerificationForUser(user) {
++        this._authPrompt.setUser(user);
++
+         let userName = user.get_user_name();
+         let hold = new Batch.Hold();
+ 
+@@ -288,9 +285,8 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         if (activatedItem.user === this._user)
+             return;
+ 
+-        this._user = activatedItem.user;
+         this._authPrompt.cancel();
+-        this._changeUser(this._user);
++        this._changeUser(activatedItem.user);
+     }
+ 
+     _onReset(authPrompt, beginRequest) {
+@@ -323,6 +319,7 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     _hideUserListAskForUsernameAndBeginVerification() {
++        // NOTE(210824, sohee): If authentication channel is established with UserVerifier, it must be cancelled.
+         if (this._authPrompt.verificationStatus === GnomeAuthPrompt.AuthPromptStatus.VERIFYING ||
+             this._authPrompt.verificationStatus === GnomeAuthPrompt.AuthPromptStatus.VERIFICATION_FAILED)
+             this._authPrompt.cancel();
+@@ -354,7 +351,11 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+                 this._authPrompt.disconnect(this._nextSignalId);
+                 this._nextSignalId = 0;
+                 this._authPrompt.updateSensitivity(false);
+-                this._authPrompt._userWidget.setOnlyUserName(answer);
++
++                // NOTE(210823, sohee): When userWidget is set to null,
++                // the account name must be shown to userWidget when account name is entered.
++                this._authPrompt._userProfile.setOnlyUserName(answer);
++
+                 this._authPrompt.clear();
+                 this._authPrompt.begin({ userName: answer });
+                 this._updateCancelButton(true);
+@@ -365,13 +366,11 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     _loginScreenSessionActivated() {
+-        if (!this._user) {
+-            this._authPrompt.cancel();
+-            return;
+-        }
++        let isUserExist = this._user !== null;
+ 
+         this._authPrompt.cancel();
+-        this._changeUser(this._user);
++        if (isUserExist)
++            this._changeUser(this._user);
+     }
+ 
+     _onTimedLoginRequested() {
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+index 546504b..bd2c3ef 100644
+--- a/extensions/greeter/meson.build
++++ b/extensions/greeter/meson.build
+@@ -7,7 +7,7 @@ extension_data += configure_file(
+ extension_sources += files(
+     'loginDialog.js',
+     'authPrompt.js',
+-    'userWidget.js',
++    'userProfile.js',
+     'userVerifier.js',
+     'constants.js'
+ )
+diff --git a/extensions/greeter/userProfile.js b/extensions/greeter/userProfile.js
+new file mode 100644
+index 0000000..5890d96
+--- /dev/null
++++ b/extensions/greeter/userProfile.js
+@@ -0,0 +1,215 @@
++/* exported UserProfile */
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const { Clutter, Gio, GLib, GObject, St } = imports.gi;
++const GnomeUserWidget = imports.ui.userWidget;
++const Main = imports.ui.main;
++const PopupMenu = imports.ui.popupMenu;
++
++const Constants = Me.imports.constants;
++
++var Avatar = GObject.registerClass(class Avatar extends GnomeUserWidget.Avatar {
++    _init(user, params) {
++        super._init(user, params);
++
++        this.remove_style_class_name('user-icon');
++        this.add_style_class_name('user-avatar');
++    }
++
++    changeUser(user) {
++        this._user = user;
++    }
++
++    update() {
++        let iconFile = null;
++        if (this._user) {
++            iconFile = this._user.get_icon_file();
++            if (iconFile && !GLib.file_test(iconFile, GLib.FileTest.EXISTS))
++                iconFile = null;
++        }
++
++        let { scaleFactor } = St.ThemeContext.get_for_stage(global.stage);
++        this._iconSize = Constants.AVATAR_ICON_SIZE;
++        this.set_size(this._iconSize * scaleFactor, this._iconSize * scaleFactor);
++
++        if (iconFile) {
++            this.child = null;
++            this.style = `
++                background-image: url("${iconFile}");
++                background-size: cover;`;
++        } else {
++            this.style = null;
++            this.child = new St.Icon({
++                gicon: Gio.icon_new_for_string(Constants.USER_DEFAULT_ICON),
++                icon_size: this._iconSize,
++            });
++        }
++    }
++});
++
++var UserLabel = GObject.registerClass(
++class UserLabel extends St.Label {
++    _init(user) {
++        super._init({
++            x_expand: true,
++            x_align: Clutter.ActorAlign.FILL,
++            y_align: Clutter.ActorAlign.CENTER,
++            style_class: 'label-button-label-list',
++        });
++
++        this._user = user;
++    }
++
++    update() {
++        if (this._user && this._user.is_loaded)
++            this.text = this._user.get_real_name();
++        else
++            this.text = '';
++    }
++
++    changeUser(user) {
++        this._user = user;
++    }
++});
++
++// A widget showing the user avatar and name
++var UserProfile = GObject.registerClass(
++class UserProfile extends St.BoxLayout {
++    _init(user) {
++        // If user is null, that implies a username-based login authorization.
++        this._user = user;
++
++        let vertical = true;
++        let xAlign = Clutter.ActorAlign.CENTER;
++        let styleClass = 'custom-user-widget vertical';
++        super._init({ styleClass, vertical, xAlign });
++
++        this.connect('destroy', this._onDestroy.bind(this));
++
++        this._userLoadedId = 0;
++        this._userChangedId = 0;
++
++        this._createAvatar(user);
++        this._createLabelButton(user);
++        this._createUserListMenu();
++
++        this._labelButton.connect('clicked', this._onLabelButtonClicked.bind(this));
++
++        this._updateUser();
++    }
++
++    _onLabelButtonClicked() {
++        if (this._user === null)
++            return;
++
++        if (this._userList && this._userList.numItems() === 1)
++            return;
++
++        this._userListMenu.toggle();
++    }
++
++    _createAvatar(user) {
++        this._avatar = new Avatar(user);
++        this._avatar.x_align = Clutter.ActorAlign.CENTER;
++        this.add_child(this._avatar);
++    }
++
++    _createLabelButton(user) {
++        this._labelButtonBox = new St.BoxLayout({
++            x_expand: true,
++            y_expand: true,
++            vertical: false,
++            x_align: Clutter.ActorAlign.FILL,
++            style_class: 'label-button-box-list',
++        });
++
++        this._label = new UserLabel(user);
++        this._labelButtonBox.add_actor(this._label);
++
++        this._icon = new St.Icon({
++            gicon: Gio.icon_new_for_string(Constants.MENU_ARROW_DOWN),
++            icon_size: 30,
++            x_expand: true,
++            x_align: Clutter.ActorAlign.END,
++        });
++        this._labelButtonBox.add_actor(this._icon);
++
++        this._labelButton = new St.Button({ child: this._labelButtonBox });
++        this.add_child(this._labelButton);
++    }
++
++    _createUserListMenu() {
++        this._userListMenu = new PopupMenu.PopupMenu(this._labelButton, 0.5, St.Side.TOP);
++        this._userListMenu.actor.style_class = 'user-list-menu-actor';
++        this._userListMenu.box.style_class = 'user-list-menu-box';
++        this._userListMenuSection = new PopupMenu.PopupMenuSection();
++        this._userListMenu.addMenuItem(this._userListMenuSection);
++        this._userListMenu.actor.hide();
++
++        this._menuManager = new PopupMenu.PopupMenuManager(this);
++        this._menuManager.addMenu(this._userListMenu);
++        Main.uiGroup.add_actor(this._userListMenu.actor);
++    }
++
++    setUserList(userList) {
++        this._userList = userList;
++        this._userListMenuSection.actor.add_actor(userList);
++    }
++
++    _onDestroy() {
++        if (this._userLoadedId !== 0) {
++            this._user.disconnect(this._userLoadedId);
++            this._userLoadedId = 0;
++        }
++
++        if (this._userChangedId !== 0) {
++            this._user.disconnect(this._userChangedId);
++            this._userChangedId = 0;
++        }
++    }
++
++    _updateUser() {
++        this._avatar.update();
++        this._label.update();
++    }
++
++    updateLabelStyleAndIconVisibility() {
++        let isListType = false;
++        if (this._userList && this._userList.numItems() > 1)
++            isListType = true;
++
++        if (!this._user)
++            isListType = false;
++
++        if (isListType) {
++            this._labelButtonBox.style_class = 'label-button-box-list';
++            this._label.style_class = 'label-button-label-list';
++            this._icon.visible = true;
++        } else {
++            this._labelButtonBox.style_class = 'label-button-box';
++            this._label.style_class = 'label-button-label';
++            this._icon.visible = false;
++        }
++    }
++
++    changeUser(user) {
++        this._onDestroy();
++
++        if (user) {
++            this._userLoadedId = user.connect('notify::is-loaded', this._updateUser.bind(this));
++            this._userChangedId = user.connect('changed', this._updateUser.bind(this));
++        }
++
++        this._user = user;
++        this._avatar.changeUser(user);
++        this._label.changeUser(user);
++
++        this._updateUser();
++
++        this.updateLabelStyleAndIconVisibility();
++    }
++
++    setOnlyUserName(name) {
++        this._label.text = name;
++    }
++});
+diff --git a/extensions/greeter/userVerifier.js b/extensions/greeter/userVerifier.js
+index 6a51cfc..86ac475 100644
+--- a/extensions/greeter/userVerifier.js
++++ b/extensions/greeter/userVerifier.js
+@@ -1,8 +1,8 @@
+-// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++/* exported ShellUserVerifier */
+ 
+ const GdmUtil = imports.gdm.util;
+ 
+-var ShellUserVerifier = class ShellUserVerifier extends GdmUtil.ShellUserVerifier { // eslint-disable-line no-unused-vars
++var ShellUserVerifier = class ShellUserVerifier extends GdmUtil.ShellUserVerifier {
+     _verificationFailed(/* retry */) {
+         let canRetry = true;
+         if (!this.hasPendingMessages) {
+diff --git a/extensions/greeter/userWidget.js b/extensions/greeter/userWidget.js
+deleted file mode 100644
+index 1ee50b9..0000000
+--- a/extensions/greeter/userWidget.js
++++ /dev/null
+@@ -1,224 +0,0 @@
+-// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+-//
+-// A widget showing the user avatar and name
+-/* exported UserWidget */
+-const Me = imports.misc.extensionUtils.getCurrentExtension();
+-
+-const { Clutter, Gio, GLib, GObject, St } = imports.gi;
+-const GnomeUserWidget = imports.ui.userWidget;
+-const Main = imports.ui.main;
+-const PopupMenu = imports.ui.popupMenu;
+-
+-const Constants = Me.imports.constants;
+-
+-const AVATAR_ICON_SIZE = 160;
+-
+-var Avatar = GObject.registerClass(class Avatar extends GnomeUserWidget.Avatar {
+-    _init(user, params) {
+-        super._init(user, params);
+-
+-        this.remove_style_class_name('user-icon');
+-        this.add_style_class_name('user-avatar');
+-    }
+-
+-    changeUser(user) {
+-        this._user = user;
+-    }
+-
+-    update() {
+-        let iconFile = null;
+-        if (this._user) {
+-            iconFile = this._user.get_icon_file();
+-            if (iconFile && !GLib.file_test(iconFile, GLib.FileTest.EXISTS))
+-                iconFile = null;
+-        }
+-
+-        let { scaleFactor } = St.ThemeContext.get_for_stage(global.stage);
+-        this._iconSize = AVATAR_ICON_SIZE;
+-        this.set_size(this._iconSize * scaleFactor, this._iconSize * scaleFactor);
+-
+-        if (iconFile) {
+-            this.child = null;
+-            this.style = `
+-                background-image: url("${iconFile}");
+-                background-size: cover;`;
+-        } else {
+-            this.style = null;
+-            this.child = new St.Icon({
+-                gicon: Gio.icon_new_for_string(Constants.USER_DEFAULT_ICON),
+-                icon_size: this._iconSize,
+-            });
+-        }
+-    }
+-});
+-
+-var UserWidgetLabel = GObject.registerClass(
+-class UserWidgetLabel extends St.Label {
+-    _init(user) {
+-        super._init({
+-            x_expand: true,
+-            x_align: Clutter.ActorAlign.FILL,
+-            y_align: Clutter.ActorAlign.CENTER,
+-            style_class: 'label-button-label-list',
+-        });
+-
+-        this._user = user;
+-    }
+-
+-    update() {
+-        if (this._user && this._user.is_loaded)
+-            this.text = this._user.get_real_name();
+-        else
+-            this.text = '';
+-    }
+-
+-    changeUser(user) {
+-        this._user = user;
+-
+-
+-    }
+-});
+-
+-var UserWidget = GObject.registerClass(
+-class UserWidget extends St.BoxLayout {
+-    _init(user) {
+-        // If user is null, that implies a username-based login authorization.
+-        this._user = user;
+-
+-        let vertical = true;
+-        let xAlign = Clutter.ActorAlign.CENTER;
+-        let styleClass = 'custom-user-widget vertical';
+-        super._init({ styleClass, vertical, xAlign });
+-
+-        this.connect('destroy', this._onDestroy.bind(this));
+-
+-        this._userLoadedId = 0;
+-        this._userChangedId = 0;
+-
+-        this._createAvatar(user);
+-        this._createLabelButton(user);
+-        this._createUserListMenu();
+-
+-        this._labelButton.connect('clicked', this._onLabelButtonClicked.bind(this));
+-
+-        this._updateUser();
+-    }
+-
+-    _onLabelButtonClicked() {
+-        if (this._user === null)
+-            return;
+-
+-        if (this._userList && this._userList.numItems() === 1)
+-            return;
+-
+-        this._userListMenu.toggle();
+-    }
+-
+-    _createAvatar(user) {
+-        this._avatar = new Avatar(user);
+-        this._avatar.x_align = Clutter.ActorAlign.CENTER;
+-        this.add_child(this._avatar);
+-    }
+-
+-    _createLabelButton(user) {
+-        // labelButtonBox
+-        this._labelButtonBox = new St.BoxLayout({
+-            x_expand: true,
+-            y_expand: true,
+-            vertical: false,
+-            x_align: Clutter.ActorAlign.FILL,
+-            style_class: 'label-button-box-list',
+-        });
+-
+-        // label and icon
+-        this._label = new UserWidgetLabel(user);
+-        this._labelButtonBox.add_actor(this._label);
+-
+-        this._icon = new St.Icon({
+-            gicon: Gio.icon_new_for_string(Constants.MENU_ARROW_DOWN),
+-            icon_size: 30,
+-            x_expand: true,
+-            x_align: Clutter.ActorAlign.END,
+-        });
+-        this._labelButtonBox.add_actor(this._icon);
+-
+-        // labelButton
+-        this._labelButton = new St.Button({ child: this._labelButtonBox });
+-        this.add_child(this._labelButton);
+-    }
+-
+-    _createUserListMenu() {
+-        this._userListMenu = new PopupMenu.PopupMenu(this._labelButton, 0.5, St.Side.TOP);
+-        this._userListMenu.actor.style_class = 'user-list-menu-actor';
+-        this._userListMenu.box.style_class = 'user-list-menu-box';
+-        this._userListMenuSection = new PopupMenu.PopupMenuSection();
+-        this._userListMenu.addMenuItem(this._userListMenuSection);
+-        this._userListMenu.actor.hide();
+-
+-        this.subMenuManager = new PopupMenu.PopupMenuManager(this);
+-        this.subMenuManager.addMenu(this._userListMenu);
+-        Main.uiGroup.add_actor(this._userListMenu.actor);
+-    }
+-
+-    setUserList(userList) {
+-        this._userList = userList;
+-        this._userListMenuSection.actor.add_actor(userList);
+-    }
+-
+-    _onDestroy() {
+-        if (this._userLoadedId !== 0) {
+-            this._user.disconnect(this._userLoadedId);
+-            this._userLoadedId = 0;
+-        }
+-
+-        if (this._userChangedId !== 0) {
+-            this._user.disconnect(this._userChangedId);
+-            this._userChangedId = 0;
+-        }
+-    }
+-
+-    _updateUser() {
+-        this._avatar.update();
+-        this._label.update();
+-    }
+-
+-    updateLabelStyleAndIconVisibility() {
+-        let isListType = false;
+-        if (this._userList && this._userList.numItems() > 1)
+-            isListType = true;
+-
+-        if (!this._user)
+-            isListType = false;
+-
+-        if (isListType) {
+-            this._labelButtonBox.style_class = 'label-button-box-list';
+-            this._label.style_class = 'label-button-label-list';
+-            this._icon.visible = true;
+-        } else {
+-            this._labelButtonBox.style_class = 'label-button-box';
+-            this._label.style_class = 'label-button-label';
+-            this._icon.visible = false;
+-        }
+-    }
+-
+-    changeUser(user) {
+-        this._onDestroy();
+-
+-        if (user) {
+-            this._userLoadedId = user.connect('notify::is-loaded', this._updateUser.bind(this));
+-            this._userChangedId = user.connect('changed', this._updateUser.bind(this));
+-        }
+-
+-        this._user = user;
+-        this._avatar.changeUser(user);
+-        this._label.changeUser(user);
+-
+-        this._updateUser();
+-
+-        this.updateLabelStyleAndIconVisibility();
+-    }
+-
+-    setOnlyUserName(name) {
+-        this._label.text = name;
+-    }
+-});

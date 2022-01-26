@@ -1,0 +1,29 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 25 May 2021 13:26:11 +0900
+Subject: [bugfix] Changed arcmenu translation
+
+- Changed arcmenu korean translation 'add to/remove from favorites' for consistency with dash to panel
+
+[IMS] 261666
+---
+ extensions/arc-menu/po/ko_KR.po | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/arc-menu/po/ko_KR.po b/extensions/arc-menu/po/ko_KR.po
+index 5adb619..bb639f4 100644
+--- a/extensions/arc-menu/po/ko_KR.po
++++ b/extensions/arc-menu/po/ko_KR.po
+@@ -107,11 +107,11 @@ msgstr "바탕화면에 바로가기 생성"
+ 
+ #: menuWidgets.js:262
+ msgid "Remove from Favorites"
+-msgstr "작업 표시줄에서 제거"
++msgstr "Dock 에서 제거"
+ 
+ #: menuWidgets.js:268
+ msgid "Add to Favorites"
+-msgstr "작업 표시줄에 추가"
++msgstr "Dock 에 추가"
+ 
+ #: menuWidgets.js:285 menuWidgets.js:332
+ msgid "Unpin from ArcMenu"

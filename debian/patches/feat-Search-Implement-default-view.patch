@@ -1,0 +1,456 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 14 Apr 2021 17:45:48 +0900
+Subject: [feat] Search : Implement default view
+
+- add frequent apps (from shell app usage)
+- add recent files (from gtk recent manager)
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js   |  49 ++++++++-
+ extensions/search/menuButton.js       |   4 +-
+ extensions/search/menuWidgets.js      | 182 ++++++++++++++++++++++++++++++++++
+ extensions/search/searchMenuLayout.js |  77 +++++++++++---
+ extensions/search/stylesheet.css      |  36 +++++++
+ 5 files changed, 328 insertions(+), 20 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 992d281..2aa55d5 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -23,7 +23,7 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Clutter, St } = imports.gi;
++const { Clutter, St, Gtk, GLib, Gio } = imports.gi;
+ const ArcSearch = Me.imports.search;
+ const MW = Me.imports.menuWidgets;
+ const Utils =  Me.imports.utils;
+@@ -61,13 +61,12 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         this.detailScrollBox.hide();
+ 
+         // refresh (clear an existing items and replace it with a new one)
++        this._clearActorsFromBox(this.frequentAppItemsBox);
+         this._clearActorsFromBox(this.frequentAppsBox);
++        this._clearActorsFromBox(this.recentFileItemsBox);
+         this._clearActorsFromBox(this.recentFilesBox);
+ 
+-        let recentFilesScrollBoxAdj = this.recentFilesScrollBox.get_vscroll_bar().get_adjustment();
+-        recentFilesScrollBoxAdj.set_value(0);
+-
+-        this.createDefaultLabel();
++        this.createDefaultView();
+         this.defaultBox.show();
+     }
+ 
+@@ -306,4 +305,44 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         let endPanValue = adjustment.value + velocity * 2;
+         adjustment.value = endPanValue;
+     }
++
++    createRecentFileItem(menuItemArray) {
++        let placeInfo, placeMenuItem;
++        let path = menuItemArray[2];
++        placeInfo = new MW.PlaceInfo(
++            Gio.File.new_for_path(path), menuItemArray[0], menuItemArray[1]);
++        placeMenuItem = new MW.PlaceMenuItem(this, placeInfo);
++        placeMenuItem.y_align = Clutter.ActorAlign.START;
++
++        return placeMenuItem;
++    }
++
++    _loadRecentFiles() {
++        if (!this.recentManager)
++            this.recentManager = new Gtk.RecentManager();
++
++        this._recentFiles = this.recentManager.get_items();
++
++        if (!this._recentFilesChangedID) {
++            this._recentFilesChangedID = this.recentManager.connect('changed', () => {
++                this.needsReload = true;
++            });
++        }
++    }
++
++    displayRecentFiles() {
++        const homeRegExp = new RegExp(`^(${GLib.get_home_dir()})`);
++        for (let i = 0; i < 6; i++) {
++            if (i > this._recentFiles.length - 1)
++                break;
++
++            let file = Gio.File.new_for_uri(this._recentFiles[i].get_uri()).get_path();
++            let name = this._recentFiles[i].get_display_name();
++            let icon = Gio.content_type_get_symbolic_icon(this._recentFiles[i].get_mime_type()).to_string();
++            let recentFileItem = this.createRecentFileItem([name, icon, file]);
++            recentFileItem.description = this._recentFiles[i].get_uri_display().replace(homeRegExp, '~');
++            recentFileItem.fileUri = this._recentFiles[i].get_uri();
++            this.recentFileItemsBox.add_actor(recentFileItem);
++        }
++    }
+ };
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index 5d7b125..7b8c2da 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -142,8 +142,8 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+         this.searchMenu.actor.style_class = 'popup-menu-boxpointer';
+         this.searchMenu.actor.add_style_class_name('popup-menu');
+ 
+-        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px;';
+-        this.searchMenu.box.style = 'margin:0px;';
++        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 15px;';
++        this.searchMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)
+             this.MenuLayout.updateStyle();
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index b4c456e..df643e4 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -998,3 +998,185 @@ var SearchBox = class ArcMenuSearchBox {
+     }
+ };
+ Signals.addSignalMethods(SearchBox.prototype);
++
++var FrequentAppItem = GObject.registerClass( // eslint-disable-line no-unused-vars
++ class SearchMenuFrequentAppItem extends SearchMenuPopupBaseMenuItem {
++     _init(menuLayout, app) {
++         super._init(menuLayout);
++         this._menuLayout = menuLayout;
++         this._app = app;
++
++         if (this._app) {
++             let appIcon = this._app.create_icon_texture(55);
++             if (appIcon instanceof St.Icon) {
++                 this._iconString = appIcon.gicon ? appIcon.gicon.to_string() : appIcon.fallback_icon_name;
++                 if (!this._iconString)
++                     this._iconString = '';
++             }
++         }
++
++         this.actor.style = 'width: 80px; height: 100px; text-align: center; padding: 0px; spacing: 0px;';
++         this.actor.style_class = null;
++         this.box.style = 'width: 80px; padding: 0px; margin: 0px; spacing: 6px; font-size: 14px;';
++
++         this._icon = new St.Icon({
++             style_class: 'frequent-app-item',
++             track_hover: true,
++             reactive: true,
++             gicon: Gio.icon_new_for_string(this._iconString),
++             icon_size: 55,
++         });
++         this.box.add_child(this._icon);
++
++         this.label = new St.Label({
++             text: app.get_name(),
++             y_expand: true,
++             y_align: Clutter.ActorAlign.START,
++         });
++         this.label.style = 'color:rgb(0, 0,0); width: 100px; height: 40px;';
++         this.box.add_child(this.label);
++
++         this.tooltipLocation = Constants.TooltipLocation.BOTTOM_CENTERED;
++         this.label.x_align = Clutter.ActorAlign.CENTER;
++         this.label.y_align = Clutter.ActorAlign.CENTER;
++         this.label.y_expand = true;
++         this._icon.y_align = Clutter.ActorAlign.CENTER;
++         this._icon.y_expand = true;
++         this.label.get_clutter_text().set_line_wrap(true);
++
++         this.box.vertical = true;
++         this.remove_child(this._ornamentLabel);
++     }
++
++     activate(event) {
++         if (this._app)
++             this._app.open_new_window(-1);
++
++         this._menuLayout.searchMenu.toggle();
++         super.activate(event);
++         this._icon.remove_style_pseudo_class('active');
++     }
++
++     vfunc_key_focus_in() {
++         this._icon.add_style_pseudo_class('focus');
++     }
++
++     vfunc_key_focus_out() {
++         this._icon.remove_style_pseudo_class('focus');
++     }
++
++     vfunc_button_press_event() {
++         this._icon.add_style_pseudo_class('active');
++
++         let event = Clutter.get_current_event();
++         this.pressed = true;
++         if (event.get_button() === 1)
++             this._menuLayout._blockActivateEvent = false;
++
++         this.add_style_pseudo_class('active');
++         return Clutter.EVENT_PROPAGATE;
++     }
++
++     vfunc_button_release_event() {
++         this._icon.remove_style_pseudo_class('active');
++         return super.vfunc_button_release_event();
++     }
++
++     vfunc_leave_event(crossingEvent) {
++         this._icon.remove_style_pseudo_class('active');
++         return super.vfunc_leave_event(crossingEvent);
++     }
++
++     _onHover() {
++         super._onHover();
++         this._icon.remove_style_pseudo_class('focus');
++     }
++ });
++
++var PlaceInfo = class SearchMenuPlaceInfo {
++    constructor(file, name, icon) {
++        this.file = file;
++        this.name = name ? name : this._getFileName();
++        this.icon = icon ? icon : null;
++        this.gicon = icon ? null : this.getIcon();
++    }
++
++    launch(timestamp) {
++        let launchContext = global.create_app_launch_context(timestamp, -1);
++        Gio.AppInfo.launch_default_for_uri(this.file.get_uri(), launchContext);
++    }
++
++    getIcon() {
++        try {
++            let info = this.file.query_info('standard::symbolic-icon', 0, null);
++            return info.get_symbolic_icon();
++
++        } catch (e) {
++            if (e instanceof Gio.IOErrorEnum) {
++                if (!this.file.is_native())
++                    return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
++                else
++                    return new Gio.ThemedIcon({ name: 'folder-symbolic' });
++
++            }
++        }
++    }
++
++    _getFileName() {
++        try {
++            let info = this.file.query_info('standard::display-name', 0, null);
++            return info.get_display_name();
++        } catch (e) {
++            if (e instanceof Gio.IOErrorEnum)
++                return this.file.get_basename();
++
++        }
++    }
++};
++Signals.addSignalMethods(PlaceInfo.prototype);
++
++var PlaceMenuItem = GObject.registerClass(class SearchMenuPlaceMenuItem extends SearchMenuPopupBaseMenuItem { // eslint-disable-line no-unused-vars
++    _init(menuLayout, info) {
++        super._init(menuLayout);
++        this.actor.style_class = 'recent-file-item';
++        this._menuLayout = menuLayout;
++        this._info = info;
++        this._icon = new St.Icon({
++            gicon: info.gicon ? info.gicon : Gio.icon_new_for_string(info.icon),
++            icon_size: 30,
++        });
++
++        this.box.add_child(this._icon);
++        this.label = new St.Label({
++            text: _(info.name),
++            y_expand: true,
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++        this.box.add_child(this.label);
++        this._changedId = this._info.connect('changed', this._propertiesChanged.bind(this));
++        this.connect('destroy', this._onDestroy.bind(this));
++    }
++
++    _onDestroy() {
++        if (this._changedId) {
++            this._info.disconnect(this._changedId);
++            this._changedId = 0;
++        }
++    }
++
++    activate(event) {
++        this._info.launch(event.get_time());
++        this._menuLayout.searchMenu.toggle();
++        super.activate(event);
++    }
++
++    _propertiesChanged(info) {
++        this._icon.gicon = info.icon;
++        this.label.text = info.name;
++    }
++
++    _onHover() {
++        super._onHover();
++        this.actor.remove_style_pseudo_class('focus');
++    }
++});
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index 3c7933f..afcff53 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -23,7 +23,7 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Clutter, St } = imports.gi;
++const { Clutter, St, Shell } = imports.gi;
+ const BaseMenuLayout = Me.imports.baseMenuLayout;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const MW = Me.imports.menuWidgets;
+@@ -56,17 +56,16 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+ 
+         // Default View
+         this.frequentAppsBox = new St.BoxLayout({
+-            vertical: false,
++            vertical: true,
+         });
++        this.frequentAppsBox.style = 'background-color: rgb(237, 237, 242); height: 180px; border-radius: 14px 14px 0px 0px';
+ 
+         this.recentFilesBox = new St.BoxLayout({
+-            vertical: false,
+-        });
+-        this.recentFilesScrollBox = this._createScrollBox({
++            vertical: true,
++            y_expand: false,
+             y_align: Clutter.ActorAlign.START,
+-            overlay_scrollbars: true,
+         });
+-        this.recentFilesScrollBox.add_actor(this.recentFilesBox);
++        this.recentFilesBox.style = 'background-color: rgb(255, 255, 255); border-radius: 0px 0px 14px 14px; width: 662px; height: 370px;';
+ 
+         this.defaultBox = new St.BoxLayout({
+             x_expand: true,
+@@ -76,7 +75,7 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         });
+ 
+         this.defaultBox.add_actor(this.frequentAppsBox);
+-        this.defaultBox.add_actor(this.recentFilesScrollBox);
++        this.defaultBox.add_actor(this.recentFilesBox);
+         this.subMainBox.add_actor(this.defaultBox);
+ 
+         // Search Result View
+@@ -103,13 +102,65 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         this.detailScrollBox.add_actor(this.detailBox);
+         this.subMainBox.add(this.detailScrollBox);
+ 
++        this._loadRecentFiles();
+         this.setDefaultMenuView();
+     }
+ 
+-    createDefaultLabel() {
+-        let labelString = '검색어를 입력하세요';
+-        let defaultLabel = new PopupMenu.PopupMenuItem(labelString);
+-        defaultLabel.label.style = 'font-weight: bold; font-size: 16px;';
+-        this.frequentAppsBox.add_actor(defaultLabel.actor);
++    createDefaultView() {
++        this.createFrequentAppsView();
++        this.createRecentFilesView();
++    }
++
++    createFrequentAppsView() {
++        // Frequent Apps
++        // Label
++        let labelString = '자주 사용하는 앱';
++        let frequentAppsLabel = new PopupMenu.PopupMenuItem(labelString);
++        frequentAppsLabel.label.style = 'font-weight: bold; font-size: 16px; color: rgb(0, 0, 0); margin-top: 14px;';
++        this.frequentAppsBox.add_actor(frequentAppsLabel.actor);
++
++        this.frequentAppItemsBox = new St.BoxLayout({
++            vertical: false,
++            x_align: Clutter.ActorAlign.CENTER,
++            y_align: Clutter.ActorAlign.START,
++        });
++        this.frequentAppItemsBox.style = 'spacing: 30px; margin-top: 10px;';
++        this.frequentAppsBox.add_actor(this.frequentAppItemsBox);
++
++        let mostUsed = Shell.AppUsage.get_default().get_most_used();
++        this.frequentAppsList = [];
++        for (let i = 0; i < mostUsed.length; i++) {
++            if (mostUsed[i] && mostUsed[i].get_app_info().should_show()) {
++                let item = new MW.FrequentAppItem(this, mostUsed[i]);
++                this.frequentAppsList.push(item);
++            }
++
++            if (this.frequentAppsList.length === 6)
++                break;
++
++        }
++
++        for (let i = 0; i < this.frequentAppsList.length; i++) {
++            let item = this.frequentAppsList[i];
++            this.frequentAppItemsBox.add_actor(item.actor);
++        }
++    }
++
++    createRecentFilesView() {
++        // Recent Files
++        // Label
++        let labelString = '최근 기록';
++        let recentFilesLabel = new PopupMenu.PopupMenuItem(labelString);
++        recentFilesLabel.label.style = 'font-weight: bold; font-size: 16px; color: rgb(0, 0, 0); margin-top: 14px; margin-bottom: 14px;';
++        this.recentFilesBox.add_actor(recentFilesLabel.actor);
++
++        // Recent File Items
++        this.recentFileItemsBox = new St.BoxLayout({
++            vertical: true,
++            y_align: Clutter.ActorAlign.START,
++        });
++        this.recentFilesBox.add_actor(this.recentFileItemsBox);
++
++        this.displayRecentFiles();
+     }
+ };
+diff --git a/extensions/search/stylesheet.css b/extensions/search/stylesheet.css
+index f0399f7..0b9bb8f 100644
+--- a/extensions/search/stylesheet.css
++++ b/extensions/search/stylesheet.css
+@@ -296,3 +296,39 @@ border-bottom-style: solid;
+ border-color:rgb(63,62,64);
+ border-bottom-width: 1px;
+ }
++
++.frequent-app-item {
++background-color: rgb(255, 255, 255);
++border-radius: 10px;
++height: 75px;
++width: 75px;
++}
++.frequent-app-item:hover {
++background-color: rgb(224, 233, 255);
++}
++.frequent-app-item:active {
++background-color: rgb(204, 220, 255);
++}
++.frequent-app-item:focus {
++background-color: rgb(255, 255, 255);
++box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
++}
++
++.recent-file-item {
++background-color: rgb(255, 255, 255);
++border-radius: 10px;
++height: 45px;
++border-radius: 12px;
++margin: 0px 20px;
++color: rgb(0, 0, 0);
++}
++.recent-file-item:hover {
++background-color: rgb(224, 233, 255);
++}
++.recent-file-item:active {
++background-color: rgb(204, 220, 255);
++}
++.recent-file-item:focus {
++background-color: rgb(255, 255, 255);
++box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
++}

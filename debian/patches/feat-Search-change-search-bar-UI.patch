@@ -1,0 +1,40 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 6 Apr 2021 11:51:25 +0900
+Subject: [feat] Search : change search bar UI
+
+- change width, height and margin
+- change font color
+
+[IMS] N/A
+---
+ extensions/search/menuWidgets.js      | 4 +++-
+ extensions/search/searchMenuLayout.js | 1 -
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 275eb38..0b43cd9 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -835,7 +835,9 @@ var SearchBox = class ArcMenuSearchBox {
+             x_align: Clutter.ActorAlign.FILL,
+             y_align: Clutter.ActorAlign.START,
+         });
+-        this._stEntry.style = 'border-radius:20px; padding: 7px 9px; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); margin: 6px 0px; font-weight: normal; text-shadow: 0 0 transparent;';
++        this.actor.style = 'margin: 0px; padding: 0px; width: 270px;';
++        this._stEntry.style = 'border-radius:20px; padding: 7px 9px; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); margin: 6px 0px 3px 0px; font-weight: normal; height: 40px;';
++        this._stEntry.get_hint_actor().style = 'color: rgb(0, 0, 0);';
+         this._findIcon = new St.Icon({
+             style_class: 'search-entry-icon',
+             icon_name: 'edit-find-symbolic',
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index 84b1357..8792fb8 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -42,7 +42,6 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         this._searchBoxChangedId = this.searchBox.connect('changed', this._onSearchBoxChanged.bind(this));
+         this._searchBoxKeyPressId = this.searchBox.connect('key-press-event', this._onSearchBoxKeyPress.bind(this));
+         this._searchBoxKeyFocusInId = this.searchBox.connect('key-focus-in', this._onSearchBoxKeyFocusIn.bind(this));
+-        this.searchBox.actor.style = 'margin: 0px; padding: 0px; width: 300px; height: 40px;';
+ 
+         // Search Result Box
+         this.applicationsBox = new St.BoxLayout({

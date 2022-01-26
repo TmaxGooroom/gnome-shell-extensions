@@ -1,0 +1,52 @@
+From: jungrae kim <jungrae_kim@tmax.co.kr>
+Date: Wed, 12 May 2021 17:11:37 +0900
+Subject: [bugfix] dash-to-panel : fix context menu error
+
+ - exception handling added when there is no app info when constructing the
+   icon of the context menu
+
+[IMS] 260675
+---
+ extensions/dash-to-panel/appIcons.js | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 52bb2f5..c2c50f3 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1427,15 +1427,21 @@ var taskbarSecondaryMenu = Utils.defineClass({
+                 x_align: Clutter.ActorAlign.END });
+             menuitem.actor.insert_child_above(_icon, menuitem.actor.get_first_child());
+ 
+-            if (menuitem.actor.label_actor.text == _('Show Details'))
++            if (menuitem.actor.label_actor.text == _('Show Details')) {
+                 _icon.gicon = Gio.Icon.new_for_string('system-search-symbolic');
+-            else if (menuitem.actor.label_actor.text == _('Add to Favorites'))
++            } else if (menuitem.actor.label_actor.text == _('Add to Favorites')) {
+                 _icon.gicon = Gio.Icon.new_for_string('view-pin-symbolic');
+-            else if (menuitem.actor.label_actor.text == _('Remove from Favorites'))
++            } else if (menuitem.actor.label_actor.text == _('Remove from Favorites')) {
+                 _icon.gicon = Gio.Icon.new_for_string('view-pin-symbolic');
+-            else
+-                _icon.gicon = this._source.app.app_info.get_icon();
++            } else {
++                // When the shell-window-tracker get app from window use .desktop file
++                // if the window created from a binary without .desktop file,
++                // the app info is null because the shell-window-tracker creates a dummy app
++                let app_info = this._source.app.app_info;
++                if (app_info)
++                    _icon.gicon = this._source.app.app_info.get_icon();
+ 
++            }
+         }
+ 
+         let add_icon_func = f.bind(this);
+@@ -1557,7 +1563,7 @@ var taskbarSecondaryMenu = Utils.defineClass({
+             if (count == 1)
+                 quitFromTaskbarMenuText = _('Quit');
+             else
+-                quitFromTaskbarMenuText = _("Quit %d windows").format(count);
++                quitFromTaskbarMenuText = _('Quit %d windows').format(count);
+ 
+             function close_window_func(menuitem, event) {
+                 let app = this._source.app;

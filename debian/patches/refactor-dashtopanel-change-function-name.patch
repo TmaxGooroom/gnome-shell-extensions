@@ -1,0 +1,25 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 25 Oct 2021 14:02:28 +0900
+Subject: [refactor] dashtopanel: change function name
+
+- changed naming to show new button press function calls original button press function
+- no functional difference
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/appIcons.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 8bd184a..eb86848 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -280,7 +280,7 @@ var taskbarAppIcon = Utils.defineClass({
+     },
+ 
+     button_press_event(buttonEvent) {
+-        const ret = this.vfunc_button_press_event(buttonEvent);
++        const ret = this._originalButtonPressEvent(buttonEvent);
+         if (buttonEvent.button === 1)
+             this._removeMenuTimeout();
+         return ret;

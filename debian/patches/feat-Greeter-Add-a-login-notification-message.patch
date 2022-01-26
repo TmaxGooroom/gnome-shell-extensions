@@ -1,0 +1,115 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 23 Sep 2021 18:30:04 +0900
+Subject: [feat] Greeter: Add a login notification message
+
+- If login fails more than five times, show message indicating that account has been locked.
+- When attempting to login while network is disconnected, show message to connect the network.
+
+[IMS] 267352
+---
+ extensions/greeter/authPrompt.js   | 25 ++++++++++++++++--
+ extensions/greeter/userVerifier.js | 54 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 77 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index 40a12a8..7d445f5 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -124,8 +124,29 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+     }
+ 
+     _onVerificationFailed(userVerifier, canRetry) {
+-        if (this._queryingService === 'gdm-password')
+-            this.setMessage(_('아이디 또는 비밀번호를 확인해주세요'), GdmUtil.MessageType.ERROR);
++        if (this._queryingService === 'gdm-password') {
++            let message = null;
++            let errorType = this._userVerifier._errorType;
++
++            switch (errorType) {
++            case UserVerifier.ErrorType.NONE:
++                message = '아이디 또는 비밀번호를 확인해주세요';
++                break;
++            case UserVerifier.ErrorType.EXCEED_MAX_LOGIN_COUNT:
++                message = '계정이 비활성화되었습니다. WAPL에서 비밀번호 찾기를 통해 계정을 활성화해주세요.';
++                break;
++            case UserVerifier.ErrorType.NETWORK_DISCONNECTED:
++                message = '네트워크를 연결해주세요.';
++                break;
++            default:
++                message = '아이디 또는 비밀번호를 확인해주세요';
++                log('Greeter: assert error. Invalid verification error type.');
++                break;
++            }
++            this.setMessage(_(message), GdmUtil.MessageType.ERROR);
++            this._userVerifier._errorType = UserVerifier.ErrorType.NONE;
++        }
++
+         super._onVerificationFailed(userVerifier, canRetry);
+     }
+ 
+diff --git a/extensions/greeter/userVerifier.js b/extensions/greeter/userVerifier.js
+index 86ac475..9574b1a 100644
+--- a/extensions/greeter/userVerifier.js
++++ b/extensions/greeter/userVerifier.js
+@@ -2,7 +2,61 @@
+ 
+ const GdmUtil = imports.gdm.util;
+ 
++var ErrorType = {
++    NONE: 0,
++    EXCEED_MAX_LOGIN_COUNT: 1,
++    NETWORK_DISCONNECTED: 2,
++};
++
++function _isJson(str) {
++    try {
++        JSON.parse(str);
++    } catch (e) {
++        return false;
++    }
++    return true;
++}
++
+ var ShellUserVerifier = class ShellUserVerifier extends GdmUtil.ShellUserVerifier {
++    constructor(client, params) {
++        super(client, params);
++
++        this._errorType = ErrorType.NONE;
++    }
++
++    // Called only if som account.
++    _parseError(error) {
++        let json = JSON.parse(error);
++
++        // eaten: whether an error has occurred
++        // type : At what stage of authentication did an error occur
++        let eaten = json['eaten'];
++        let type = json['type'];
++        let reason = json['reason'];
++
++        if (!eaten) {
++            log('Greeter: assert error. Eaten flag cannot be false.');
++            return;
++        }
++
++        if (type === 'pam_authenticate' && reason === 'exceedMaxLoginCount')
++            this._errorType = ErrorType.EXCEED_MAX_LOGIN_COUNT;
++        else if (type === 'pam_authenticate' && reason === 'networkDisconnected')
++            this._errorType = ErrorType.NETWORK_DISCONNECTED;
++    }
++
++    _onProblem(client, serviceName, problem) {
++        if (!_isJson(problem)) {
++            super._onProblem(client, serviceName, problem);
++            return;
++        }
++
++        if (!this.serviceIsForeground(serviceName))
++            return;
++
++        this._parseError(problem);
++    }
++
+     _verificationFailed(/* retry */) {
+         let canRetry = true;
+         if (!this.hasPendingMessages) {

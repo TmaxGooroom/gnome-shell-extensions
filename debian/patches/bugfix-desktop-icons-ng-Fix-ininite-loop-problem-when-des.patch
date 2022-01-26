@@ -1,0 +1,140 @@
+From: junho_lee3 <junho_lee3>
+Date: Tue, 6 Jul 2021 14:56:11 +0900
+Subject: [bugfix] desktop-icons-ng : Fix ininite loop problem when desktop
+ directory path changed
+
+ - When the desktop directory path changed(deleted), it tries to read files and reload the desktop.
+ - However, in '_readFileList' function, it failed to load the desktop directory because the path of directory was not changed.
+ - Also, in that API, it retries to load the directory (calling itself recursively) and fell in infinite loop.
+ - Therefore, when the desktop directory changed, we update the path and reload the contents.
+
+[IMS] 261872
+---
+ extensions/desktop-icons-ng/desktopIconsUtil.js |  7 +---
+ extensions/desktop-icons-ng/desktopManager.js   | 51 ++++++++++++++++++++-----
+ 2 files changed, 42 insertions(+), 16 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopIconsUtil.js b/extensions/desktop-icons-ng/desktopIconsUtil.js
+index 97903c1..e7c74aa 100644
+--- a/extensions/desktop-icons-ng/desktopIconsUtil.js
++++ b/extensions/desktop-icons-ng/desktopIconsUtil.js
+@@ -1,4 +1,4 @@
+-/* exported getDesktopDir getScriptsDir clamp spawnCommandLine distanceBetweenPoints getExtraFolders getMounts launchTerminal getFileExtensionOffset getFilesFromFileManagerDnD isExecutable writeTextFileToDesktop */
++/* exported getScriptsDir clamp spawnCommandLine distanceBetweenPoints getExtraFolders getMounts launchTerminal getFileExtensionOffset getFilesFromFileManagerDnD isExecutable writeTextFileToDesktop */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -27,11 +27,6 @@ const Gettext = imports.gettext.domain('ding');
+ 
+ const _ = Gettext.gettext;
+ 
+-function getDesktopDir() {
+-    let desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+-    return Gio.File.new_for_commandline_arg(desktopPath);
+-}
+-
+ function getScriptsDir() {
+     let scriptsDir =  GLib.build_filenamev([GLib.get_home_dir(), Constants.SCRIPT_DIR]);
+     return Gio.File.new_for_commandline_arg(scriptsDir);
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index cc47c1d..56301f7 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -70,13 +70,9 @@ var DesktopManager = class {
+         this._scriptFilesChanged = false;
+         this._toDelete = [];
+         this._deletingFilesRecursively = false;
+-        this._desktopDir = DesktopIconsUtil.getDesktopDir();
++        this._fileList = [];
++        this._initDesktop();
+         this._scriptsDir = DesktopIconsUtil.getScriptsDir();
+-        this.desktopFsId = this._desktopDir.query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null).get_attribute_string('id::filesystem');
+-        this._updateWritableByOthers();
+-        this._monitorDesktopDir = this._desktopDir.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
+-        this._monitorDesktopDir.set_rate_limit(1000);
+-        this._monitorDesktopDir.connect('changed', (obj, file, otherFile, eventType) => this._updateDesktopIfChanged(file, otherFile, eventType));
+         this._monitorScriptDir = this._scriptsDir.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
+         this._monitorScriptDir.set_rate_limit(1000);
+         this._monitorScriptDir.connect('changed', (unusedObj, unusedFile, unusedOtherFile, unusedEventType) => this._updateScriptFileList());
+@@ -126,7 +122,6 @@ var DesktopManager = class {
+         this._createGrids();
+ 
+         DBusUtils.FileOperationsProxy.connect('g-properties-changed', this._undoStatusChanged.bind(this));
+-        this._fileList = [];
+         this._readFileList();
+ 
+         this._scriptsList = [];
+@@ -156,6 +151,33 @@ var DesktopManager = class {
+         }
+     }
+ 
++    _initDesktop() {
++        this._desktopDir = this._getDesktopDir();
++        this.desktopFsId = this._desktopDir.query_info('id::filesystem',
++            Gio.FileQueryInfoFlags.NONE, null).get_attribute_string('id::filesystem');
++        this._updateWritableByOthers();
++        this._monitorDesktopDir = this._desktopDir.monitor_directory(
++            Gio.FileMonitorFlags.WATCH_MOVES, null);
++        this._monitorDesktopDir.set_rate_limit(1000);
++        this._monitorDesktopDir.connect('changed', (obj, file, otherFile, eventType) =>
++            this._updateDesktopIfChanged(file, otherFile, eventType));
++
++        this._removeAllFilesFromGrids();
++    }
++
++    _getDesktopDir() {
++        let [success, res] = GLib.spawn_command_line_sync('xdg-user-dir DESKTOP');
++
++        // When we failed to call 'xdg' directly, we use GLib function.
++        let desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
++
++        if (success)
++            desktopPath = ByteArray.toString(res).split('\n')[0];
++
++
++        return Gio.File.new_for_commandline_arg(desktopPath);
++    }
++
+     _createGrids() {
+         for (let desktop of this._desktops)
+             desktop.destroy();
+@@ -1149,7 +1171,16 @@ var DesktopManager = class {
+                 return;
+             }
+             break;
++        case Gio.FileMonitorEvent.RENAMED:
++        case Gio.FileMonitorEvent.DELETED:
++            // When the 'Desktop' directory path was changed, we should reload
++            // whole contents associated with that.
++            if (file.get_uri() === this._desktopDir.get_uri())
++                this._initDesktop();
++
++            break;
+         }
++
+         this._readFileList();
+     }
+ 
+@@ -1403,7 +1434,7 @@ var DesktopManager = class {
+         let newFolderWindow = new AskNamePopup.AskNamePopup(null, _('New folder'), parentWindow);
+         let newName = newFolderWindow.run();
+         if (newName) {
+-            let dir = DesktopIconsUtil.getDesktopDir().get_child(newName);
++            let dir = this._desktopDir.get_child(newName);
+             try {
+                 dir.make_directory(null);
+                 let info = new Gio.FileInfo();
+@@ -1456,11 +1487,11 @@ var DesktopManager = class {
+         }
+         pathList = pathList.join('');
+         uriList = uriList.join('');
+-        let deskTop = `'${DesktopIconsUtil.getDesktopDir().get_uri()}'`;
++        let desktop = `'${this._desktopDir.get_uri()}'`;
+         let execline = '/bin/bash -c "';
+         execline += `${Constants.SCRIPT_SELECTED_FILE_PATHS}=${pathList} `;
+         execline += `${Constants.SCRIPT_SELECTED_URIS}=${uriList} `;
+-        execline += `${Constants.SCRIPT_CURRENT_URI}=${deskTop} `;
++        execline += `${Constants.SCRIPT_CURRENT_URI}=${desktop} `;
+         execline += `'${menuItemPath}'"`;
+         DesktopIconsUtil.spawnCommandLine(execline);
+     }

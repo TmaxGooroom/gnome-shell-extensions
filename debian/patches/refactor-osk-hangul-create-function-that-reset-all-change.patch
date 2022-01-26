@@ -1,0 +1,81 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 28 Jul 2021 17:12:24 +0900
+Subject: [refactor] osk-hangul : create function that reset all changes when
+ keyboard is destroyed
+
+ - Previously, all changes were reset when extension is disabled, but it
+   is natural resetting when keyboard is destroyed. So split disable
+   function to _reset function
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 33 +++++++++++++++++++--------------
+ 1 file changed, 19 insertions(+), 14 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 4b50dd5..9e74812 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -168,8 +168,7 @@ function _getSyncKeyboardFunc() {
+             _enable();
+             _isOSKEnabled = true;
+             _keyboardDestroyId = keyboardManager._keyboard.connect('destroy', () => {
+-                _keyboardDestroyId = null;
+-                _disable();
++                _resetKeyboard();
+                 _isOSKEnabled = false;
+             });
+         }
+@@ -190,24 +189,17 @@ function enable() { // eslint-disable-line no-unused-vars
+     syncKeyboard();
+ }
+ 
+-function _disable() {
+-    _originalKeyvalPress = null;
+-    _originalKeyvalRelease = null;
+-    _originalPopupLanguageMenu = null;
+-    _originalSetActiveLayer = null;
+-    _originalCreateLayersForGroup = null;
+-    _originalSetAnimationWindow = null;
+-}
+-
+-function disable() { // eslint-disable-line no-unused-vars
++function _resetKeyboard() {
+     let keyboard = Main.keyboard._keyboard;
+     if (keyboard) {
+         keyboard._createLayersForGroup = _originalCreateLayersForGroup;
+         keyboard._setActiveLayer = _originalSetActiveLayer;
+         keyboard._popupLanguageMenu = _originalPopupLanguageMenu;
+         keyboard._setAnimationWindow = _originalSetAnimationWindow;
+-        if (_keyboardDestroyId)
++        if (_keyboardDestroyId) {
+             keyboard.disconnect(_keyboardDestroyId);
++            _keyboardDestroyId = null;
++        }
+ 
+         _resetKeyboardLayout(keyboard);
+ 
+@@ -216,9 +208,22 @@ function disable() { // eslint-disable-line no-unused-vars
+         controller.keyvalRelease = _originalKeyvalRelease;
+     }
+ 
+-    _disable();
++    _originalKeyvalPress = null;
++    _originalKeyvalRelease = null;
++    _originalPopupLanguageMenu = null;
++    _originalSetActiveLayer = null;
++    _originalCreateLayersForGroup = null;
++    _originalSetAnimationWindow = null;
++}
++
++function disable() { // eslint-disable-line no-unused-vars
++    _resetKeyboard();
+ 
+     Main.keyboard._a11yApplicationsSettings.disconnect(_a11ySignalId);
+     Main.keyboard._seat.disconnect(_touchModeNotifyId);
+     global.backend.disconnect(_lastDeviceChangedId);
++
++    _a11ySignalId = null;
++    _touchModeNotifyId = null;
++    _lastDeviceChangedId = null;
+ }

@@ -1,0 +1,164 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 11 May 2021 10:55:57 +0900
+Subject: [chore] tos-hotkey : dualmonitor image resources
+
+ - dualmonitor image resources
+
+[IMS] N/A
+---
+ .../tos-hotkey/assets/tos_img_dualmonitor01.svg    | 25 +++++++++++++
+ .../tos-hotkey/assets/tos_img_dualmonitor02.svg    | 26 ++++++++++++++
+ .../tos-hotkey/assets/tos_img_dualmonitor03.svg    | 42 ++++++++++++++++++++++
+ .../tos-hotkey/assets/tos_img_dualmonitor04.svg    | 25 +++++++++++++
+ 4 files changed, 118 insertions(+)
+ create mode 100644 extensions/tos-hotkey/assets/tos_img_dualmonitor01.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_img_dualmonitor02.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_img_dualmonitor03.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_img_dualmonitor04.svg
+
+diff --git a/extensions/tos-hotkey/assets/tos_img_dualmonitor01.svg b/extensions/tos-hotkey/assets/tos_img_dualmonitor01.svg
+new file mode 100644
+index 0000000..48a56d0
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_img_dualmonitor01.svg
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="110px" height="52px" viewBox="0 0 110 52" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_img_dualmonitor01</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_01_08_TOS5_Mail" transform="translate(-1208.000000, -108.000000)">
++            <g id="menu-copy-7" transform="translate(1208.000000, 108.000000)">
++                <g id="Group-3-Copy-9">
++                    <g id="Group" transform="translate(12.000000, 8.000000)">
++                        <g id="Bitmap-Copy-9">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                            <path d="M20,6 C24.9705627,6 29,10.0294373 29,15 C29,19.9705627 24.9705627,24 20,24 C15.0294373,24 11,19.9705627 11,15 C11,10.0294373 15.0294373,6 20,6 Z M20,10 C17.2385763,10 15,12.2385763 15,15 C15,17.7614237 17.2385763,20 20,20 C22.7614237,20 25,17.7614237 25,15 C25,12.2385763 22.7614237,10 20,10 Z" id="Combined-Shape" fill="#E24961"></path>
++                        </g>
++                        <g id="Bitmap-Copy-13" transform="translate(46.000000, 0.000000)">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_img_dualmonitor02.svg b/extensions/tos-hotkey/assets/tos_img_dualmonitor02.svg
+new file mode 100644
+index 0000000..44599d6
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_img_dualmonitor02.svg
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="110px" height="52px" viewBox="0 0 110 52" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_img_dualmonitor02</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_01_08_TOS5_Mail" transform="translate(-1328.000000, -108.000000)">
++            <g id="menu-copy-7" transform="translate(1208.000000, 108.000000)">
++                <g id="Group-3-Copy-3" transform="translate(120.000000, 0.000000)">
++                    <g id="Group-3" transform="translate(12.000000, 8.000000)">
++                        <g id="Bitmap-Copy-9">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                            <path d="M20,6 C24.9705627,6 29,10.0294373 29,15 C29,19.9705627 24.9705627,24 20,24 C15.0294373,24 11,19.9705627 11,15 C11,10.0294373 15.0294373,6 20,6 Z M20,10 C17.2385763,10 15,12.2385763 15,15 C15,17.7614237 17.2385763,20 20,20 C22.7614237,20 25,17.7614237 25,15 C25,12.2385763 22.7614237,10 20,10 Z" id="Combined-Shape" fill="#E24961"></path>
++                        </g>
++                        <g id="Bitmap-Copy-13" transform="translate(46.000000, 0.000000)">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                            <path d="M20,6 C24.9705627,6 29,10.0294373 29,15 C29,19.9705627 24.9705627,24 20,24 C15.0294373,24 11,19.9705627 11,15 C11,10.0294373 15.0294373,6 20,6 Z M20,10 C17.2385763,10 15,12.2385763 15,15 C15,17.7614237 17.2385763,20 20,20 C22.7614237,20 25,17.7614237 25,15 C25,12.2385763 22.7614237,10 20,10 Z" id="Combined-Shape" fill="#E24961"></path>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_img_dualmonitor03.svg b/extensions/tos-hotkey/assets/tos_img_dualmonitor03.svg
+new file mode 100644
+index 0000000..ed11494
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_img_dualmonitor03.svg
+@@ -0,0 +1,42 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="110px" height="52px" viewBox="0 0 110 52" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_img_dualmonitor03</title>
++    <defs>
++        <rect id="path-1" x="0" y="0" width="40" height="33" rx="2"></rect>
++        <rect id="path-3" x="0" y="0" width="40" height="33" rx="2"></rect>
++    </defs>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_01_08_TOS5_Mail" transform="translate(-1208.000000, -228.000000)">
++            <g id="menu-copy-7" transform="translate(1208.000000, 108.000000)">
++                <g id="Group-3-Copy-8" transform="translate(0.000000, 120.000000)">
++                    <g id="Group-4" transform="translate(12.000000, 8.000000)">
++                        <g id="Bitmap-Copy-9">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <g id="Combined-Shape">
++                                <mask id="mask-2" fill="white">
++                                    <use xlink:href="#path-1"></use>
++                                </mask>
++                                <use id="Mask" fill="#FFFFFF" xlink:href="#path-1"></use>
++                                <path d="M38,6 C42.9705627,6 47,10.0294373 47,15 C47,19.9705627 42.9705627,24 38,24 C33.0294373,24 29,19.9705627 29,15 C29,10.0294373 33.0294373,6 38,6 Z M38,10 C35.2385763,10 33,12.2385763 33,15 C33,17.7614237 35.2385763,20 38,20 C40.7614237,20 43,17.7614237 43,15 C43,12.2385763 40.7614237,10 38,10 Z" fill="#E24961" mask="url(#mask-2)"></path>
++                            </g>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                        </g>
++                        <g id="Bitmap-Copy-13" transform="translate(46.000000, 0.000000)">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <g id="Combined-Shape">
++                                <mask id="mask-4" fill="white">
++                                    <use xlink:href="#path-3"></use>
++                                </mask>
++                                <use id="Mask" fill="#FFFFFF" xlink:href="#path-3"></use>
++                                <path d="M2,6 C6.97056275,6 11,10.0294373 11,15 C11,19.9705627 6.97056275,24 2,24 C-2.97056275,24 -7,19.9705627 -7,15 C-7,10.0294373 -2.97056275,6 2,6 Z M2,10 C-0.761423749,10 -3,12.2385763 -3,15 C-3,17.7614237 -0.761423749,20 2,20 C4.76142375,20 7,17.7614237 7,15 C7,12.2385763 4.76142375,10 2,10 Z" fill="#E24961" mask="url(#mask-4)"></path>
++                            </g>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_img_dualmonitor04.svg b/extensions/tos-hotkey/assets/tos_img_dualmonitor04.svg
+new file mode 100644
+index 0000000..0f33fb4
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_img_dualmonitor04.svg
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="110px" height="52px" viewBox="0 0 110 52" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_img_dualmonitor04</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_01_08_TOS5_Mail" transform="translate(-1328.000000, -228.000000)">
++            <g id="menu-copy-7" transform="translate(1208.000000, 108.000000)">
++                <g id="Group-3-Copy-7" transform="translate(120.000000, 120.000000)">
++                    <g id="Group-5" transform="translate(12.000000, 8.000000)">
++                        <g id="Bitmap-Copy-9">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                        </g>
++                        <g id="Bitmap-Copy-13" transform="translate(46.000000, 0.000000)">
++                            <path d="M16.4415184,31 L23.5584816,31 C24.4193424,31 25.1836201,31.5508602 25.4558482,32.3675445 L26.1225148,34.3675445 C26.4718104,35.4154311 25.9054904,36.5480711 24.8576038,36.8973666 C24.6536708,36.9653442 24.4401124,37 24.2251482,37 L15.7748518,37 C14.6702823,37 13.7748518,36.1045695 13.7748518,35 C13.7748518,34.7850358 13.8095075,34.5714774 13.8774852,34.3675445 L14.5441518,32.3675445 C14.8163799,31.5508602 15.5806576,31 16.4415184,31 Z" id="Mask-Copy" fill="#8E91A3"></path>
++                            <rect id="Mask-Copy-2" stroke="#8E91A3" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="38" height="31" rx="2"></rect>
++                            <rect id="Rectangle" fill="#8E91A3" x="0" y="27" width="40" height="2"></rect>
++                            <path d="M20,6 C24.9705627,6 29,10.0294373 29,15 C29,19.9705627 24.9705627,24 20,24 C15.0294373,24 11,19.9705627 11,15 C11,10.0294373 15.0294373,6 20,6 Z M20,10 C17.2385763,10 15,12.2385763 15,15 C15,17.7614237 17.2385763,20 20,20 C22.7614237,20 25,17.7614237 25,15 C25,12.2385763 22.7614237,10 20,10 Z" id="Combined-Shape" fill="#E24961"></path>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file

@@ -1,0 +1,529 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 25 Jun 2021 14:11:35 +0900
+Subject: [feat] Notification-center : add easySupport Edit mode
+
+- Add SupportIcon hide
+- Add SupportIcon refresh arragement
+- Improve readability code
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js        | 219 +++++++++++++++++----
+ .../img/tos_desktop_ic_alarm_cancel_b.svg          |  18 ++
+ .../img/tos_desktop_ic_alarm_cancel_w.svg          |  18 ++
+ extensions/notification-center/stylesheet.css      |  69 ++++++-
+ 4 files changed, 280 insertions(+), 44 deletions(-)
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_cancel_b.svg
+ create mode 100644 extensions/notification-center/img/tos_desktop_ic_alarm_cancel_w.svg
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 35b3c85..3baca63 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -65,7 +65,7 @@ function reloadExtensionOnPrefsChange() {
+ 
+ /*
+   SupportIcon is used to implment Easy support section
+-  SupportIcon consists of its image, its title label, its status label.
++  SupportIcon consists of its icon images, its title label, its status label.
+ */
+ 
+ var SupportIcon = GObject.registerClass(
+@@ -76,41 +76,86 @@ class SupportIcon extends St.BoxLayout {
+             vertical: true,
+         });
+ 
+-        this._button = new St.Button({
++        // initialize inner component
++        // Buttons, Label, widget
++
++        this._canvas = new St.Widget({
+             reactive: true,
++            layout_manager: new Clutter.BinLayout(),
+         });
+ 
+-        if (isToggle)
+-            this._button.set_style_class_name('notification-center-support-icon-toggle-button-on');
+-        else
+-            this._button.set_style_class_name('notification-center-support-icon-button');
+-        this._isToggle = isToggle;
+-        this._button.set_size(48, 48);
++        this._button = new St.Button({
++            reactive: true,
++        });
++        this._closeButton = new St.Button({
++            reactive: true,
++            x_expand: true,
++            y_expand: true,
++            x_align: Clutter.ActorAlign.END,
++            y_align: Clutter.ActorAlign.START,
++            style_class: 'notification-center-support-icon-close-button',
++        });
+ 
+         this._icon = new St.Icon({
+             gicon: Gio.icon_new_for_string(`${`${Me.path}/img/${iconName}`}`),
+-            icon_size: 16,
++            icon_size: 20,
++            x_expand: true,
++            y_expand: true,
++            x_align: Clutter.ActorAlign.CENTER,
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++
++        this._closeIconBlack = Gio.icon_new_for_string(`${`${Me.path}/img/tos_desktop_ic_alarm_cancel_b.svg`}`);
++        this._closeIconWhite = Gio.icon_new_for_string(`${`${Me.path}/img/tos_desktop_ic_alarm_cancel_w.svg`}`);
++        this._closeIcon = new St.Icon({
++            reactive: true,
++            gicon: this._closeIconBlack,
++            icon_size: 18,
+         });
+-        this._button.set_child(this._icon);
+-        this.add_child(this._button);
+ 
+         this._title = new St.Label({
+             style_class: 'notification-center-support-icon-label',
+             text: name,
+         });
+-
+         this._status = new St.Label({
+             style_class: 'notification-center-support-icon-label',
+         });
+ 
+         if (isToggle)
+-            this._status.set_text('On');
++            this._button.set_style_class_name('notification-center-support-icon-toggle-button-on');
++        else
++            this._button.set_style_class_name('notification-center-support-icon-button');
++        this._isToggle = isToggle;
++        this._button.set_size(48, 48);
++
++
++        // allocate it's view tree.
++
++        this.add_child(this._canvas);
++
++        this._canvas.add_actor(this._button);
++        this._canvas.add_actor(this._closeButton);
++
++        this._button.set_child(this._icon);
++        this._closeButton.set_child(this._closeIcon);
+ 
+         this.add_child(this._title);
+         this.add_child(this._status);
+ 
++        if (isToggle) {
++            this._button.set_style_class_name('notification-center-support-icon-toggle-button-on');
++            this._status.set_text('On');
++        } else {
++            this._button.set_style_class_name('notification-center-support-icon-button');
++        }
++
+         this._title.hide();
+         this._status.hide();
++        this._closeButton.hide();
++
++        this._closeButton.connect('clicked', () => this.hide());
++        this._closeButton.connect('motion-event', () => this._closeIcon.set_gicon(this._closeIconWhite));
++        this._closeButton.connect('leave-event', () => this._closeIcon.set_gicon(this._closeIconBlack));
+     }
+ 
+     /* In case of toggle buttons, for example alarm & bluetooth, we have to apply different style depend on status */
+@@ -136,6 +181,19 @@ class SupportIcon extends St.BoxLayout {
+             this._status.show();
+         }
+     }
++
++    /* If Editode is enabled, we need to show all component */
++    enterEditView() {
++        this._title.show();
++        this._status.show();
++        this._closeButton.show();
++    }
++
++    /* If Editmode is disabled, we need to restore previous view */
++    leaveEditView(_isSimple) {
++        this.setSimpleView(_isSimple);
++        this._closeButton.hide();
++    }
+ });
+ 
+ const NotificationCenter = new LangClass({
+@@ -168,7 +226,7 @@ const NotificationCenter = new LangClass({
+         this._syncId = 0;
+         this._adapter = null;
+ 
+-        this._hadSetupDevices  = global.settings.get_boolean('had-bluetooth-devices-setup');
++        this._bluetoothHadSetupDevices  = global.settings.get_boolean('had-bluetooth-devices-setup');
+         this._proxy = new RfkillManagerProxy(Gio.DBus.session, 'org.gnome.SettingsDaemon.Rfkill', '/org/gnome/SettingsDaemon/Rfkill',
+             (proxy, error) => {
+                 if (error) {
+@@ -212,41 +270,70 @@ const NotificationCenter = new LangClass({
+ 
+         this.clearButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Clear'), can_focus: true, visible: false, x_expand: true });
+ 
++
++        /* easySupport section is consist of supportControl (Row)  & supportIconRow (Row) ,
++           supportControl is used to control easySupport's mode
++           For example, simple mode, detail mode, edit mode can be used.
++        */
++        this.supportIconSimpleMode = true;
++
+         this.easySupport       = new St.BoxLayout({ style_class: 'notification-center-easy-support', vertical: true, y_align: Clutter.ActorAlign.END, y_expand: true });
+         this.supportControl    = new St.BoxLayout({ style_class: 'notification-center-support-control-row' });
+ 
+-        this.supportControlArrowButton = new St.Button({ reactive: true, style_class: 'notification-center-support-control-button' });
+-        this.supportControlUpArrow  = new St.Icon({ gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_arrow_up.svg`),
+-            icon_size: 24 });
++        this.supportControlArrowButton = new St.Button({
++            reactive: true,
++            style_class: 'notification-center-support-control-button-arrow',
++        });
++        this.supportControlUpArrow  = new St.Icon({
++            gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_arrow_up.svg`),
++            icon_size: 24,
++        });
+         this.supportControlDownArrow  = new St.Icon({
+             gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_arrow_down.svg`),
+             icon_size: 24,
+         });
++
++        this.supportControlEditButton = new St.Button({ reactive: true,
++            style_class: 'notification-center-support-control-button-edit',
++            x_align: Clutter.ActorAlign.END,
++            x_expand: true });
++        this.supportControlEditButton.set_size(24, 24);
++
+         this.supportControlEdit = new St.Icon({
+             gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_edit.svg`),
+-            icon_size: 16,
++            icon_size: 18,
++        });
++
++        this.supportControlRefreshButton = new St.Button({
++            reactive: true,
++            style_class: 'notification-center-support-control-refresh',
+             x_align: Clutter.ActorAlign.END,
+             x_expand: true,
+         });
+         this.supportControlRefresh = new St.Icon({
+             gicon: Gio.icon_new_for_string(`${Me.path}/img/tos_desktop_ic_alarm_refresh.svg`),
+             icon_size: 24,
+-            x_align: Clutter.ActorAlign.END,
+-            x_expand: true,
++        });
++
++        this.supportControlDoneButton = new St.Button({
++            reactive: true,
++            style_class: 'notification-center-support-control-done',
+         });
+         this.supportControlDone = new St.Label({
+             text: _('Done'),
+-            style_class: 'notification-center-support-control-done',
+             x_align: Clutter.ActorAlign.END,
+         });
+ 
+         this.supportIconRow = new St.BoxLayout({ style_class: 'notification-center-support-icon-row' });
+-        this.supportIconSimpleMode = true;
++
+         this.alarmIcon      = new SupportIcon('tos_desktop_ic_alarm_alarm.svg', _('Alarm'), true);
+         this.bluetoothIcon  = new SupportIcon('tos_ic_alram_blutooth.svg', _('Bluetooth'), true);
+ 
+         let scaleFactor     = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+-        this.scrollView     = new St.ScrollView({ hscrollbar_policy: 2, style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.monitors[0].height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;` });
++        this.scrollView     = new St.ScrollView({
++            hscrollbar_policy: 2,
++            style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.monitors[0].height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;`,
++        });
+ 
+         this.add_style_class_name('notification-center-panel-button');
+         this.notificationIcon.set_pivot_point(0.5, 0);
+@@ -370,7 +457,6 @@ const NotificationCenter = new LangClass({
+         this.blinkTime                    = this.prefs.get_int('blink-time');
+         this.blinkCount                   = this.prefs.get_int('blink-icon') * 2;
+         this.showLabel                    = this.prefs.get_boolean('show-label');
+-        // this.dndPos                       = this.prefs.get_enum('dnd-position');
+         this.changeIcons                  = this.prefs.get_boolean('change-icons');
+ 
+     },
+@@ -621,6 +707,54 @@ const NotificationCenter = new LangClass({
+             supportIcons[i].setSimpleView(this.supportIconSimpleMode);
+     },
+ 
++    /* when EasySupport enter edit mode, we have to show all the information,
++    and also, we need to disable ArrowButton reactive logic.
++    Because, It fixed detail mode
++    */
++    enterEasySupportEditMode() {
++        let supportIcons = this.supportIconRow.get_children();
++
++        if (this.supportIconSimpleMode) {
++            this.supportControlArrowButton.set_child(this.supportControlDownArrow);
++            this.easySupport.set_style_pseudo_class('detail');
++        }
++
++        for (let i = 0; i < supportIcons.length; i++)
++            supportIcons[i].enterEditView();
++
++        this.supportControlArrowButton.set_reactive(false);
++
++        this.supportControlEditButton.hide();
++        this.supportControlRefreshButton.show();
++        this.supportControlDoneButton.show();
++    },
++
++    /* when EasySupport leave edit mode, we need to restore EasySupport setting */
++    leaveEasySupportEditMode() {
++        let supportIcons = this.supportIconRow.get_children();
++
++        if (this.supportIconSimpleMode) {
++            this.supportControlArrowButton.set_child(this.supportControlUpArrow);
++            this.easySupport.remove_style_pseudo_class('detail');
++        }
++
++        for (let i = 0; i < supportIcons.length; i++)
++            supportIcons[i].leaveEditView(this.supportIconSimpleMode);
++
++        this.supportControlArrowButton.set_reactive(true);
++
++        this.supportControlEditButton.show();
++        this.supportControlRefreshButton.hide();
++        this.supportControlDoneButton.hide();
++    },
++
++    refreshEasySupportLayout() {
++        let supportIcons = this.supportIconRow.get_children();
++
++        for (let i = 0; i < supportIcons.length; i++)
++            supportIcons[i].show();
++    },
++
+     shouldShowEventsSection() {
+ 
+         switch (this.eventsSection._eventsList.get_children().length) {
+@@ -692,15 +826,20 @@ const NotificationCenter = new LangClass({
+ 
+         this.supportControlArrowButton.set_child(this.supportControlUpArrow);
+         this.supportControl.add_child(this.supportControlArrowButton);
+-        this.supportControl.add_actor(this.supportControlEdit);
+-        // this.supportControl.add_actor(this.supportControlRefresh);
+-        // this.supportControl.add_actor(this.supportControlDone);
++        this.supportControlEditButton.set_child(this.supportControlEdit);
++        this.supportControlDoneButton.set_child(this.supportControlDone);
++        this.supportControlRefreshButton.set_child(this.supportControlRefresh);
++        this.supportControl.add_child(this.supportControlEditButton);
++        this.supportControl.add_actor(this.supportControlRefreshButton);
++        this.supportControl.add_actor(this.supportControlDoneButton);
+ 
+-        // this.supportControlRefresh.hide();
+-        // this.supportControlDone.hide();
++        this.supportControlRefreshButton.hide();
++        this.supportControlDoneButton.hide();
+ 
+         this.supportControlArrowButton.connect('clicked', () => this.changeEasySupportViewMode());
+-
++        this.supportControlEditButton.connect('clicked', () => this.enterEasySupportEditMode());
++        this.supportControlRefreshButton.connect('clicked', () => this.refreshEasySupportLayout());
++        this.supportControlDoneButton.connect('clicked', () => this.leaveEasySupportEditMode());
+         this.easySupport.add_child(this.supportIconRow);
+ 
+         this.supportIconRow.add_child(this.alarmIcon);
+@@ -922,16 +1061,16 @@ const NotificationCenter = new LangClass({
+ 
+     },
+ 
+-    _setHadSetupDevices(value) {
+-        if (this._hadSetupDevices === value)
++    _setBluetoothHadSetupDevices(value) {
++        if (this._bluetoothHadSetupDevices === value)
+             return;
+ 
+-        this._hadSetupDevices = value;
++        this._bluetoothHadSetupDevices = value;
+         global.settings.set_boolean(
+-            'had-bluetooth-devices-setup', this._hadSetupDevices);
++            'had-bluetooth-devices-setup', this._bluetoothHadSetupDevices);
+     },
+ 
+-    _getDefaultAdapter() {
++    _getDefaultBluetoothAdapter() {
+         let [ret, iter] = this._model.get_iter_first();
+         while (ret) {
+             let isDefault = this._model.get_value(iter,
+@@ -945,7 +1084,7 @@ const NotificationCenter = new LangClass({
+         return null;
+     },
+ 
+-    _getDeviceInfos(adapter) {
++    _getBluetoothDeviceInfos(adapter) {
+         if (!adapter)
+             return [];
+ 
+@@ -984,16 +1123,16 @@ const NotificationCenter = new LangClass({
+     },
+ 
+     _sync() {
+-        let adapter = this._getDefaultAdapter();
+-        let devices = this._getDeviceInfos(adapter);
++        let adapter = this._getDefaultBluetoothAdapter();
++        let devices = this._getBluetoothDeviceInfos(adapter);
+ 
+         if (adapter && this._adapter)
+-            this._setHadSetupDevices(devices.length > 0);
++            this._setBluetoothHadSetupDevices(devices.length > 0);
+         this._adapter = adapter;
+ 
+         // Remember if there were setup devices and show the menu
+         // if we've seen setup devices and we're not hard blocked
+-        if (this._hadSetupDevices)
++        if (this._bluetoothHadSetupDevices)
+             this.bluetoothIcon.setStatus(!this._proxy.BluetoothHardwareAirplaneMode);
+         else
+             this.bluetoothIcon.setStatus(this._proxy.BluetoothHasAirplaneMode && !this._proxy.BluetoothAirplaneMode);
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_cancel_b.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_cancel_b.svg
+new file mode 100644
+index 0000000..56c2c4c
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_cancel_b.svg
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="21px" height="20px" viewBox="0 0 21 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_cancel_b</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-860.000000, -942.000000)">
++            <g id="Group" transform="translate(819.000000, 539.000000)">
++                <g id="Group-11" transform="translate(28.000000, 403.000000)">
++                    <g id="Group-7-Copy-3" transform="translate(13.000000, 0.000000)">
++                        <g id="close-24px" transform="translate(1.000000, 1.000000)">
++                            <polygon id="Path" points="0 0 18 0 18 18 0 18"></polygon>
++                            <path d="M13.725,4.2825 C13.4325,3.99 12.96,3.99 12.6675,4.2825 L9,7.9425 L5.3325,4.275 C5.04,3.9825 4.5675,3.9825 4.275,4.275 C3.9825,4.5675 3.9825,5.04 4.275,5.3325 L7.9425,9 L4.275,12.6675 C3.9825,12.96 3.9825,13.4325 4.275,13.725 C4.5675,14.0175 5.04,14.0175 5.3325,13.725 L9,10.0575 L12.6675,13.725 C12.96,14.0175 13.4325,14.0175 13.725,13.725 C14.0175,13.4325 14.0175,12.96 13.725,12.6675 L10.0575,9 L13.725,5.3325 C14.01,5.0475 14.01,4.5675 13.725,4.2825 Z" id="Path" fill="#000000"></path>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+diff --git a/extensions/notification-center/img/tos_desktop_ic_alarm_cancel_w.svg b/extensions/notification-center/img/tos_desktop_ic_alarm_cancel_w.svg
+new file mode 100644
+index 0000000..7c1b70e
+--- /dev/null
++++ b/extensions/notification-center/img/tos_desktop_ic_alarm_cancel_w.svg
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_alarm_cancel_w</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_02_03_TOS5_alarm" transform="translate(-920.000000, -942.000000)">
++            <g id="Group" transform="translate(819.000000, 539.000000)">
++                <g id="Group-11" transform="translate(28.000000, 403.000000)">
++                    <g id="Group-7-Copy-4" transform="translate(73.000000, 0.000000)">
++                        <g id="close-24px" transform="translate(1.000000, 1.000000)">
++                            <polygon id="Path" points="0 0 18 0 18 18 0 18"></polygon>
++                            <path d="M13.725,4.2825 C13.4325,3.99 12.96,3.99 12.6675,4.2825 L9,7.9425 L5.3325,4.275 C5.04,3.9825 4.5675,3.9825 4.275,4.275 C3.9825,4.5675 3.9825,5.04 4.275,5.3325 L7.9425,9 L4.275,12.6675 C3.9825,12.96 3.9825,13.4325 4.275,13.725 C4.5675,14.0175 5.04,14.0175 5.3325,13.725 L9,10.0575 L12.6675,13.725 C12.96,14.0175 13.4325,14.0175 13.725,13.725 C14.0175,13.4325 14.0175,12.96 13.725,12.6675 L10.0575,9 L13.725,5.3325 C14.01,5.0475 14.01,4.5675 13.725,4.2825 Z" id="Path" fill= '#FFFFFF' ></path>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index 82e4545..0a7e2c4 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -73,16 +73,45 @@
+     spacing: 5px;
+ }
+ 
+-.notification-center-support-control-button {
++.notification-center-support-control-button-arrow {
+     border-radius: 12px;
+ }
+ 
+-.notification-center-support-control-button:hover {
++.notification-center-support-control-button-arrow:hover {
+     background-color: rgba(237, 237, 242, 0.25);
+     border-radius: 12px;
+ }
+ 
+-.notification-center-support-control-button:active {
++.notification-center-support-control-button-arrow:active {
++    background-color: rgba(237, 237, 242, 0.15);
++    border-radius: 12px;
++}
++
++.notification-center-support-control-button-edit {
++    border-radius: 12px;
++}
++
++.notification-center-support-control-button-edit:hover {
++    background-color: rgba(237, 237, 242, 0.25);
++    border-radius: 12px;
++}
++
++.notification-center-support-control-button-edit:active {
++    background-color: rgba(237, 237, 242, 0.15);
++    border-radius: 12px;
++}
++
++.notification-center-support-control-refresh {
++    border-radius: 12px;
++}
++
++.notification-center-support-control-refresh:hover {
++    background-color: rgba(237, 237, 242, 0.25);
++    border-radius: 12px;
++    color: #000000;
++}
++
++.notification-center-support-control-refresh:active {
+     background-color: rgba(237, 237, 242, 0.15);
+     border-radius: 12px;
+ }
+@@ -95,13 +124,45 @@
+     padding: 3px 10px 3px 10px;
+     border-radius: 12px;
+     background-color: #3961CA;
+-    font-size: 14px;
++    font-size: 15px;
++}
++
++.notification-center-support-control-done:hover {
++    padding: 3px 10px 3px 10px;
++    border-radius: 12px;
++    background-color: #004FFF;
++    font-size: 15px;
+ }
+ 
++.notification-center-support-control-done:active {
++    padding: 3px 10px 3px 10px;
++    border-radius: 12px;
++    background-color: #284DB1;
++    font-size: 15px;
++}
++
++
+ .notification-center-support-icon {
+     spacing: 2px;
+ }
+ 
++.notification-center-support-icon-close-button {
++    background-color: #FFFFFF;
++    border-radius: 9px;
++    fill: #FF9E2C;
++}
++
++.notification-center-support-icon-close-button:hover {
++    background-color: #EB5549;
++    border-radius: 9px;
++}
++
++.notification-center-support-icon-close-button:active {
++    background-color: #DD3F33;
++    border-radius: 9px;
++}
++
++
+ .notification-center-support-icon-label {
+     width: 48px;
+     font-size: 13px;

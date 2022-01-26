@@ -1,0 +1,60 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 25 Oct 2021 16:50:51 +0900
+Subject: [bugfix] dash-to-panel : Modify to show network tray icon as before
+ when network connection is disconnected.
+
+- Hide the network tray icon when the network connection is disconnected.
+
+[IMS] 272278
+---
+ extensions/dash-to-panel/tray.js | 23 -----------------------
+ 1 file changed, 23 deletions(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 330f6bf..fc754e8 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -23,20 +23,6 @@ class Tray {
+             return Clutter.EVENT_PROPAGATE;
+         });
+ 
+-        let network = this._originalTray._network;
+-        this._originalNetworkUpdateIcon = network._updateIcon;
+-        network._updateIcon = () => {
+-            if (network._client)
+-                this._originalNetworkUpdateIcon.call(network);
+-
+-
+-            let iconName = network._primaryIndicator.icon_name || 'network-wired-no-route-symbolic';
+-
+-            network._primaryIndicator.icon_name = iconName;
+-            network._primaryIndicator.visible = true;
+-        };
+-        network._updateIcon();
+-
+         let brightness = this._originalTray._brightness;
+         let brightnessIndicator = brightness._addIndicator();
+         brightnessIndicator.icon_name = 'display-brightness-symbolic';
+@@ -102,14 +88,6 @@ class Tray {
+ 
+         this._indicators.get_last_child().visible = true;
+ 
+-        let network = this._originalTray._network;
+-        network._updateIcon = this._originalNetworkUpdateIcon;
+-        if (network._client)
+-            network._updateIcon();
+-        else
+-            network._primaryIndicator.visible = false;
+-
+-
+         let power = this._originalTray._power;
+         power.visible = true;
+ 
+@@ -133,7 +111,6 @@ class Tray {
+         this._indicators = null;
+         this._originalMenuItems = null;
+         this._originalEventFunc = null;
+-        this._originalNetworkUpdateIcon = null;
+     }
+ 
+     _restoreOriginalMenu() {

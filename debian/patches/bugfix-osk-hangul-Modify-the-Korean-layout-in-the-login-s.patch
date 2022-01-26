@@ -1,0 +1,448 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 9 Sep 2021 15:36:45 +0900
+Subject: [bugfix] osk-hangul : Modify the Korean layout in the login session
+
+ - Extension that depends on ibus-hangul does inconsistent operations
+   such as showing Korean/English key and showing Korean layout even in
+   the environment where ibus is not running. As a result, a gap between
+   the letter the user wants to input and the letter he actually inputs
+   occurs. To solve this problem, the structure is modified to apply the
+   extension after checking the ibus dependency first.
+
+[IMS] 269834
+---
+ extensions/osk-hangul/extension.js       | 175 ++++++-------------------------
+ extensions/osk-hangul/keyboardWrapper.js | 147 ++++++++++++++++++++++++++
+ extensions/osk-hangul/meson.build        |   2 +
+ extensions/osk-hangul/utils.js           |  16 +++
+ 4 files changed, 199 insertions(+), 141 deletions(-)
+ create mode 100644 extensions/osk-hangul/keyboardWrapper.js
+ create mode 100644 extensions/osk-hangul/utils.js
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 9e74812..f721462 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -1,81 +1,21 @@
+ /*
+  * extension descripttion. TBD.
+  */
+-
+-const { Clutter, IBus } = imports.gi;
+-
+ const Main = imports.ui.main;
+ 
+ const IBusManager = imports.misc.ibusManager;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+-const QwertyKeysyms = Me.imports.xkbcommon_keysyms.QwertyMap;
++const Wrapper = Me.imports.keyboardWrapper;
++const getIBusHangul = Me.imports.utils.getIBusHangul;
+ 
+-const HangulKiyeog = 0x0ea1;
+-const HangulJYeorinHieuh = 0x0efa;
++let _ibusReadyId = null;
+ 
+ let _a11ySignalId = null;
+ let _touchModeNotifyId = null;
+ let _lastDeviceChangedId = null;
+ let _keyboardDestroyId = null;
+ 
+-let _originalKeyvalPress = null;
+-let _originalKeyvalRelease = null;
+-let _originalPopupLanguageMenu = null;
+-let _originalSetActiveLayer = null;
+-let _originalCreateLayersForGroup = null;
+-let _originalSetAnimationWindow = null;
+-
+-function _isKoreanCharactor(keyval) {
+-    if (!keyval)
+-        return false;
+-
+-    return HangulKiyeog <= keyval && keyval <= HangulJYeorinHieuh;
+-}
+-
+-function _krToUsKeysym(keyval) {
+-    return _isKoreanCharactor(keyval) ? QwertyKeysyms[keyval] : keyval;
+-}
+-
+-function _getIBusHangul() {
+-    let inputSourceManager = Main.inputMethod._inputSourceManager;
+-    let inputSources = inputSourceManager.inputSources;
+-    if (!inputSources)
+-        return null;
+-
+-    for (let i of Object.keys(inputSources)) {
+-        if (inputSources[i].id === 'hangul')
+-            return inputSources[i];
+-    }
+-
+-    return null;
+-}
+-
+-function _getCurrentGroup() {
+-    let ibusHangul = _getIBusHangul();
+-
+-    if (ibusHangul && ibusHangul.properties)
+-        return ibusHangul.properties.get('InputMode').get_state() === 0 ? 'us' : 'kr';
+-
+-
+-    return null;
+-}
+-
+-function _nextInputMethod() {
+-    let ibusHangul = _getIBusHangul();
+-
+-    if (!ibusHangul)
+-        return;
+-
+-    let inputMethod = Main.inputMethod;
+-    if (inputMethod._currentSource !== ibusHangul) {
+-        let inputSourceManager = inputMethod._inputSourceManager;
+-        inputSourceManager.activateInputSource(ibusHangul, true);
+-    }
+-
+-    let ibusManager = IBusManager.getIBusManager();
+-    // change InputMode to Korean or English according to its previous mode
+-    ibusManager.activateProperty('InputMode', IBus.PropState.CHECKED);
+-}
++let wrapper = null;
+ 
+ // remove previous kr and us keyboard groups and create them again.
+ function _resetKeyboardLayout(keyboard) {
+@@ -89,71 +29,21 @@ function _resetKeyboardLayout(keyboard) {
+ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+-function _enable() {
+-    let keyboard = Main.keyboard._keyboard;
+-    let controller = keyboard._keyboardController;
+-
+-    _originalKeyvalPress = controller.keyvalPress;
+-    _originalKeyvalRelease = controller.keyvalRelease;
+-
+-    // Change the keyval to english keyval.
+-    // Because the Hangul combination does not work properly if sending Korean charactor as it is.
+-    controller.keyvalPress = keyval => {
+-        _originalKeyvalPress.call(controller, _krToUsKeysym(keyval));
+-    };
+-
+-    controller.keyvalRelease = keyval => {
+-        _originalKeyvalRelease.call(controller, _krToUsKeysym(keyval));
+-    };
+-
+-    _originalPopupLanguageMenu = keyboard._popupLanguageMenu;
+-    keyboard._popupLanguageMenu = () => {
+-        _nextInputMethod();
+-    };
+-
+-    _originalSetAnimationWindow = keyboard._setAnimationWindow;
+-    keyboard._setAnimationWindow = () => {};
+-
+-    _originalCreateLayersForGroup = keyboard._createLayersForGroup;
+-    keyboard._createLayersForGroup = groupname => {
+-        let layers = _originalCreateLayersForGroup.call(keyboard, groupname);
+-
+-        for (let l of Object.keys(layers)) {
+-            for (let container of layers[l]) {
+-                let key = container.get_children()[0];
+-                if (key.get_style_class_name().includes('layout-key'))
+-                    key.set_label('한/영');
+-
+-            }
+-        }
+-
+-        return layers;
+-    };
+-
+-
+-    // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+-    // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+-    // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+-    _originalSetActiveLayer = keyboard._setActiveLayer;
+-    keyboard._setActiveLayer = activeLevel => {
+-        // make us keyboard layout if not exist
+-        keyboard._ensureKeysForGroup('us');
+-
+-        let oldGroupName = controller._currentSource.xkbId;
+-        let newGroupname = _getCurrentGroup();
+-        if (!newGroupname)
+-            newGroupname = oldGroupName;
+-
+-        // if current purpose is password, show english keyboard only
+-        if (Main.inputMethod._purpose === Clutter.InputContentPurpose.PASSWORD)
+-            newGroupname = 'us';
+ 
++function _enable() {
++    if (wrapper) {
++        wrapper.restoreAll();
++        wrapper = null;
++    }
+ 
+-        controller._currentSource.xkbId = newGroupname;
++    if (getIBusHangul())
++        wrapper = new Wrapper.IbusKeyboardWrapper();
++    else
++        wrapper = new Wrapper.XkbKeyboardWrapper();
+ 
+-        _originalSetActiveLayer.call(keyboard, activeLevel);
+-        controller._currentSource.xkbId = oldGroupName;
+-    };
++    let keyboard = Main.keyboard._keyboard;
++    let controller = keyboard._keyboardController;
++    wrapper.wrapAll(keyboard, controller);
+ 
+     _resetKeyboardLayout(keyboard);
+ }
+@@ -163,12 +53,23 @@ function _enable() {
+ function _getSyncKeyboardFunc() {
+     let _isOSKEnabled = false;
+     let keyboardManager = Main.keyboard;
++
+     function applyKoreanKeyboard() {
+         if (!_isOSKEnabled && keyboardManager._keyboard) {
+             _enable();
+             _isOSKEnabled = true;
++
++            let ibusManager = IBusManager.getIBusManager();
++            _ibusReadyId = ibusManager.connect('ready', () => {
++                _enable();
++            });
++
+             _keyboardDestroyId = keyboardManager._keyboard.connect('destroy', () => {
+                 _resetKeyboard();
++                if (_ibusReadyId) {
++                    ibusManager.disconnect(_ibusReadyId);
++                    _ibusReadyId = null;
++                }
+                 _isOSKEnabled = false;
+             });
+         }
+@@ -192,28 +93,16 @@ function enable() { // eslint-disable-line no-unused-vars
+ function _resetKeyboard() {
+     let keyboard = Main.keyboard._keyboard;
+     if (keyboard) {
+-        keyboard._createLayersForGroup = _originalCreateLayersForGroup;
+-        keyboard._setActiveLayer = _originalSetActiveLayer;
+-        keyboard._popupLanguageMenu = _originalPopupLanguageMenu;
+-        keyboard._setAnimationWindow = _originalSetAnimationWindow;
++        if (wrapper)
++            wrapper.restoreAll();
++
+         if (_keyboardDestroyId) {
+             keyboard.disconnect(_keyboardDestroyId);
+             _keyboardDestroyId = null;
+         }
+ 
+         _resetKeyboardLayout(keyboard);
+-
+-        let controller = keyboard._keyboardController;
+-        controller.keyvalPress = _originalKeyvalPress;
+-        controller.keyvalRelease = _originalKeyvalRelease;
+     }
+-
+-    _originalKeyvalPress = null;
+-    _originalKeyvalRelease = null;
+-    _originalPopupLanguageMenu = null;
+-    _originalSetActiveLayer = null;
+-    _originalCreateLayersForGroup = null;
+-    _originalSetAnimationWindow = null;
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+@@ -226,4 +115,8 @@ function disable() { // eslint-disable-line no-unused-vars
+     _a11ySignalId = null;
+     _touchModeNotifyId = null;
+     _lastDeviceChangedId = null;
++
++    let ibusManager = IBusManager.getIBusManager();
++    if (_ibusReadyId)
++        ibusManager.disconnect(_ibusReadyId);
+ }
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+new file mode 100644
+index 0000000..4ba9789
+--- /dev/null
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -0,0 +1,147 @@
++/* eslint-disable no-invalid-this */
++const { Clutter, IBus } = imports.gi;
++
++const Main = imports.ui.main;
++
++const IBusManager = imports.misc.ibusManager;
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++const QwertyKeysyms = Me.imports.xkbcommon_keysyms.QwertyMap;
++const getIBusHangul = Me.imports.utils.getIBusHangul;
++
++const HangulKiyeog = 0x0ea1;
++const HangulJYeorinHieuh = 0x0efa;
++
++function _isKoreanCharactor(keyval) {
++    if (!keyval)
++        return false;
++
++    return HangulKiyeog <= keyval && keyval <= HangulJYeorinHieuh;
++}
++
++function _krToUsKeysym(keyval) {
++    return _isKoreanCharactor(keyval) ? QwertyKeysyms[keyval] : keyval;
++}
++
++function _getCurrentGroup() {
++    let ibusHangul = getIBusHangul();
++
++    if (ibusHangul && ibusHangul.properties)
++        return ibusHangul.properties.get('InputMode').get_state() === 0 ? 'us' : 'kr';
++
++
++    return null;
++}
++
++function _nextInputMethod() {
++    let ibusHangul = getIBusHangul();
++
++    if (!ibusHangul)
++        return;
++
++    let inputMethod = Main.inputMethod;
++    if (inputMethod._currentSource !== ibusHangul) {
++        let inputSourceManager = inputMethod._inputSourceManager;
++        inputSourceManager.activateInputSource(ibusHangul, true);
++    }
++
++    let ibusManager = IBusManager.getIBusManager();
++    // change InputMode to Korean or English according to its previous mode
++    ibusManager.activateProperty('InputMode', IBus.PropState.CHECKED);
++}
++
++class BaseKeyboardWrapper {
++    constructor(keyboard, controller) {
++        this._keyboard = keyboard;
++        this._controller = controller;
++        this._originalFunctions = [];
++    }
++
++    wrap(target, originalFuncName, replaceFunc) {
++        if (!target[originalFuncName])
++            throw new Error(`such function name does not exist in ${target.name}!`);
++
++        let originalFunction = target[originalFuncName];
++
++        this._originalFunctions.push({ target, 'function': originalFunction });
++
++        target[originalFuncName] = function (...args) {
++            return replaceFunc.apply(this, [originalFunction].concat(args));
++        };
++    }
++
++    restoreAll() {
++        for (let info of this._originalFunctions) {
++            let { target, 'function': func } = info;
++            target[func.name] = func;
++        }
++    }
++}
++var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper { // eslint-disable-line no-unused-vars
++    wrapAll(keyboard, controller) {
++        this.wrap(controller, 'keyvalPress', function (originalKeyvalPress, keyval) {
++            keyval = _krToUsKeysym(keyval);
++            return originalKeyvalPress.call(this, keyval);
++        });
++
++        this.wrap(controller, 'keyvalRelease', function (originalKeyvalRelease, keyval) {
++            keyval = _krToUsKeysym(keyval);
++            return originalKeyvalRelease.call(this, keyval);
++        });
++
++        // change the functionality of flag icon
++        this.wrap(keyboard, '_popupLanguageMenu', () => {
++            _nextInputMethod();
++        });
++
++        this.wrap(keyboard, '_setAnimationWindow', () => {});
++        this.wrap(keyboard, '_createLayersForGroup', function (originalCreateLayersForGroup, groupname) {
++            let layers = originalCreateLayersForGroup.call(this, groupname);
++            for (let l of Object.keys(layers)) {
++                for (let container of layers[l]) {
++                    let key = container.get_children()[0];
++                    if (key.get_style_class_name().includes('layout-key'))
++                        key.set_label('한/영');
++                }
++            }
++
++            return layers;
++        });
++        // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
++        // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
++        // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
++        this.wrap(keyboard, '_setActiveLayer', function (originalSetActiveLayer, activeLevel) {
++            // make us keyboard layout if not exist
++            this._ensureKeysForGroup('us');
++
++            let oldGroupName = this._keyboardController.getCurrentGroup();
++            let newGroupname = _getCurrentGroup();
++            if (!newGroupname)
++                newGroupname = oldGroupName;
++
++            // if current purpose is password, show english keyboard only
++            if (Main.inputMethod._purpose === Clutter.InputContentPurpose.PASSWORD)
++                newGroupname = 'us';
++
++            this._keyboardController._currentSource.xkbId = newGroupname;
++
++            originalSetActiveLayer.call(this, activeLevel);
++
++            this._keyboardController._currentSource.xkbId = oldGroupName;
++        });
++    }
++};
++
++var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper { // eslint-disable-line no-unused-vars
++    wrapAll(keyboard) {
++        this.wrap(keyboard, '_setAnimationWindow', () => {});
++        this.wrap(keyboard, '_setActiveLayer', function (originalSetActiveLayer, activeLevel) {
++            // make us keyboard layout if not exist
++            this._ensureKeysForGroup('us');
++            this._keyboardController._currentSource.xkbId = 'us';
++
++            originalSetActiveLayer.call(this, activeLevel);
++
++            this._keyboardController._currentSource.xkbId = 'kr';
++        });
++    }
++};
+diff --git a/extensions/osk-hangul/meson.build b/extensions/osk-hangul/meson.build
+index bce58aa..6d6eb75 100644
+--- a/extensions/osk-hangul/meson.build
++++ b/extensions/osk-hangul/meson.build
+@@ -6,6 +6,8 @@ extension_data += configure_file(
+ 
+ extension_sources += files(
+   'xkbcommon_keysyms.js',
++  'utils.js',
++  'keyboardWrapper.js'
+ )
+ 
+ extension_dir = join_paths(extensiondir, uuid)
+diff --git a/extensions/osk-hangul/utils.js b/extensions/osk-hangul/utils.js
+new file mode 100644
+index 0000000..603e606
+--- /dev/null
++++ b/extensions/osk-hangul/utils.js
+@@ -0,0 +1,16 @@
++let Main = imports.ui.main;
++
++function getIBusHangul() {  // eslint-disable-line no-unused-vars
++    let inputSourceManager = Main.inputMethod._inputSourceManager;
++    let inputSources = inputSourceManager.inputSources;
++    if (!inputSources)
++        return null;
++
++    for (let i of Object.keys(inputSources)) {
++        let is = inputSources[i];
++        if (is.type === 'ibus' && is.id === 'hangul')
++            return inputSources[i];
++    }
++
++    return null;
++}

@@ -1,0 +1,280 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 7 Jul 2021 17:13:41 +0900
+Subject: [feat] Greeter: Add greeter extension
+
+- This extension contains a customized ScreenShield and LoginDialog.
+- Enable network section of panel aggregate menu.
+- Add menu item to network section that run 'nm-connection-editor'.
+
+[IMS] N/A
+---
+ extensions/greeter/extension.js     | 75 +++++++++++++++++++++++++++++++++++++
+ extensions/greeter/loginDialog.js   | 56 +++++++++++++++++++++++++++
+ extensions/greeter/meson.build      | 10 +++++
+ extensions/greeter/metadata.json.in | 10 +++++
+ extensions/greeter/screenShield.js  | 55 +++++++++++++++++++++++++++
+ extensions/greeter/stylesheet.css   |  1 +
+ meson.build                         |  1 +
+ 7 files changed, 208 insertions(+)
+ create mode 100644 extensions/greeter/extension.js
+ create mode 100644 extensions/greeter/loginDialog.js
+ create mode 100644 extensions/greeter/meson.build
+ create mode 100644 extensions/greeter/metadata.json.in
+ create mode 100644 extensions/greeter/screenShield.js
+ create mode 100644 extensions/greeter/stylesheet.css
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+new file mode 100644
+index 0000000..cb59c72
+--- /dev/null
++++ b/extensions/greeter/extension.js
+@@ -0,0 +1,75 @@
++/*
++ * Greeter - login screen for GNOME Shell
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const Main = imports.ui.main;
++const LoginManager = imports.misc.loginManager;
++const _ = imports.gettext.gettext;
++
++const ScreenShield = Me.imports.screenShield;
++
++function init(/* metadata*/) { // eslint-disable-line no-unused-vars
++}
++
++function _invalidateOldScreenShield() {
++    // Invalidate objects used in previous screenshield
++    let screenSaverDBus = Main.screenShield._screenSaverDBus;
++    screenSaverDBus._dbusImpl.unexport();
++    Main.screenShield._presence = null;
++    Main.screenShield._screenSaverDBus = null;
++    Main.screenShield._smartcardManager = null;
++    Main.screenShield._oVirtCredentialsManager = null;
++    Main.screenShield._loginManager = null;
++    Main.screenShield._loginSession = null;
++}
++
++function _enableNetworkSettings() {
++    // NOTE(210803, sohee): Receives 'startup-complete' signal
++    // to customize the panel network menus after completing gnome-shell panel network setup.
++    Main.layoutManager.connect('startup-complete', () => {
++        // add 'network setting' menu item
++        let network = Main.panel.statusArea['aggregateMenu']._network;
++        let deviceSection = network.menu.firstMenuItem.section;
++        let statusItem = deviceSection.firstMenuItem;
++        let networkSettingsItem = statusItem.menu.addSettingsAction(
++            _('Network Settings'), 'nm-connection-editor.desktop');
++        networkSettingsItem.visible = true;
++
++        // enable network section of panel
++        network.menu.setSensitive(true);
++    });
++}
++
++function enable() { // eslint-disable-line no-unused-vars
++    if (!Main.sessionMode.isGreeter)
++        return;
++
++    if (!LoginManager.canLock())
++        return;
++
++    _invalidateOldScreenShield();
++
++    // Replace with custom ScreenShield and LoginDialog
++    Main.screenShield = new ScreenShield.ScreenShield();
++    Main.screenShield.ensureLoginDialog();
++
++    _enableNetworkSettings();
++}
++
++function disable() { // eslint-disable-line no-unused-vars
++}
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+new file mode 100644
+index 0000000..76d09b6
+--- /dev/null
++++ b/extensions/greeter/loginDialog.js
+@@ -0,0 +1,56 @@
++// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++/* exported LoginDialog */
++/*
++ * Copyright 2011 Red Hat, Inc
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2, or (at your option)
++ * any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, see <http://www.gnu.org/licenses/>.
++ */
++
++const { GObject, Clutter } = imports.gi;
++const Main = imports.ui.main;
++const GnomeLoginDialog = imports.gdm.loginDialog;
++const CtrlAltTab = imports.ui.ctrlAltTab;
++
++const Gettext = imports.gettext;
++const _ = Gettext.gettext;
++
++var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDialog.LoginDialog {
++    open() {
++        Main.ctrlAltTabManager.addGroup(this,
++            _('Login Window'),
++            'dialog-password-symbolic',
++            { sortGroup: CtrlAltTab.SortGroup.MIDDLE });
++        this.activate();
++
++        this.opacity = 0;
++
++        // NOTE(210803, sohee): Remove the modal push code in this position
++        // to float network setup window.
++
++        this.ease({
++            opacity: 255,
++            duration: 1000,
++            mode: Clutter.AnimationMode.EASE_IN_QUAD,
++        });
++
++        return true;
++    }
++
++    close() {
++        // NOTE(210803, sohee): Since the modal push code has been deleted,
++        // delete modal pop code as well.
++
++        Main.ctrlAltTabManager.removeGroup(this);
++    }
++});
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+new file mode 100644
+index 0000000..3b51541
+--- /dev/null
++++ b/extensions/greeter/meson.build
+@@ -0,0 +1,10 @@
++extension_data += configure_file(
++  input: metadata_name + '.in',
++  output: metadata_name,
++  configuration: metadata_conf
++)
++
++extension_sources += files(
++    'screenShield.js',
++    'loginDialog.js'
++)
+diff --git a/extensions/greeter/metadata.json.in b/extensions/greeter/metadata.json.in
+new file mode 100644
+index 0000000..d42a01a
+--- /dev/null
++++ b/extensions/greeter/metadata.json.in
+@@ -0,0 +1,10 @@
++{
++"extension-id": "@extension_id@",
++"uuid": "@uuid@",
++"gettext-domain": "greeter",
++"name": "Greeter",
++"description": "login screen for GNOME Shell",
++"original-authors": [  "tmax" ],
++"shell-version": [ "@shell_current@" ],
++"url": "@url@"
++}
+diff --git a/extensions/greeter/screenShield.js b/extensions/greeter/screenShield.js
+new file mode 100644
+index 0000000..0da471a
+--- /dev/null
++++ b/extensions/greeter/screenShield.js
+@@ -0,0 +1,55 @@
++// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const Main = imports.ui.main;
++const GnomeScreenShield = imports.ui.screenShield;
++
++var ScreenShield = class ScreenShield extends GnomeScreenShield.ScreenShield { // eslint-disable-line no-unused-vars
++    constructor() {
++        super();
++        // NOTE(210722, sohee): To float network settings window (nm-connection-editor)
++        // over the screenshield, change layer to which the screenshield belongs.
++        Main.layoutManager.removeChrome(this.actor);
++        Main.layoutManager._backgroundGroup.add_child(this.actor);
++    }
++
++    _becomeModal() {
++        return true;
++    }
++
++    ensureLoginDialog() {
++        if (!this._dialog) {
++            let constructor = Me.imports.loginDialog.LoginDialog;
++            if (!constructor) {
++                // This session mode has no locking capabilities
++                this.deactivate(true);
++                return false;
++            }
++
++            this._dialog = new constructor(this._lockDialogGroup);
++
++            let time = global.get_current_time();
++            if (!this._dialog.open(time)) {
++                // This is kind of an impossible error: we're already modal
++                // by the time we reach this...
++                log('Could not open login dialog: failed to acquire grab');
++                this.deactivate(true);
++                return false;
++            }
++
++            this._dialog.connect('failed', this._onUnlockFailed.bind(this));
++            this._wakeUpScreenId = this._dialog.connect(
++                'wake-up-screen', this._wakeUpScreen.bind(this));
++        }
++        return true;
++    }
++
++    set isModal(isModal) {
++        this._isModal = false;
++    }
++
++    get isModal() {
++        return this._isModal;
++    }
++};
+diff --git a/extensions/greeter/stylesheet.css b/extensions/greeter/stylesheet.css
+new file mode 100644
+index 0000000..25134b6
+--- /dev/null
++++ b/extensions/greeter/stylesheet.css
+@@ -0,0 +1 @@
++/* This extensions requires no special styling */
+diff --git a/meson.build b/meson.build
+index 787991b..638e74e 100644
+--- a/meson.build
++++ b/meson.build
+@@ -51,6 +51,7 @@ tos_extensions = [
+   'search',
+   'tos-hotkey',
+   'osk-hangul',
++  'greeter'
+ ]
+ 
+ 

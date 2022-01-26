@@ -1,0 +1,73 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 20 Jul 2021 18:57:36 +0900
+Subject: [bugfix] dash-to-panel : Set unknown icon for textureless app icon
+
+- If the texture can be obtained from the GIcon object even though there is no desktop file, use its own icon, and use the unknown icon only when there is no desktop file and no texture.
+- A bypass method because the API for the fallback icon cannot be used in gjs.
+
+[IMS] 266450
+---
+ extensions/dash-to-panel/appIcons.js | 36 ++++++++++++++++++++++++++++++------
+ 1 file changed, 30 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 0ca8c54..b110dc0 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -138,11 +138,7 @@ var taskbarAppIcon = Utils.defineClass({
+ 
+         this.callParent('_init', appInfo.app, iconParams);
+ 
+-        // If app does not have .desktop file, get_app_info() return null.
+-        // we regard it iconless app. And set icon directly
+-        // Also, if desktop file does not have icon, do same
+-        let desktopAppInfo = appInfo.app.get_app_info();
+-        if (!desktopAppInfo || !desktopAppInfo.get_icon()) {
++        if (!this._checkForIcon(appInfo.app)) {
+             this.icon._createIconTexture = function (size) {
+                 if (this.icon)
+                     this.icon.destroy();
+@@ -157,7 +153,6 @@ var taskbarAppIcon = Utils.defineClass({
+             };
+         }
+ 
+-
+         Utils.wrapActor(this.icon);
+         Utils.wrapActor(this);
+ 
+@@ -530,6 +525,35 @@ var taskbarAppIcon = Utils.defineClass({
+         }
+     },
+ 
++    _checkForIcon(app) {
++        let desktopIcon = app.get_icon();
++
++        if (!app.get_icon())
++            return false;
++
++
++        // If icon in ShellApp object is fallback-icon, the icon comes from window property and
++        // GIcon type is St.ImageContent
++        // Get cogl.texture from St.ImageContent, no icon if null
++        if (desktopIcon instanceof St.ImageContent) {
++            if (!desktopIcon.get_texture()) {
++                log('Does not have texture. Null Image');
++                return false;
++            }
++            return true;
++        }
++
++        let desktopAppInfo = app.get_app_info();
++        // If app does not have .desktop file, get_app_info() return null.
++        // we regard it iconless app. And set icon directly
++        // Also, if desktop file does not have icon, do same
++        if (desktopAppInfo && desktopAppInfo.get_icon())
++            return true;
++
++
++        return false;
++    },
++
+     _setIconStyle(isFocused) {
+         let inlineStyle = 'margin: 0;';
+ 

@@ -1,0 +1,66 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Thu, 23 Sep 2021 16:37:31 +0900
+Subject: [feat] desktop-icons-ng : Add Sorting Context Menu
+
+- add sorting icons based on name
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 21 +++++++++++++++++++++
+ extensions/desktop-icons-ng/po/ko.po          |  4 ++++
+ 2 files changed, 25 insertions(+)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 56301f7..81a70ff 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -617,6 +617,10 @@ var DesktopManager = class {
+         selectAll.connect('activate', () => this._selectAll());
+         this._menu.add(selectAll);
+ 
++        let sorting = new Gtk.MenuItem({ label: _('Sorting') });
++        sorting.connect('activate', () => this._sorting());
++        this._menu.add(sorting);
++
+         this._menu.add(new Gtk.SeparatorMenuItem());
+ 
+         this._showDesktopInFilesMenuItem = new Gtk.MenuItem({ label: _('Show Desktop in Files') });
+@@ -680,6 +684,23 @@ var DesktopManager = class {
+         }
+     }
+ 
++    _sorting() {
++        for (let fileItem of this._fileList) {
++            fileItem.removeFromGrid();
++            fileItem.savedCoordinates = null;
++        }
++
++        this._fileList.sort((a, b) => {
++            if (a.displayName > b.displayName)
++                return true;
++
++            return false;
++
++        });
++
++        this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.PRESERVE);
++    }
++
+     _onOpenDesktopInFilesClicked() {
+         Gio.AppInfo.launch_default_for_uri_async(this._desktopDir.get_uri(),
+             null, null,
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index 077ed30..b421609 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -97,6 +97,10 @@ msgstr "다시 실행"
+ msgid "Select all"
+ msgstr "전체 선택"
+ 
++#: ../desktopManager.js:568
++msgid "Sorting"
++msgstr "정렬"
++
+ #: ../desktopManager.js:572
+ msgid "Show Desktop in Files"
+ msgstr "파일 관리자로 바탕화면 보기"

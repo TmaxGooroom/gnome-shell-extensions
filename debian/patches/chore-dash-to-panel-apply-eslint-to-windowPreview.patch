@@ -1,0 +1,250 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 10 Aug 2021 17:33:29 +0900
+Subject: [chore] dash-to-panel : apply eslint to windowPreview
+
+ - applied eslint to windowPreview
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/windowPreview.js | 65 ++++++++++++++++---------------
+ 1 file changed, 33 insertions(+), 32 deletions(-)
+
+diff --git a/extensions/dash-to-panel/windowPreview.js b/extensions/dash-to-panel/windowPreview.js
+index 72e65a9..bb71c03 100644
+--- a/extensions/dash-to-panel/windowPreview.js
++++ b/extensions/dash-to-panel/windowPreview.js
+@@ -20,19 +20,16 @@ const Config = imports.misc.config;
+ const GLib = imports.gi.GLib;
+ const Gtk = imports.gi.Gtk;
+ const Main = imports.ui.main;
+-const Mainloop = imports.mainloop;
+ const Meta = imports.gi.Meta;
+ const PopupMenu = imports.ui.popupMenu;
+-const Signals = imports.signals;
+ const St = imports.gi.St;
+-const WindowManager = imports.ui.windowManager;
+-const Workspace = imports.ui.workspace;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+-const Panel = Me.imports.panel;
+ const Taskbar = Me.imports.taskbar;
+ const Utils = Me.imports.utils;
+ 
++const _ = imports.gettext.domain(Me.imports.utils.TRANSLATION_DOMAIN).gettext;
++
+ // timeout intervals
+ const ENSURE_VISIBLE_MS = 200;
+ 
+@@ -60,7 +57,7 @@ let scaleFactor = 1;
+ let animationTime = 0;
+ let aspectRatio = {};
+ 
+-var PreviewMenu = Utils.defineClass({
++var PreviewMenu = Utils.defineClass({ // eslint-disable-line no-unused-vars
+     Name: 'DashToPanel-PreviewMenu',
+     Extends: St.Widget,
+     Signals: { 'open-state-changed': {} },
+@@ -75,9 +72,9 @@ var PreviewMenu = Utils.defineClass({
+         this._peekedWindow = null;
+         this.peekInitialWorkspaceIndex = -1;
+         this.opened = false;
+-        this.isVertical = geom.position == St.Side.LEFT || geom.position == St.Side.RIGHT;
++        this.isVertical = geom.position === St.Side.LEFT || geom.position === St.Side.RIGHT;
+         this._translationProp = `translation_${this.isVertical ? 'x' : 'y'}`;
+-        this._translationDirection = geom.position == St.Side.TOP || geom.position == St.Side.LEFT ? -1 : 1;
++        this._translationDirection = geom.position === St.Side.TOP || geom.position === St.Side.LEFT ? -1 : 1;
+         this._translationOffset = Math.min(panel.dtpSize, MAX_TRANSLATION) * this._translationDirection;
+ 
+         this.menu = new St.Widget({
+@@ -87,8 +84,8 @@ var PreviewMenu = Utils.defineClass({
+             track_hover: true,
+             x_expand: true,
+             y_expand: true,
+-            x_align: Clutter.ActorAlign[geom.position != St.Side.RIGHT ? 'START' : 'END'],
+-            y_align: Clutter.ActorAlign[geom.position != St.Side.BOTTOM ? 'START' : 'END'],
++            x_align: Clutter.ActorAlign[geom.position !== St.Side.RIGHT ? 'START' : 'END'],
++            y_align: Clutter.ActorAlign[geom.position !== St.Side.BOTTOM ? 'START' : 'END'],
+         });
+         this._box = new St.BoxLayout({ vertical: this.isVertical });
+         this._scrollView = new St.ScrollView({
+@@ -184,7 +181,7 @@ var PreviewMenu = Utils.defineClass({
+     },
+ 
+     open(appIcon) {
+-        if (this.currentAppIcon != appIcon) {
++        if (this.currentAppIcon !== appIcon) {
+             this.currentAppIcon = appIcon;
+ 
+             if (!this.opened) {
+@@ -222,7 +219,7 @@ var PreviewMenu = Utils.defineClass({
+     },
+ 
+     update(appIcon, windows) {
+-        if (this.currentAppIcon == appIcon) {
++        if (this.currentAppIcon === appIcon) {
+             if (windows && !windows.length) {
+                 this.close();
+             } else {
+@@ -291,7 +288,9 @@ var PreviewMenu = Utils.defineClass({
+     },
+ 
+     _setReactive(reactive) {
+-        this._box.get_children().forEach(c => c.reactive = reactive);
++        this._box.get_children().forEach(c => {
++            c.reactive = reactive;
++        });
+         this.menu.reactive = reactive;
+     },
+ 
+@@ -340,7 +339,7 @@ var PreviewMenu = Utils.defineClass({
+         windows.sort(Taskbar.sortWindowsCompareFunction);
+ 
+         for (let i = 0, l = windows.length; i < l; ++i) {
+-            let currentIndex = Utils.findIndex(currentPreviews, c => c.window == windows[i]);
++            let currentIndex = Utils.findIndex(currentPreviews, c => c.window === windows[i]);
+ 
+             if (currentIndex < 0) {
+                 this._addNewPreview(windows[i]);
+@@ -348,7 +347,7 @@ var PreviewMenu = Utils.defineClass({
+                 currentPreviews[currentIndex].assignWindow(windows[i]);
+                 currentPreviews.splice(currentIndex, 1);
+ 
+-                if (this._peekedWindow && this._peekedWindow == windows[i])
++                if (this._peekedWindow && this._peekedWindow === windows[i])
+                     this.requestPeek(windows[i]);
+ 
+             }
+@@ -386,15 +385,17 @@ var PreviewMenu = Utils.defineClass({
+             let delta = increment;
+ 
+             switch (event.get_scroll_direction()) {
+-            case Clutter.ScrollDirection.UP:
++            case Clutter.ScrollDirection.UP: {
+                 delta = -increment;
+                 break;
+-            case Clutter.ScrollDirection.SMOOTH:
++            }
++            case Clutter.ScrollDirection.SMOOTH: {
+                 let [dx, dy] = event.get_scroll_delta();
+                 delta = dy * increment;
+                 delta += dx * increment;
+                 break;
+             }
++            }
+ 
+             adjustment.set_value(adjustment.get_value() + delta);
+             this._updateScrollFade();
+@@ -411,7 +412,7 @@ var PreviewMenu = Utils.defineClass({
+ 
+     _refreshGlobals() {
+         isLeftButtons = Meta.prefs_get_button_layout().left_buttons.indexOf(Meta.ButtonFunction.CLOSE) >= 0;
+-        isTopHeader = Me.settings.get_string('window-preview-title-position') == 'TOP';
++        isTopHeader = Me.settings.get_string('window-preview-title-position') === 'TOP';
+         isManualStyling = Me.settings.get_boolean('window-preview-manual-styling');
+         scaleFactor = Utils.getScaleFactor();
+         headerHeight = Me.settings.get_boolean('window-preview-show-title') ? HEADER_HEIGHT * scaleFactor : 0;
+@@ -447,11 +448,11 @@ var PreviewMenu = Utils.defineClass({
+             x = this.panel.monitor.x;
+         }
+ 
+-        if (geom.position == St.Side.LEFT) {
++        if (geom.position === St.Side.LEFT) {
+             x = this.panel.monitor.x + this.panel.dtpSize + panelBoxTheme.get_padding(St.Side.LEFT);
+-        } else if (geom.position == St.Side.RIGHT) {
++        } else if (geom.position === St.Side.RIGHT) {
+             x = this.panel.monitor.x + this.panel.monitor.width - (this.panel.dtpSize + previewSize) - panelBoxTheme.get_padding(St.Side.RIGHT);
+-        } else if (geom.position == St.Side.TOP) {
++        } else if (geom.position === St.Side.TOP) {
+             y = this.panel.monitor.y + this.panel.dtpSize + panelBoxTheme.get_padding(St.Side.TOP);
+         } else { // St.Side.BOTTOM
+             y = this.panel.monitor.y + this.panel.monitor.height - (this.panel.dtpSize + panelBoxTheme.get_padding(St.Side.BOTTOM) + previewSize + headerHeight);
+@@ -493,7 +494,7 @@ var PreviewMenu = Utils.defineClass({
+     _updateScrollFade(remove) {
+         let [value, upper, pageSize] = this._getScrollAdjustmentValues();
+         let needsFade = Math.round(upper) > Math.round(pageSize);
+-        let fadeWidgets = this.menu.get_children().filter(c => c != this._scrollView);
++        let fadeWidgets = this.menu.get_children().filter(c => c !== this._scrollView);
+ 
+         if (!remove && needsFade) {
+             if (!fadeWidgets.length) {
+@@ -566,7 +567,7 @@ var PreviewMenu = Utils.defineClass({
+     },
+ 
+     _animateOpenOrClose(show, onComplete) {
+-        let isTranslationAnimation = this.menu[this._translationProp] != 0;
++        let isTranslationAnimation = this.menu[this._translationProp] !== 0;
+         let tweenOpts = {
+             opacity: show ? 255 : 0,
+             transition: show ? 'easeInOutQuad' : 'easeInCubic',
+@@ -592,7 +593,7 @@ var PreviewMenu = Utils.defineClass({
+         this._restorePeekedWindowStack();
+         this._peekedWindow = window;
+ 
+-        if (currentWorkspace != windowWorkspace) {
++        if (currentWorkspace !== windowWorkspace) {
+             this._switchToWorkspaceImmediate(windowWorkspace.index());
+             this._timeoutsHandler.add([T3, 100, focusWindow]);
+         } else {
+@@ -608,7 +609,7 @@ var PreviewMenu = Utils.defineClass({
+         this._timeoutsHandler.remove(T3);
+ 
+         if (this._peekedWindow) {
+-            let immediate = !stayHere && this.peekInitialWorkspaceIndex != Utils.getCurrentWorkspace().index();
++            let immediate = !stayHere && this.peekInitialWorkspaceIndex !== Utils.getCurrentWorkspace().index();
+ 
+             this._restorePeekedWindowStack();
+             this._focusMetaWindow(255, this._peekedWindow, immediate, true);
+@@ -643,7 +644,7 @@ var PreviewMenu = Utils.defineClass({
+ 
+         window.get_workspace().list_windows().forEach(mw => {
+             let wa = mw.get_compositor_private();
+-            let isFocused = !ignoreFocus && mw == window;
++            let isFocused = !ignoreFocus && mw === window;
+ 
+             if (wa) {
+                 if (isFocused) {
+@@ -795,7 +796,7 @@ var Preview = Utils.defineClass({
+     },
+ 
+     assignWindow(window, animateSize) {
+-        if (this.window != window) {
++        if (this.window !== window) {
+             let _assignWindowClone = () => {
+                 if (window.get_compositor_private()) {
+                     let cloneBin = this._getWindowCloneBin(window);
+@@ -804,13 +805,13 @@ var Preview = Utils.defineClass({
+                     this._addClone(cloneBin, animateSize);
+                     this._previewMenu.updatePosition();
+                 } else if (!this._waitWindowId) {
+-                    this._waitWindowId = Mainloop.idle_add(() => {
++                    this._waitWindowId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                         this._waitWindowId = 0;
+ 
+                         if (this._previewMenu.opened)
+                             _assignWindowClone();
+-
+                     });
++                    GLib.Source.set_name_by_id(this._waitWindowId, '[dash-to-panel] _assinWindow');
+                 }
+             };
+ 
+@@ -930,7 +931,7 @@ var Preview = Utils.defineClass({
+ 
+         ctxMenuData.menu.connect('open-state-changed', () => this._previewMenu.menu.sync_hover());
+ 
+-        if (this.window.get_workspace() != currentWorkspace) {
++        if (this.window.get_workspace() !== currentWorkspace) {
+             let menuItem = new PopupMenu.PopupMenuItem(`${_('Move to current Workspace')} [${currentWorkspace.index() + 1}]`);
+             let menuItems = ctxMenuData.menu.box.get_children();
+             let insertIndex = Utils.findIndex(menuItems, c => c._delegate instanceof PopupMenu.PopupSeparatorMenuItem);
+@@ -1046,8 +1047,8 @@ var Preview = Utils.defineClass({
+         let clone = new Clutter.Clone({ source: window.get_compositor_private() });
+         let cloneBin = new St.Widget({
+             opacity: 0,
+-            layout_manager: frameRect.width != bufferRect.width ||
+-                            frameRect.height != bufferRect.height
++            layout_manager: frameRect.width !== bufferRect.width ||
++                            frameRect.height !== bufferRect.height
+                 ? new WindowCloneLayout(frameRect, bufferRect)
+                 : new Clutter.BinLayout(),
+         });

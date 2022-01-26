@@ -1,0 +1,109 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 17 Sep 2021 16:23:05 +0900
+Subject: [feat] Screenshot : Add screenshot extension
+
+- Improve logic compared default Gnome-shell screenshot
+
+[IMS] N/A
+---
+ extensions/screenshot/extension.js     | 37 ++++++++++++++++++++++++++++++++++
+ extensions/screenshot/meson.build      |  5 +++++
+ extensions/screenshot/metadata.json.in |  9 +++++++++
+ extensions/screenshot/stylesheet.css   |  1 +
+ meson.build                            |  3 ++-
+ 5 files changed, 54 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/screenshot/extension.js
+ create mode 100644 extensions/screenshot/meson.build
+ create mode 100644 extensions/screenshot/metadata.json.in
+ create mode 100644 extensions/screenshot/stylesheet.css
+
+diff --git a/extensions/screenshot/extension.js b/extensions/screenshot/extension.js
+new file mode 100644
+index 0000000..6b48ebf
+--- /dev/null
++++ b/extensions/screenshot/extension.js
+@@ -0,0 +1,37 @@
++/* exported init, enable, disable */
++const { Clutter, GObject } = imports.gi;
++
++const Screenshot = imports.ui.screenshot;
++
++/* Screenshot Extension
++In selectArea screenshot,
++When mouse button release during motion_event emit, Screenshot does not operate correctly.
++Because, during motion event handling, SelectArea called queue_relayout, which blocked event handling until relayout finished.
++In extensions, we solved that by setting NO_LAYOUT flag in SelectArea class.
++NO_LAYOUT flag means that prevent Clutter from automatic
++queueing of relayout and will defer all layouting to the actor itself
++*/
++
++// In case of disable screenshot extension, we don't need to restore to old SelectArea class which occurs error.
++// So, we comment out OldSelectArea.
++// var OldSelectArea = null;
++
++var SelectArea = GObject.registerClass(
++class SelectArea extends Screenshot.SelectArea {
++    _init() {
++        super._init();
++        this.set_flags(Clutter.ActorFlags.NO_LAYOUT);
++    }
++});
++
++function init() {
++//    OldSelectArea = Screenshot.SelectArea;
++}
++
++function enable() {
++    Screenshot.SelectArea = SelectArea;
++}
++
++function disable() {
++    // Screenshot.SelectArea = OldSelectArea;
++}
+diff --git a/extensions/screenshot/meson.build b/extensions/screenshot/meson.build
+new file mode 100644
+index 0000000..48504f6
+--- /dev/null
++++ b/extensions/screenshot/meson.build
+@@ -0,0 +1,5 @@
++extension_data += configure_file(
++  input: metadata_name + '.in',
++  output: metadata_name,
++  configuration: metadata_conf
++)
+diff --git a/extensions/screenshot/metadata.json.in b/extensions/screenshot/metadata.json.in
+new file mode 100644
+index 0000000..335398f
+--- /dev/null
++++ b/extensions/screenshot/metadata.json.in
+@@ -0,0 +1,9 @@
++{
++"extension-id": "@extension_id@",
++"uuid": "@uuid@",
++"name": "Tmax Screenshot",
++"description": "Improved Screenshot for TmaxOS",
++"original-authors": [  "tmax" ],
++"shell-version": [ "@shell_current@" ],
++"url": "@url@"
++}
+diff --git a/extensions/screenshot/stylesheet.css b/extensions/screenshot/stylesheet.css
+new file mode 100644
+index 0000000..25134b6
+--- /dev/null
++++ b/extensions/screenshot/stylesheet.css
+@@ -0,0 +1 @@
++/* This extensions requires no special styling */
+diff --git a/meson.build b/meson.build
+index fbd8799..038bcdf 100644
+--- a/meson.build
++++ b/meson.build
+@@ -52,7 +52,8 @@ tos_extensions = [
+   'tos-hotkey',
+   'osk-hangul',
+   'greeter',
+-  'calibrator'
++  'calibrator',
++  'screenshot'
+ ]
+ 
+ 

@@ -1,0 +1,63 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 6 Sep 2021 16:58:28 +0900
+Subject: [bugfix] dashtopanel: do not use primary-monitor value
+
+- deleted lines using primary-monitor settings value
+- instead of using cached value, use system primary monitor value
+
+[IMS] 269760
+---
+ extensions/dash-to-panel/panelManager.js | 8 +-------
+ extensions/dash-to-panel/prefs.js        | 3 ++-
+ 2 files changed, 3 insertions(+), 8 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index 400d48b..568e187 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -65,10 +65,8 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+     },
+ 
+     enable(reset) {
+-        let dtpPrimaryIndex = Me.settings.get_int('primary-monitor');
+-
+         this.panelPositions = Pos.getSettingsPositions(Me.settings, 'panel-positions');
+-        this.dtpPrimaryMonitor = Main.layoutManager.monitors[dtpPrimaryIndex] || Main.layoutManager.primaryMonitor;
++        this.dtpPrimaryMonitor = Main.layoutManager.primaryMonitor;
+         this.proximityManager = new Proximity.ProximityManager();
+ 
+         Utils.wrapActor(Main.panel);
+@@ -248,12 +246,8 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+                 () => {
+                     if (!Main.layoutManager.primaryMonitor)
+                         return;
+-                    // Update main dock position if primary monitor changed
+-                    if (Me.settings.get_int('primary-monitor') !== Main.layoutManager.primaryIndex)
+-                        Me.settings.set_int('primary-monitor', Main.layoutManager.primaryIndex);
+                     this._saveMonitors();
+                     this._reset();
+-
+                 },
+             ]
+         );
+diff --git a/extensions/dash-to-panel/prefs.js b/extensions/dash-to-panel/prefs.js
+index 58d5b8c..72fcf95 100644
+--- a/extensions/dash-to-panel/prefs.js
++++ b/extensions/dash-to-panel/prefs.js
+@@ -24,6 +24,7 @@
+ const { GdkPixbuf, Gio, GLib, Gtk, Gdk } = imports.gi;
+ const Lang = imports.lang;
+ 
++const Main = imports.ui.main;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Convenience = Me.imports.convenience;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+@@ -709,7 +710,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+         // multi-monitor
+         this.monitors = this._settings.get_value('available-monitors').deep_unpack();
+ 
+-        let dtpPrimaryMonitorIndex = this.monitors.indexOf(this._settings.get_int('primary-monitor'));
++        let dtpPrimaryMonitorIndex = this.monitors.indexOf(Main.layoutManager.primaryMonitor);
+ 
+         if (dtpPrimaryMonitorIndex < 0)
+             dtpPrimaryMonitorIndex = 0;

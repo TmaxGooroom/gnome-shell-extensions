@@ -1,0 +1,355 @@
+From: root <root@localhost.localdomain>
+Date: Tue, 25 May 2021 16:57:14 +0900
+Subject: [refactor] AlternateTab : Remove duplicated code,
+ merge Arrow's status update logic
+
+- Remove duplicated code at scroll logic.
+- Merge Arrow's status update logic
+- Delete unnecessary declared signal emit functions
+- Add annotation
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 161 +++++++++++------------------------
+ 1 file changed, 52 insertions(+), 109 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index b8ba51d..865e2e1 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -21,7 +21,10 @@ var ARROW_HEIGHT = 40;
+ var ARROW_WIDTH = ARROW_HEIGHT * 2;
+ 
+ var IMAGE_PATH = '/media/';
+-var START = 0;
++
++const START = 0;
++const DOWN = 0;
++const UP = 1;
+ 
+ 
+ // Before allocation Logic, we can't load CSS value.
+@@ -114,6 +117,13 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+                                             (visibleRows - 1) * switcherVerticalSpacing
+         );
+ 
++        /*
++           Since the value in CSS cannot be loaded during the initialization process, visibleRow is calculated when vfun_allocate is first called.
++           When visibleRow is calculated, we need to update All of Preview button's reactive property setting.
++           Because, in _updateReactive logic, visibleRow value is used to set button's reactive property.
++           But in SwitcherList (windowSwitcher Class)'s initialization, visibleRow is initialized -1 as above reason(padding & spacing value in CSS).
++           So, when visibleRow is updated, we need to call SwitcherList(WindowSwitcher)._updateReactive method.
++        */
+         if (this._switcherList.visibleRows < 0) {
+             this._switcherList.visibleRows = visibleRows;
+             this._switcherList._updateReactive(START);
+@@ -306,7 +316,7 @@ var WindowSwitcher = GObject.registerClass({
+     _init(windows, mode) {
+         super._init(false);
+ 
+-        // Reload style class that meets TmaxOS UI Specification.
++        // Reload properties to meet TmaxOS UI Specification.
+         this.remove_style_class_name('switcher-list');
+         this.set_style_class_name('tos-switcher-list');
+ 
+@@ -318,12 +328,14 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this.visibleRows = -1;
+ 
++        // rootList is consist of top & bottom arrow buttons and scrollview
+         this._rootList = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
+             vertical: true,
+             x_expand: true });
+ 
+         this.add_child(this._rootList);
+ 
++        // construct top arrow button
+         let topArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg`;
+         this._topArrow = new St.Icon({
+             gicon: Gio.icon_new_for_string(topArrowPath),
+@@ -331,9 +343,9 @@ var WindowSwitcher = GObject.registerClass({
+         this._topArrow.set_size(ARROW_WIDTH, ARROW_HEIGHT);
+         this._topArrowButton = new St.Button({ name: 'TopArrowButton', style_class: 'tos-arrow-button', reactive: true, x_align: Clutter.ActorAlign.CENTER });
+         this._topArrowButton.set_child(this._topArrow);
+-        this._topArrowButton.connect('clicked', () => this._scrollPreviousPage());
+-
++        this._topArrowButton.connect('clicked', () => this._scrollPage(UP));
+ 
++        // construct bottom arrow button
+         let bottomArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg`;
+         this._bottomArrow = new St.Icon({
+             gicon: Gio.icon_new_for_string(bottomArrowPath),
+@@ -341,8 +353,9 @@ var WindowSwitcher = GObject.registerClass({
+         this._bottomArrow.set_size(ARROW_WIDTH, ARROW_HEIGHT);
+         this._bottomArrowButton = new St.Button({ name: 'BottomArrowButton', style_class: 'tos-arrow-button', reactive: true, x_align: Clutter.ActorAlign.CENTER });
+         this._bottomArrowButton.set_child(this._bottomArrow);
+-        this._bottomArrowButton.connect('clicked', () => this._scrollNextPage());
++        this._bottomArrowButton.connect('clicked', () => this._scrollPage(DOWN));
+ 
++        // Register child component to rootList
+         this._rootList.add_child(this._topArrowButton);
+         this._rootList.add_child(this._scrollView);
+         this._rootList.add_child(this._bottomArrowButton);
+@@ -353,6 +366,8 @@ var WindowSwitcher = GObject.registerClass({
+             vertical: true,
+             x_expand: true });
+ 
++
++        // need to Set scrollview correctly because of super.init()
+         this._scrollView.remove_actor(this._list);
+         this._scrollView.add_actor(this._rowList);
+ 
+@@ -361,20 +376,20 @@ var WindowSwitcher = GObject.registerClass({
+         this._lists = [];
+         this._lists.push(this._list);
+ 
+-
+         this.windows = windows;
+         this.icons = [];
+ 
+         let primary = Main.layoutManager.primaryMonitor;
+         this._maxWidth = primary.width * (1 - MONITOR_HORIZON_PADDING_RATIO);
+ 
++
++        // Previews initalize, If there are no space to allocate preview, add Row BoxLayout
+         for (let i = 0; i < windows.length; i++) {
+             let win = windows[i];
+             let icon = new WindowIcon(win, mode);
+             let rowWidth = this.precalculateRowWidth(this._rows);
+ 
+-            icon.closeButton.connect('clicked', () => this._itemClosed(this.icons.indexOf(icon)));
+-
++            icon.closeButton.connect('clicked', () => this.emit('item-closed', this.icons.indexOf(icon)));
+ 
+             if (rowWidth + icon.preview.get_width() > this._maxWidth) {
+                 this._rows++;
+@@ -398,7 +413,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         let adjustment = this._scrollView.vscroll.adjustment;
+ 
+-        adjustment._changedSignalId = adjustment.connect('changed', this._updateBottomArrowAfterRemove.bind(this));
++        adjustment._changedSignalId = adjustment.connect('changed', this._updateArrowsStatus.bind(this));
+         adjustment._notifiedSignalId = adjustment.connect('notify::value', this._updateArrowsStatus.bind(this));
+     }
+ 
+@@ -457,6 +472,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this._scrollView.set_height(Math.min(this._rows + 1, this.visibleRows) * (this._list.get_height() + verticalSpacing) - verticalSpacing);
+ 
++        // If there is a row outside the SwitcherPopup, we need to show Arrow buttons
+         if (verticalScrollable) {
+             this._topArrowButton.show();
+             this._bottomArrowButton.show();
+@@ -478,6 +494,7 @@ var WindowSwitcher = GObject.registerClass({
+         return this._rows;
+     }
+ 
++    // in Initalize logic, we can't use row's get_preferred_width, so we need to calculate directly
+     precalculateRowWidth(index) {
+         let rowButtons = this._lists[index].get_children();
+         let rowButtonNum = rowButtons.length;
+@@ -590,13 +607,14 @@ var WindowSwitcher = GObject.registerClass({
+         let [containerWidth_, containerHeight] = this.get_transformed_size();
+ 
+         if (this._lists[rowIndex].allocation.y2 - value > containerHeight)
+-            this._scrollToDown(index);
++            this._scroll(index, DOWN);
+         else if (this._lists[rowIndex].allocation.y1 - value < 0)
+-            this._scrollToUp(index);
++            this._scroll(index, UP);
+ 
+ 
+     }
+ 
++    // Adjust the reactive properties of previews on a per-line basis.
+     _updateRowReactive(index, reactive) {
+         let itemList = this._lists[index].get_children();
+         for (let i = 0; i < itemList.length; i++)
+@@ -604,128 +622,70 @@ var WindowSwitcher = GObject.registerClass({
+ 
+     }
+ 
+-    _updateReactive(index) {
+-        for (let i = 0;  i < index; i++)
+-            this._updateRowReactive(i, false);
+-
+-
+-        for (let i = index; i < Math.min(this._rows + 1, index + this.visibleRows); i++)
+-            this._updateRowReactive(i, true);
+-
+-
+-        for (let i = index + this.visibleRows; i <= this._rows; i++)
+-            this._updateRowReactive(i, false);
+-
+-
+-    }
+-
+-    _scrollToUp(index) {
+-        let adjustment = this._scrollView.vscroll.adjustment;
+-        let [value, lower_, upper_, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+-
+-        let rootListThemeNode = this._rootList.get_theme_node();
+-        let verticalSpacing = rootListThemeNode.get_length('spacing');
+-
+-        let rowIndex = this._findRowIndexFromItem(index);
+-        rowIndex = Math.max(0, rowIndex - this.visibleRows + 1);
+-        let list = this._lists[rowIndex];
+-        let rowHeight = list.get_height();
++    // Updates reactive property of the entire preview according to the Vscrollbar's adjustment value.
++    _updateReactive(value) {
++        let verticalLayoutThemeNode = this._rowList.get_theme_node();
++        let verticalSpacing = verticalLayoutThemeNode.get_length('spacing');
++        let rowHeight = this._list.get_height();
+ 
+-        if (list.allocation.y1 < value)
+-            value = Math.max(0, list.allocation.y1);
+-        else if (list.allocation.y2 > value + pageSize)
+-            value = list.allocation.y1;
++        let index = value / (rowHeight + verticalSpacing);
+ 
+-        let reactiveIndex = value / (rowHeight + verticalSpacing);
+-        this._updateReactive(reactiveIndex);
++        for (let i = 0; i <= this._rows; i++) {
++            if (i >= index && i < index + this.visibleRows)
++                this._updateRowReactive(i, true);
++            else
++                this._updateRowReactive(i, false);
+ 
+-        adjustment.ease(value, {
+-            progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+-            duration: POPUP_SCROLL_TIME,
+-            onComplete: () => {
+-                this.queue_relayout();
+-            },
+-        });
++        }
+     }
+ 
+-    _scrollToDown(index) {
++    _scroll(index, isUp) {
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper_, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let rootListThemeNode = this._rootList.get_theme_node();
+-        let verticalSpacing = rootListThemeNode.get_length('spacing');
+-
+         let rowIndex = this._findRowIndexFromItem(index);
++        if (isUp)
++            rowIndex = Math.max(0, rowIndex - this.visibleRows + 1);
+         let list = this._lists[rowIndex];
+-        let rowHeight = list.get_height();
+ 
+         if (list.allocation.y1 < value)
+             value = Math.max(0, list.allocation.y1);
+         else if (list.allocation.y2 > value + pageSize)
+             value = list.allocation.y1;
+ 
+-        let reactiveValue = Math.min(value, upper_ - pageSize);
+-        let reactiveIndex = reactiveValue / (rowHeight + verticalSpacing);
+-
+-        this._updateReactive(reactiveIndex);
+ 
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
++                this._updateReactive(adjustment.get_value());
+                 this.queue_relayout();
+             },
+         });
+     }
+ 
+-    _scrollPreviousPage() {
++    _scrollPage(isUp) {
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper_, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+         let verticalLayoutThemeNode = this._rowList.get_theme_node();
+         let verticalSpacing = verticalLayoutThemeNode.get_length('spacing');
+-        let rowHeight = this._list.get_height();
+-
+-        value -= pageSize + verticalSpacing;
+ 
+-        let reactiveValue = Math.max(0, value);
+-        let reactiveIndex = reactiveValue / (rowHeight + verticalSpacing);
+-
+-        this._updateReactive(reactiveIndex);
++        if (isUp)
++            value -= pageSize + verticalSpacing;
++        else
++            value += pageSize + verticalSpacing;
+ 
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
++                this._updateReactive(adjustment.get_value());
+                 this.queue_relayout();
+             },
+         });
+ 
+     }
+ 
+-    _scrollNextPage() {
+-        let adjustment = this._scrollView.vscroll.adjustment;
+-        let [value, lower_, upper_, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+-        let verticalLayoutThemeNode = this._rowList.get_theme_node();
+-        let verticalSpacing = verticalLayoutThemeNode.get_length('spacing');
+-        let rowHeight = this._list.get_height();
+-
+-        value += pageSize + verticalSpacing;
+-
+-        let reactiveValue = Math.min(value, upper_ - pageSize);
+-        let reactiveIndex = reactiveValue / (rowHeight + verticalSpacing);
+-
+-        this._updateReactive(reactiveIndex);
+-
+-        adjustment.ease(value, {
+-            progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+-            duration: POPUP_SCROLL_TIME,
+-            onComplete: () => {
+-                this.queue_relayout();
+-            },
+-        });
+-    }
+-
+-
+     _onItemEntered(bbox) {
+         bbox.get_child().closeButton.show();
+     }
+@@ -736,19 +696,11 @@ var WindowSwitcher = GObject.registerClass({
+ 
+     _onItemPress(item) {
+         if (item !== this._items[this._highlighted])
+-            this._itemPressed(this._items.indexOf(item));
++            this.emit('item-pressed', this._items.indexOf(item));
+ 
+         return Clutter.EVENT_PROPAGATE;
+     }
+ 
+-    _itemPressed(n) {
+-        this.emit('item-pressed', n);
+-    }
+-
+-    _itemClosed(n) {
+-        this.emit('item-closed', n);
+-    }
+-
+     _rearrangeGrid(rowIndex) {
+         if (rowIndex === this._rows)
+             return;
+@@ -783,15 +735,6 @@ var WindowSwitcher = GObject.registerClass({
+         }
+     }
+ 
+-    _updateBottomArrowAfterRemove() {
+-        let adjustment = this._scrollView.vscroll.adjustment;
+-        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+-        if (upper - pageSize <= value &&  value !== 0) {
+-            let bottomArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg`;
+-            this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
+-        }
+-    }
+-
+     _updateArrowsStatus() {
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();

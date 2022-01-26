@@ -1,0 +1,315 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 7 May 2021 12:53:36 +0900
+Subject: [feat] AlternateTab : Add close button, modify up & down Arrow
+
+  - Add a close button to the right of the title in preview
+  - Implement close button press handling
+  - Implement close button onHover effect
+  - Change the shape of up & down arrow
+  - Up & down arrow position adjustment
+
+[IMS] N/A
+---
+ extensions/alternate-tab/media/close_button.svg |  12 +++
+ extensions/alternate-tab/meson.build            |   3 +
+ extensions/alternate-tab/switcher.js            | 123 +++++++++++++++++++++---
+ 3 files changed, 126 insertions(+), 12 deletions(-)
+ create mode 100644 extensions/alternate-tab/media/close_button.svg
+
+diff --git a/extensions/alternate-tab/media/close_button.svg b/extensions/alternate-tab/media/close_button.svg
+new file mode 100644
+index 0000000..7e95dde
+--- /dev/null
++++ b/extensions/alternate-tab/media/close_button.svg
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_cp_ic_network_none</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="04_01_03_TOS5_network2" transform="translate(-560.000000, -263.000000)">
++            <g id="Group-5" transform="translate(559.000000, 262.000000)">
++                <polygon id="Path" points="1 1 17 1 17 17 1 17"></polygon>
++                <path d="M9,3 C9.55228475,3 10,3.44771525 10,4 L10,7.999 L14,8 C14.5522847,8 15,8.44771525 15,9 C15,9.55228475 14.5522847,10 14,10 L9.999,9.999 L10,14 C10,14.5522847 9.55228475,15 9,15 C8.44771525,15 8,14.5522847 8,14 L7.999,9.999 L4,10 C3.44771525,10 3,9.55228475 3,9 C3,8.44771525 3.44771525,8 4,8 L8,7.999 L8,4 C8,3.44771525 8.44771525,3 9,3 Z" id="Combined-Shape" fill="#E24961" transform="translate(9.000000, 9.000000) rotate(-315.000000) translate(-9.000000, -9.000000) "></path>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/alternate-tab/meson.build b/extensions/alternate-tab/meson.build
+index 3c5b5d7..6798f40 100644
+--- a/extensions/alternate-tab/meson.build
++++ b/extensions/alternate-tab/meson.build
+@@ -8,3 +8,6 @@ extension_sources += files('prefs.js',
+   'switcher.js',
+   'convenience.js'
+ )
++
++extension_dir = join_paths(extensiondir, uuid)
++install_subdir('media', install_dir : extension_dir)
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 1d5cf9f..d5afcae 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -9,11 +9,18 @@ const { Clutter, Gio, GObject, Meta, Shell, St } = imports.gi;
+ const Main = imports.ui.main;
+ const SwitcherPopup = imports.ui.switcherPopup;
+ 
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++
+ var MONITOR_HORIZON_PADDING_RATIO = 0.2;
+ var MONITOR_VERTICAL_PADDING_RATIO = 0.15;
+ 
+ var POPUP_SCROLL_TIME = 100;
+ 
++var TOP_ARROW_Y1_POSITION = 1;
++
++var IMAGE_PATH = '/media/';
++
+ // Before allocation Logic, we can't load CSS value.
+ // ex) spacing, padding
+ // But we need to precalculate Row width to determine whether or not make new Row
+@@ -75,6 +82,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         this._rowHeight = 0;
+ 
+         this._switcherList.connect('item-pressed', this._itemPressed.bind(this));
++        this._switcherList.connect('item-closed', this._itemClosed.bind(this));
+     }
+ 
+     vfunc_allocate(box) {
+@@ -131,10 +139,18 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         this._itemPressedHandler(n);
+     }
+ 
++    _itemClosed(switcher, n) {
++        this._itemClosedHandler(n);
++    }
++
+     _itemPressedHandler(n) {
+         this._select(n);
+     }
+ 
++    _itemClosedHandler(n) {
++        this._closeWindow(n);
++    }
++
+     _getWindowList() {
+         let workspace = null;
+ 
+@@ -210,6 +226,20 @@ class WindowIcon extends St.BoxLayout {
+ 
+         // Label is window name
+         this.label = new St.Label({ text: window.get_title(), style_class: 'tos-text-label' });
++        this.label.x_expand = true;
++
++        // closeIcon is from media directory(svg directory)
++        let iconPath = `${Me.path + IMAGE_PATH}close_button.svg`;
++        this.closeIcon = new St.Icon({
++            gicon: Gio.icon_new_for_string(iconPath),
++            icon_size: APP_ICON_SIZE_SMALL,
++        });
++        this.closeIcon.x_align = Clutter.ActorAlign.END;
++
++        // closeButton is used to close window by mouse click
++        this.closeButton = new St.Button({ reactive: true });
++        this.closeButton.set_child(this.closeIcon);
++        this.closeButton.opacity = 0;
+ 
+         let tracker = Shell.WindowTracker.get_default();
+         this.app = tracker.get_window_app(window);
+@@ -238,12 +268,15 @@ class WindowIcon extends St.BoxLayout {
+                     APP_ICON_SIZE_SMALL));
+             }
+             break;
++
+         case AppIconMode.APP_ICON_ONLY:
+             size = APP_ICON_SIZE;
+             this.preview.add_child(this._createAppIcon(this.app, size));
+         }
+-        // Set window name on title row
++
++        // Set window name and CloseButton on title row
+         this._title.add_child(this.label);
++        this._title.add_child(this.closeButton);
+ 
+         let [width, height] = mutterWindow.get_size();
+         let ratio = width / height;
+@@ -264,7 +297,8 @@ class WindowIcon extends St.BoxLayout {
+ });
+ 
+ var WindowSwitcher = GObject.registerClass({
+-    Signals: { 'item-pressed': { param_types: [GObject.TYPE_INT] } },
++    Signals: { 'item-pressed': { param_types: [GObject.TYPE_INT] },
++        'item-closed': { param_types: [GObject.TYPE_INT] } },
+ }, class WindowSwitcher extends SwitcherPopup.SwitcherList {
+     _init(windows, mode) {
+         super._init(false);
+@@ -274,13 +308,13 @@ var WindowSwitcher = GObject.registerClass({
+         this._topArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
+             pseudo_class: 'highlighted' });
+         this._topArrow.connect('repaint', () => {
+-            SwitcherPopup.drawArrow(this._topArrow, St.Side.TOP);
++            drawArrow(this._topArrow, St.Side.TOP);
+         });
+ 
+         this._bottomArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
+             pseudo_class: 'highlighted' });
+         this._bottomArrow.connect('repaint', () => {
+-            SwitcherPopup.drawArrow(this._bottomArrow, St.Side.BOTTOM);
++            drawArrow(this._bottomArrow, St.Side.BOTTOM);
+         });
+ 
+         this._scrollableDown = true;
+@@ -317,6 +351,8 @@ var WindowSwitcher = GObject.registerClass({
+             let icon = new WindowIcon(win, mode);
+             let rowWidth = this.precalculateRowWidth(this._rows);
+ 
++            icon.closeButton.connect('clicked', () => this._onItemClickedClose(icon));
++
+             if (rowWidth + icon.preview.get_width() > this._maxWidth) {
+                 this._rows++;
+                 let newRow = new St.BoxLayout({ style_class: 'switcher-list-item-container',
+@@ -386,25 +422,24 @@ var WindowSwitcher = GObject.registerClass({
+         }
+         let childBox = new Clutter.ActorBox();
+ 
+-        let arrowHeight = Math.floor(topPadding / 2);
++        let arrowHeight = topPadding;
+         let arrowWidth = arrowHeight * 2;
+ 
+         childBox.x1 = leftPadding + width / 2 - arrowHeight;
+         childBox.x2 = childBox.x1 + arrowWidth;
+-        childBox.y1 = topPadding / 2;
++        childBox.y1 = TOP_ARROW_Y1_POSITION;
+         childBox.y2 = childBox.y1 + arrowHeight;
+ 
+         this._topArrow.allocate(childBox);
+         this._topArrow.opacity =  verticalScrollable && this._scrollableUp ? 255 : 0;
+ 
+-        arrowHeight = Math.ceil(bottomPadding / 2);
++        arrowHeight = bottomPadding;
+         arrowWidth = arrowHeight * 2;
+ 
+         childBox.x1 = leftPadding + width / 2 - arrowHeight;
+         childBox.x2 = childBox.x1 +  arrowWidth;
+-        childBox.y1 = Math.ceil(height + bottomPadding);
+-        childBox.y2 = childBox.y1 + arrowHeight;
+-
++        childBox.y2 = height + bottomPadding + topPadding;
++        childBox.y1 = childBox.y2 - arrowHeight;
+         this._bottomArrow.allocate(childBox);
+         this._bottomArrow.opacity = verticalScrollable && this._scrollableDown ?  255 : 0;
+ 
+@@ -426,14 +461,15 @@ var WindowSwitcher = GObject.registerClass({
+         let bbox = new SwitcherPopup.SwitcherButton(this._squareItems);
+ 
+         bbox.set_style_class_name('tos-item-box');
+-
+         bbox.set_child(item);
+ 
+         this._lists[this._rows].add_actor(bbox);
+ 
+         bbox.connect('clicked', () => this._onItemClicked(bbox));
+         bbox.connect('button-press-event', () => this._onItemPress(bbox));
+-
++        bbox.connect('button-release-event', () => this._onItemLeaved(bbox));
++        bbox.connect('motion-event', () => this._onItemEntered(bbox));
++        bbox.connect('leave-event', () => this._onItemLeaved(bbox));
+ 
+         bbox.label_actor = label;
+         this._items.push(bbox);
+@@ -511,6 +547,7 @@ var WindowSwitcher = GObject.registerClass({
+         this._highlighted = index;
+ 
+         let adjustment = this._scrollView.vscroll.adjustment;
++
+         let [value] = adjustment.get_values();
+ 
+         // Find row boxlayout which index items belongs to
+@@ -523,6 +560,8 @@ var WindowSwitcher = GObject.registerClass({
+             this._scrollToDown(index);
+         else if (this._lists[rowIndex].allocation.y1 - value < 0)
+             this._scrollToUp(index);
++
++
+     }
+ 
+     _scrollToUp(index) {
+@@ -573,6 +612,19 @@ var WindowSwitcher = GObject.registerClass({
+                 this.queue_relayout();
+             },
+         });
++
++    }
++
++    _onItemClickedClose(icon) {
++        this._itemClosed(this.icons.indexOf(icon));
++    }
++
++    _onItemEntered(bbox) {
++        bbox.get_child().closeButton.opacity = 255;
++    }
++
++    _onItemLeaved(bbox) {
++        bbox.get_child().closeButton.opacity = 0;
+     }
+ 
+     _onItemPress(item) {
+@@ -586,6 +638,10 @@ var WindowSwitcher = GObject.registerClass({
+         this.emit('item-pressed', n);
+     }
+ 
++    _itemClosed(n) {
++        this.emit('item-closed', n);
++    }
++
+     _rearrangeGrid(rowIndex) {
+         if (rowIndex === this._rows)
+             return;
+@@ -621,3 +677,46 @@ var WindowSwitcher = GObject.registerClass({
+         this._removeFlag = true;
+     }
+ });
++
++function drawArrow(area, side) {
++    let themeNode = area.get_theme_node();
++    let borderColor = themeNode.get_border_color(side);
++
++    let [width, height] = area.get_surface_size();
++    let cr = area.get_context();
++
++    cr.setLineWidth(2.0);
++    Clutter.cairo_set_source_color(cr, borderColor);
++
++    switch (side) {
++    case St.Side.TOP:
++        cr.moveTo(0, height);
++        cr.lineTo(Math.floor(width * 0.5), 0);
++        cr.lineTo(width, height);
++        break;
++
++    case St.Side.BOTTOM:
++        cr.moveTo(width, 0);
++        cr.lineTo(Math.floor(width * 0.5), height);
++        cr.lineTo(0, 0);
++        break;
++
++    case St.Side.LEFT:
++        cr.moveTo(width, height);
++        cr.lineTo(0, Math.floor(height * 0.5));
++        cr.lineTo(width, 0);
++        break;
++
++    case St.Side.RIGHT:
++        cr.moveTo(0, 0);
++        cr.lineTo(width, Math.floor(height * 0.5));
++        cr.lineTo(0, height);
++        break;
++    }
++
++    cr.strokePreserve();
++
++    Clutter.cairo_set_source_color(cr, Clutter.Color.get_static(Clutter.StaticColor.WHITE));
++    cr.stroke();
++    cr.$dispose();
++}

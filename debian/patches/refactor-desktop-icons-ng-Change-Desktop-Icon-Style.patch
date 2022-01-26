@@ -1,0 +1,226 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Fri, 8 Oct 2021 17:36:32 +0900
+Subject: [refactor] desktop-icons-ng : Change Desktop Icon Style
+
+- Apply UX guide
+- Since gtk does not provide a css style for line spacing, it cannot fit exactly into the UX guide. I adjusted the size so that the icons do not overlap each other.
+
+[IMS] 270851
+---
+ extensions/desktop-icons-ng/desktopGrid.js         | 13 +++---
+ extensions/desktop-icons-ng/enums.js               | 10 +++--
+ extensions/desktop-icons-ng/fileItem.js            |  9 ++--
+ extensions/desktop-icons-ng/preferences.js         | 12 ++++-
+ .../org.gnome.shell.extensions.ding.gschema.xml    |  1 -
+ extensions/desktop-icons-ng/stylesheet.css         | 51 +++++++++++++++++++++-
+ 6 files changed, 77 insertions(+), 19 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopGrid.js b/extensions/desktop-icons-ng/desktopGrid.js
+index 7cf7168..f69b42e 100644
+--- a/extensions/desktop-icons-ng/desktopGrid.js
++++ b/extensions/desktop-icons-ng/desktopGrid.js
+@@ -52,10 +52,11 @@ var DesktopGrid = class {
+         }
+         this._width = Math.floor(desktopDescription.width / sizeDivisor);
+         this._height = Math.floor(desktopDescription.height / sizeDivisor);
+-        this._maxColumns = Math.floor(this._width / (Prefs.getDesiredWidth() + 4 * elementSpacing));
+-        this._maxRows =  Math.floor(this._height / (Prefs.getDesiredHeight() + 4 * elementSpacing));
+-        this._elementWidth = Math.floor(this._width / this._maxColumns);
+-        this._elementHeight = Math.floor(this._height / this._maxRows);
++        this._elementWidth = Prefs.getDesiredWidth();
++        this._elementHeight = Prefs.getDesiredHeight();
++        this._maxColumns = Math.floor(this._width / (this._elementWidth + elementSpacing));
++        this._maxRows =  Math.floor(this._height / (this._elementHeight + elementSpacing));
++
+ 
+         this._window = new Gtk.Window({ 'title': desktopName });
+         if (asDesktop) {
+@@ -299,8 +300,8 @@ var DesktopGrid = class {
+ 
+     _addFileItemTo(fileItem, column, row, coordinatesAction) {
+ 
+-        let localX = Math.floor(this._width * column / this._maxColumns);
+-        let localY = Math.floor(this._height * row / this._maxRows);
++        let localX = column * (this._elementWidth + elementSpacing);
++        let localY = row * (this._elementHeight + elementSpacing);
+         this._container.put(fileItem.actor, localX + elementSpacing, localY + elementSpacing);
+         this._setGridUse(column, row, true);
+         this._fileItems[fileItem.uri] = [column, row, fileItem];
+diff --git a/extensions/desktop-icons-ng/enums.js b/extensions/desktop-icons-ng/enums.js
+index cb1e21f..a0ecaa3 100644
+--- a/extensions/desktop-icons-ng/enums.js
++++ b/extensions/desktop-icons-ng/enums.js
+@@ -1,4 +1,4 @@
+-/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria StringToSortingCriteria SortingCriteriaToString DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH */
++/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria StringToSortingCriteria SortingCriteriaToString DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH LABEL_STYLE ICON_STYLE */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -17,9 +17,11 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-var ICON_SIZE = { 'tiny': 36, 'small': 48, 'standard': 64, 'large': 96 };
+-var ICON_WIDTH = { 'tiny': 70, 'small': 90, 'standard': 120, 'large': 130 };
+-var ICON_HEIGHT = { 'tiny': 70, 'small': 90, 'standard': 106, 'large': 138 };
++var ICON_SIZE = { 'small': 28, 'standard': 46, 'large': 80 };
++var ICON_WIDTH = { 'small': 90, 'standard': 90, 'large': 108 };
++var ICON_HEIGHT = { 'small': 108, 'standard': 124, 'large': 172 };
++var LABEL_STYLE = { 'small': 'file-label-small', 'standard': 'file-label-standard', 'large': 'file-label-large' };
++var ICON_STYLE = { 'small': 'file-icon-small', 'standard': 'file-icon-standard', 'large': 'file-icon-large' };
+ 
+ var START_CORNER = { 'top-left': [false, false],
+     'top-right': [true, false],
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 45f60c1..3a420e7 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -60,7 +60,6 @@ var FileItem = class {
+ 
+         this.actor = new Gtk.EventBox({ visible: true });
+         this.actor.connect('destroy', () => this._onDestroy());
+-
+         this._eventBox = new Gtk.EventBox({ visible: true });
+         this.actor.set_can_focus(true);
+ 
+@@ -68,9 +67,11 @@ var FileItem = class {
+         this._container = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+         this._styleContext = this._innerContainer.get_style_context();
+         this._eventBox.add(this._innerContainer);
+-
++        this._styleContext.add_class('container-style');
+ 
+         this._icon = new Gtk.Image();
++        let iconStyleContext = this._icon.get_style_context();
++        iconStyleContext.add_class(Prefs.getIconStyle());
+         this._iconContainer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+         this._innerContainer.pack_start(this._iconContainer, false, false, 0);
+         this._iconContainer.set_size_request(Prefs.getDesiredWidth(), Prefs.getIconSize());
+@@ -79,13 +80,13 @@ var FileItem = class {
+ 
+         this._label = new Gtk.Label();
+         let labelStyleContext = this._label.get_style_context();
+-        labelStyleContext.add_class('file-label');
++        labelStyleContext.add_class(Prefs.getLabelStyle());
+         this._label.set_ellipsize(Pango.EllipsizeMode.END);
+         this._label.set_line_wrap(true);
+         this._label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR);
+         this._label.set_yalign(0.0);
+         this._label.set_justify(Gtk.Justification.CENTER);
+-        this._label.set_lines(2);
++        this._label.set_lines(3);
+         this._setFileName(fileInfo.get_display_name());
+ 
+         this._innerContainer.pack_start(this._label, false, true, 0);
+diff --git a/extensions/desktop-icons-ng/preferences.js b/extensions/desktop-icons-ng/preferences.js
+index 95c9418..6087f20 100644
+--- a/extensions/desktop-icons-ng/preferences.js
++++ b/extensions/desktop-icons-ng/preferences.js
+@@ -16,7 +16,7 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-/* exported init showPreferences getIconSize getDesiredWidth getDesiredHeight getStartCorner CLICK_POLICY_SINGLE mutterSettings */
++/* exported init showPreferences getIconSize getDesiredWidth getDesiredHeight getLabelStyle getIconStyle getStartCorner CLICK_POLICY_SINGLE mutterSettings */
+ 
+ imports.gi.versions.Gtk = '3.0';
+ 
+@@ -95,7 +95,7 @@ function showPreferences() {
+     frame.set_spacing(10);
+     frame.set_border_width(10);
+ 
+-    frame.add(buildSelector(desktopSettings, 'icon-size', _('Size for the desktop icons'), { 'tiny': _('Tiny'), 'small': _('Small'), 'standard': _('Standard'), 'large': _('Large') }));
++    frame.add(buildSelector(desktopSettings, 'icon-size', _('Size for the desktop icons'), { 'small': _('Small'), 'standard': _('Standard'), 'large': _('Large') }));
+     frame.add(buildSwitcher(desktopSettings, 'show-home', _('Show the personal folder in the desktop')));
+     frame.add(buildSwitcher(desktopSettings, 'show-trash', _('Show the trash icon in the desktop')));
+     frame.add(buildSwitcher(desktopSettings, 'show-volumes', _('Show external drives in the desktop')));
+@@ -196,3 +196,11 @@ function getDesiredHeight() {
+ function getStartCorner() {
+     return Enums.START_CORNER[desktopSettings.get_string('start-corner')].slice();
+ }
++
++function getLabelStyle() {
++    return Enums.LABEL_STYLE[desktopSettings.get_string('icon-size')];
++}
++
++function getIconStyle() {
++    return Enums.ICON_STYLE[desktopSettings.get_string('icon-size')];
++}
+diff --git a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+index 2248b63..2f53bb4 100644
+--- a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
++++ b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+@@ -1,7 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <schemalist gettext-domain="ding">
+     <enum id="org.gnome.shell.extension.ding.ZoomLevel">
+-        <value value="3" nick="tiny"/>
+         <value value="0" nick="small"/>
+         <value value="1" nick="standard"/>
+         <value value="2" nick="large"/>
+diff --git a/extensions/desktop-icons-ng/stylesheet.css b/extensions/desktop-icons-ng/stylesheet.css
+index 1c14a55..a45e998 100644
+--- a/extensions/desktop-icons-ng/stylesheet.css
++++ b/extensions/desktop-icons-ng/stylesheet.css
+@@ -1,8 +1,51 @@
+-.file-label {
+-    text-shadow:-1px 1px 3px #000, 1px 1px 3px #000, 1px -1px 3px #000;
++.file-label-small {
++    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
++    font-size:13px;
++    font-weight: bold;
++    margin-top:8px;
++    margin-left:6px;
++    margin-right:6px;
++    margin-bottom:8px;
++    color: white;
++}
++
++.file-label-standard {
++    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
++    font-size:13px;
++    font-weight: bold;
++    margin-top:7px;
++    margin-left:6px;
++    margin-right:6px;
++    margin-bottom:8px;
+     color: white;
+ }
+ 
++.file-label-large {
++    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
++    font-size:13px;
++    font-weight: bold;
++    margin-top:14px;
++    margin-left:6px;
++    margin-right:6px;
++    margin-bottom:8px;
++    color: white;
++}
++
++.file-icon-small {
++    margin-top:12px;
++    margin-bottom:0;
++}
++
++.file-icon-standard {
++    margin-top:11px;
++    margin-bottom:0;
++}
++
++.file-icon-large {
++    margin-top:18px;
++    margin-bottom:0;
++}
++
+ label.file-label:backdrop {
+     text-shadow:-1px 1px 3px #000, 1px 1px 3px #000, 1px -1px 3px #000;
+     color: white;
+@@ -11,3 +54,7 @@ label.file-label:backdrop {
+ .file-item-hover {
+    background-color: rgba(238, 238, 238, 0.2);
+ }
++
++.container-style {
++  border-radius: 4px;
++}

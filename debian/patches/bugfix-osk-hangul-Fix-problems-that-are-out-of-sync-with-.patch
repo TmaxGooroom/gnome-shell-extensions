@@ -1,0 +1,134 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 27 Jul 2021 16:50:57 +0900
+Subject: [bugfix] osk-hangul : Fix problems that are out of sync with
+ accessibility and other settings
+
+ - Instead of directly modifying _syncEnabled, received a signal next
+   to KeyboardManager and modified enable state so that it can be synchronized
+   with the extension when keyboard-related settings change.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 82 ++++++++++++++++++++++++--------------
+ 1 file changed, 52 insertions(+), 30 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 5267f71..8a1e3da 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -13,15 +13,20 @@ const QwertyKeysyms = Me.imports.xkbcommon_keysyms.QwertyMap;
+ const HangulKiyeog = 0x0ea1;
+ const HangulJYeorinHieuh = 0x0efa;
+ 
++let _a11ySignalId = null;
++let _touchModeNotifyId = null;
++let _lastDeviceChangedId = null;
++let _keyboardDestroyId = null;
++
+ let _originalKeyvalPress = null;
+ let _originalKeyvalRelease = null;
+ let _originalPopupLanguageMenu = null;
+ let _originalSetActiveLayer = null;
+-let _originalSyncEnabled = null;
+-let _keyboardDestroyId;
+ let _originalCreateLayersForGroup = null;
+ let _originalSetAnimationWindow = null;
+ 
++let _syncKeyboard = null;
++
+ function _isKoreanCharactor(keyval) {
+     if (!keyval)
+         return false;
+@@ -156,31 +161,44 @@ function _enable() {
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+-    _originalSyncEnabled = Main.keyboard._syncEnabled;
+-    let _isEnabled = false;
+-    Main.keyboard._syncEnabled = () => {
+-        _originalSyncEnabled.call(Main.keyboard);
+-        if (Main.keyboard._keyboard && !_isEnabled) {
+-            _enable();
+-            _isEnabled = true;
+-            _keyboardDestroyId = Main.keyboard._keyboard.connect('destroy', () => {
+-                _keyboardDestroyId = null;
+-                _isEnabled = false;
+-            });
+-        }
+-    };
++    let keyboardManager = Main.keyboard;
++
++    // Synchronize with this extension and availability of on-screen-keyboard.
++    // Encapsulate _isOskEnabled so that it is not contaminated by external factors.
++    _syncKeyboard = (function () {
++        let _isOskEnabled = false;
++        return function () {
++            if (!_isOskEnabled && keyboardManager._keyboard) {
++                _enable();
++                _isOskEnabled = true;
++                _keyboardDestroyId = keyboardManager._keyboard.connect('destroy', () => {
++                    _keyboardDestroyId = null;
++                    _disable();
++                    _isOskEnabled = false;
++                });
++            }
++        };
++    })();
++
++    _a11ySignalId = keyboardManager._a11yApplicationsSettings.connect_after('changed', _syncKeyboard);
++    _touchModeNotifyId = keyboardManager._seat.connect_after('notify::touch-mode', _syncKeyboard);
++    _lastDeviceChangedId = global.backend.connect_after('last-device-changed', _syncKeyboard);
+ 
+-    Main.keyboard._syncEnabled();
++    keyboardManager._syncEnabled();
++    _syncKeyboard();
++}
++
++function _disable() {
++    _originalKeyvalPress = null;
++    _originalKeyvalRelease = null;
++    _originalPopupLanguageMenu = null;
++    _originalSetActiveLayer = null;
++    _originalCreateLayersForGroup = null;
++    _originalSetAnimationWindow = null;
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+     let keyboard = Main.keyboard._keyboard;
+-    let controller = keyboard ? keyboard._keyboardController : null;
+-
+-    if (controller) {
+-        controller.keyvalPress = _originalKeyvalPress;
+-        controller.keyvalRelease = _originalKeyvalRelease;
+-    }
+     if (keyboard) {
+         keyboard._createLayersForGroup = _originalCreateLayersForGroup;
+         keyboard._setActiveLayer = _originalSetActiveLayer;
+@@ -190,15 +208,19 @@ function disable() { // eslint-disable-line no-unused-vars
+             keyboard.disconnect(_keyboardDestroyId);
+ 
+         _resetKeyboardLayout(keyboard);
++
++        let controller = keyboard._keyboardController;
++        if (controller) {
++            controller.keyvalPress = _originalKeyvalPress;
++            controller.keyvalRelease = _originalKeyvalRelease;
++        }
+     }
+ 
+-    _originalKeyvalPress = null;
+-    _originalKeyvalRelease = null;
+-    _originalPopupLanguageMenu = null;
+-    _originalSetActiveLayer = null;
+-    _originalCreateLayersForGroup = null;
+-    _originalSetAnimationWindow = null;
++    _disable();
++
++    Main.keyboard._a11yApplicationsSettings.disconnect(_a11ySignalId);
++    Main.keyboard._seat.disconnect(_touchModeNotifyId);
++    global.backend.disconnect(_lastDeviceChangedId);
+ 
+-    Main.keyboard._syncEnabled = _originalSyncEnabled;
+-    _originalSyncEnabled = null;
++    _syncKeyboard = null;
+ }

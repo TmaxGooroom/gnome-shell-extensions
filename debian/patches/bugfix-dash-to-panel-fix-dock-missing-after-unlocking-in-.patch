@@ -1,0 +1,83 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 3 Jun 2021 15:33:01 +0900
+Subject: [bugfix] dash-to-panel : fix dock missing after unlocking in
+ fullscreen mode
+
+- Changed panel's visibility to true always, and hide when monitor is fullscreen mode
+- Applied ESlint
+
+[IMS] 262144
+---
+ extensions/dash-to-panel/panel.js        |  7 +++----
+ extensions/dash-to-panel/panelManager.js | 13 ++++++-------
+ 2 files changed, 9 insertions(+), 11 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index b226acb..922768f 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -490,7 +490,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+             // signal for catch adding notificationcenter to rightbox disconnect
+             this._rightBox.disconnect(this.register_notificationcenter);
+-            this._rightBox.disconnect(this.setmap_notificationcenter);
++            Main.extensionManager.disconnect(this.setmap_notificationcenter);
+ 
+             this.statusArea.dateMenu._clockDisplay.text = this.statusArea.dateMenu._clock.clock;
+ 
+@@ -916,11 +916,10 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+         // When notification center loaded, replace dummy to notification center
+         this.setmap_notificationcenter = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+-            if (extension.uuid !== 'notification-center@tmax-shell-extensions')
++            if (extension.uuid !== 'notification-center@tmax-shell-extensions' || !this.statusArea.NotificationCenter || this.isStandalone)
+                 return;
+-            if (!this.isStandalone)
+             // Load notification center only in main monitor
+-                setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
++            setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
+             // apply updated allocationMap to panel
+             this.updateElementPositions();
+         });
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index 96ae252..e965401 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -1,3 +1,4 @@
++/* exported dtpPanelManager */
+ /*
+  * This file is part of the Dash-To-Panel extension for Gnome 3
+  *
+@@ -35,11 +36,7 @@ const Proximity = Me.imports.proximity;
+ const Utils = Me.imports.utils;
+ 
+ const Config = imports.misc.config;
+-const GLib = imports.gi.GLib;
+-const Clutter = imports.gi.Clutter;
+-const Meta = imports.gi.Meta;
+-const Shell = imports.gi.Shell;
+-const St = imports.gi.St;
++const { GLib, Clutter, Meta, Shell, St } = imports.gi;
+ 
+ const AppDisplay = imports.ui.appDisplay;
+ const BoxPointer = imports.ui.boxpointer;
+@@ -427,7 +424,10 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         panelBox.add(panel);
+         panel.enable();
+ 
+-        panelBox.visible = !monitor.inFullscreen;
++        panelBox.visible = true;
++        if (monitor.inFullscreen)
++            panelBox.visible = false;
++
+         panelBox.set_position(0, 0);
+ 
+         return panel;
+@@ -747,7 +747,6 @@ function newUpdateHotCorners() {
+             let corner = new Layout.HotCorner(this, monitor, cornerX, cornerY);
+ 
+             corner.setBarrierSize = size => Object.getPrototypeOf(corner).setBarrierSize.call(corner, Math.min(size, 32));
+-            // corner.setBarrierSize = size => corner.__proto__.setBarrierSize.call(corner, Math.min(size, 32));
+             corner.setBarrierSize(panel ? panel.dtpSize : 32);
+             this.hotCorners.push(corner);
+         } else {

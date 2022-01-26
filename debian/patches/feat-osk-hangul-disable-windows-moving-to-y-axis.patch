@@ -1,0 +1,49 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 19 Jul 2021 17:14:57 +0900
+Subject: [feat] osk-hangul : disable windows moving to y-axis
+
+ - disable windows moving to y-axis
+
+[IMS] 266048
+---
+ extensions/osk-hangul/extension.js | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index cc0b355..3535210 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -20,6 +20,7 @@ let _originalSetActiveLayer = null;
+ let _originalSyncEnabled = null;
+ let _keyboardDestroyId;
+ let _originalCreateLayersForGroup = null;
++let _originalSetAnimationWindow = null;
+ 
+ function _isKoreanCharactor(keyval) {
+     if (!keyval)
+@@ -107,6 +108,9 @@ function _enable() {
+         _nextInputMethod();
+     };
+ 
++    _originalSetAnimationWindow = keyboard._setAnimationWindow;
++    keyboard._setAnimationWindow = () => {};
++
+     _originalCreateLayersForGroup = keyboard._createLayersForGroup;
+     keyboard._createLayersForGroup = groupname => {
+         let layers = _originalCreateLayersForGroup.call(keyboard, groupname);
+@@ -176,6 +180,7 @@ function disable() { // eslint-disable-line no-unused-vars
+         keyboard._createLayersForGroup = _originalCreateLayersForGroup;
+         keyboard._setActiveLayer = _originalSetActiveLayer;
+         keyboard._popupLanguageMenu = _originalPopupLanguageMenu;
++        keyboard._setAnimationWindow = _originalSetAnimationWindow;
+         if (_keyboardDestroyId)
+             keyboard.disconnect(_keyboardDestroyId);
+ 
+@@ -187,6 +192,7 @@ function disable() { // eslint-disable-line no-unused-vars
+     _originalPopupLanguageMenu = null;
+     _originalSetActiveLayer = null;
+     _originalCreateLayersForGroup = null;
++    _originalSetAnimationWindow = null;
+ 
+     Main.keyboard._syncEnabled = _originalSyncEnabled;
+     _originalSyncEnabled = null;

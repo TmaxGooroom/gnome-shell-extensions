@@ -1,0 +1,33 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 13 Oct 2021 10:37:19 +0900
+Subject: [bugfix] Greeter: Modify som account label to be displayed in black
+ in login screen
+
+- Add style class to user name label.
+- Unify by using the real name.
+
+[IMS] 271131
+---
+ extensions/greeter/loginDialog.js | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 0b43d86..ae297a1 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -73,9 +73,13 @@ var UserListItem = GObject.registerClass(class UserListItem extends GnomeLoginDi
+         avatar._iconSize = Constants.USER_ITEM_ICON_SIZE;
+         avatar.update();
+ 
+-        let label = this._userWidget._label._realNameLabel;
+-        label.add_style_class_name('user-list-item-label');
++        let realNameLabel = this._userWidget._label._realNameLabel;
++        realNameLabel.add_style_class_name('user-list-item-label');
++        let userNameLabel = this._userWidget._label._userNameLabel;
++        userNameLabel.add_style_class_name('user-list-item-label');
+ 
++        // Unify by using the real name(display name).
++        userNameLabel.text = realNameLabel.text;
+     }
+ 
+     vfunc_key_focus_in() {

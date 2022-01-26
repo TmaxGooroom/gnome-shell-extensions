@@ -1,0 +1,132 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 2 Jun 2021 15:10:32 +0900
+Subject: [feat] dash-to-panel : remove duplicate code, modify comments
+
+ - remove duplicate codes
+ - modify comments to reflect the intent more clearly
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/appIcons.js | 48 +++++++++++++++++++++---------------
+ 1 file changed, 28 insertions(+), 20 deletions(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index ce60b7d..5a433ba 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1417,7 +1417,8 @@ var taskbarSecondaryMenu = Utils.defineClass({
+     _dtpRedisplay() {
+         this.removeAll();
+ 
+-        let appInfo = this._source.app.get_app_info();
++        let app = this._source.app;
++        let appInfo = app.get_app_info();
+         let icon;
+         if (appInfo)
+             icon = appInfo.get_icon();
+@@ -1425,18 +1426,23 @@ var taskbarSecondaryMenu = Utils.defineClass({
+ 
+         let newWindowAction;
+ 
+-        // actions(see desktop entry specification for more information)
++        // 'action' button
++        // If the application has defined an action, add a button to execute that action.
++        // for more information about 'actions', see freedesktops' desktop entry specification.
+         for (let action of actions) {
++            // 'New Window' button is defined by default.
++            // Therefore, if the app defined same behaviour in action, use `launch_action` function to open new window.
++            // If not, use `open_new_window` function.
+             if (action === 'new-window') {
+                 newWindowAction = event => {
+                     this._source.animateLaunch();
+-                    this._source.app.launch_action(action, event.get_time(), -1);
++                    app.launch_action(action, event.get_time(), -1);
+                 };
+                 continue;
+             }
+ 
+             let callback = event => {
+-                this._source.app.launch_action(action, event.get_time(), -1);
++                app.launch_action(action, event.get_time(), -1);
+                 this.emit('activate-window', null);
+             };
+ 
+@@ -1445,46 +1451,48 @@ var taskbarSecondaryMenu = Utils.defineClass({
+ 
+         this._appendSeparator();
+ 
+-        // add to favorites / remove from favorites
++        // 'Add to favorites' / 'Remove from favorites' button
+         let canFavorite = appInfo ? global.settings.is_writable('favorite-apps') &&
+                           this._parentalControlsManager.shouldShowApp(appInfo) : false;
+ 
+         if (canFavorite) {
+-            let isFavorite = AppFavorites.getAppFavorites().isFavorite(this._source.app.get_id());
++            let appID = app.get_id();
++            let appFavorites = AppFavorites.getAppFavorites();
++            let isFavorite = appFavorites.isFavorite(appID);
+ 
+             if (isFavorite) {
+                 this.addAction(_('Remove from Dock'),
+                     () => {
+-                        let favs = AppFavorites.getAppFavorites();
+-                        favs.removeFavorite(this._source.app.get_id());
++                        appFavorites.removeFavorite(appID);
+                     }, 'view-pin-symbolic');
+             } else {
+                 this.addAction(_('Add to Dock'),
+                     () => {
+-                        let favs = AppFavorites.getAppFavorites();
+-                        favs.addFavorite(this._source.app.get_id());
++                        appFavorites.addFavorite(appID);
+                     }, 'view-pin-symbolic');
+             }
+         }
+ 
+-        let app = this._source.app;
+-        let window = this._source.window;
+-        let count = window ? 1 : getInterestingWindows(app).length;
++        let count = getInterestingWindows(app).length;
+ 
+-        // new window button (enabled when there one or more opened window)
+-        if (!newWindowAction) {
++        // 'New Window' button
++        // This should be activated when there is at least one window
++        // or gnome-shell can open the window with `open_new_window` function.
++        if (!newWindowAction && app.can_open_new_window()) {
+             newWindowAction = () => {
+                 this._source.animateLaunch();
+-                this._source.app.open_new_window(-1);
++                app.open_new_window(-1);
+                 this.emit('activate-window', null);
+             };
+         }
+         let button = this.addAction(_('New Window'), newWindowAction, icon);
+ 
+-        if (count === 0 || !appInfo)
++        // activate button there is at least one window or shell can open the window(see the comments above)
++        if (count === 0 || !newWindowAction)
+             button.reactive = false;
+ 
+-        // quit (one or more window opened) / open (no window)
++        // 'Quit' / 'Open' button
++        // show 'Quit' label when one ore more windows are opened. Otherwise, show 'Open' label.
+         if (count > 0) {
+             let quitFromTaskbarMenuText = '';
+             if (count === 1)
+@@ -1493,13 +1501,13 @@ var taskbarSecondaryMenu = Utils.defineClass({
+                 quitFromTaskbarMenuText = _('Quit %d windows').format(count);
+ 
+             let closeWindowFunc = () => {
+-                let windows = window ? [window] : app.get_windows();
++                let windows = app.get_windows();
+                 for (let j = 0; j < windows.length; j++)
+                     this._closeWindowInstance(windows[j]);
+             };
+ 
+             this.addAction(quitFromTaskbarMenuText, closeWindowFunc.bind(this), 'window-close-symbolic');
+-        } else if (appInfo) {
++        } else {
+             this.addAction(_('Open'), newWindowAction, icon);
+         }
+     },

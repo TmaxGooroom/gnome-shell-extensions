@@ -1,0 +1,93 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 9 Apr 2021 15:25:16 +0900
+Subject: [feat] Search : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js                       | 15 +++++++--------
+ .../schemas/org.gnome.shell.extensions.search.gschema.xml |  2 +-
+ 2 files changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 8899f87..5b7517c 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -30,7 +30,7 @@ const Utils =  Me.imports.utils;
+ 
+ // This class handles the core functionality of all the menu layouts.
+ // Each menu layout extends this class.
+-var BaseLayout = class {
++var BaseLayout = class { // eslint-disable-line no-unused-vars
+     constructor(menuButton) {
+         this.mainBox = menuButton.mainBox;
+         this.searchMenu = menuButton.searchMenu;
+@@ -71,8 +71,6 @@ var BaseLayout = class {
+             appsScrollBoxAdj = this.actionsScrollBox.get_vscroll_bar().get_adjustment();
+             appsScrollBoxAdj.set_value(0);
+         }
+-        if (this.vertSep != null)
+-            this.vertSep.queue_repaint();
+     }
+ 
+     reload() {
+@@ -126,10 +124,10 @@ var BaseLayout = class {
+     _onSearchBoxKeyPress(searchBox, event) {
+         let symbol = event.get_key_symbol();
+         if (!searchBox.isEmpty() && searchBox.hasKeyFocus()) {
+-            if (symbol == Clutter.Up) {
++            if (symbol === Clutter.Up) {
+                 this.newSearch.highlightDefault(false);
+                 return Clutter.EVENT_PROPAGATE;
+-            } else if (symbol == Clutter.Down) {
++            } else if (symbol === Clutter.Down) {
+                 this.newSearch.highlightDefault(false);
+                 return Clutter.EVENT_PROPAGATE;
+             }
+@@ -188,7 +186,7 @@ var BaseLayout = class {
+         case Clutter.KEY_Up:
+         case Clutter.KEY_Down:
+         case Clutter.KEY_Left:
+-        case Clutter.KEY_Right:
++        case Clutter.KEY_Right: {
+             let direction;
+             if (symbol === Clutter.KEY_Down)
+                 direction = St.DirectionType.DOWN;
+@@ -212,6 +210,7 @@ var BaseLayout = class {
+                 return Clutter.EVENT_PROPAGATE;
+             }
+             return actor.navigate_focus(global.stage.key_focus, direction, false);
++        }
+         case Clutter.KEY_Return:
+         case Clutter.KEY_KP_Enter:
+             if (!this.searchBox.isEmpty()) {
+@@ -223,7 +222,7 @@ var BaseLayout = class {
+         case Clutter.KEY_Escape:
+             return Clutter.EVENT_PROPAGATE;
+         default:
+-            if (key.length != 0) {
++            if (key.length !== 0) {
+                 if (this.searchBox) {
+                     this.searchBox.grabKeyFocus();
+                     let newText = this.searchBox.getText() + key;
+@@ -287,7 +286,7 @@ var BaseLayout = class {
+     }
+ 
+     _keyFocusIn(actor) {
+-        if (this._focusChild == actor)
++        if (this._focusChild === actor)
+             return;
+         this._focusChild = actor;
+         Utils.ensureActorVisibleInScrollView(actor);
+diff --git a/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml b/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
+index c95cc5e..efd37e4 100644
+--- a/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
++++ b/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
+@@ -1,5 +1,5 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+-<schemalist gettext-domain="searchu">
++<schemalist gettext-domain="search">
+   <schema path="/org/gnome/shell/extensions/search/" id="org.gnome.shell.extensions.search">
+     <key type="b" name="disable-tooltips">
+       <default>false</default>

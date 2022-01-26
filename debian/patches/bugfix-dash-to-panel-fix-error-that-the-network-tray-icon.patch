@@ -1,0 +1,51 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 26 Aug 2021 15:28:22 +0900
+Subject: [bugfix] dash-to-panel : fix error that the network tray icon is not
+ updated normally
+
+ - This issue is caused by inadvertent invocation of NMApplet's private
+   functions. _updateIcon must be called when the NMApplet's client
+   exists. If not, the function throws error, so that the entire disable
+   process failed, leaving incomplete panels on main layout.
+ - Since the panel (only the network tray is disabled) is not destroyed, only the network icon followed the policy of gnome-shell
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 8948b40..330f6bf 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -26,9 +26,16 @@ class Tray {
+         let network = this._originalTray._network;
+         this._originalNetworkUpdateIcon = network._updateIcon;
+         network._updateIcon = () => {
+-            this._originalNetworkUpdateIcon.call(network);
++            if (network._client)
++                this._originalNetworkUpdateIcon.call(network);
++
++
++            let iconName = network._primaryIndicator.icon_name || 'network-wired-no-route-symbolic';
++
++            network._primaryIndicator.icon_name = iconName;
+             network._primaryIndicator.visible = true;
+         };
++        network._updateIcon();
+ 
+         let brightness = this._originalTray._brightness;
+         let brightnessIndicator = brightness._addIndicator();
+@@ -97,7 +104,11 @@ class Tray {
+ 
+         let network = this._originalTray._network;
+         network._updateIcon = this._originalNetworkUpdateIcon;
+-        network._updateIcon();
++        if (network._client)
++            network._updateIcon();
++        else
++            network._primaryIndicator.visible = false;
++
+ 
+         let power = this._originalTray._power;
+         power.visible = true;

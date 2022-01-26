@@ -1,0 +1,110 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Thu, 23 Sep 2021 17:51:12 +0900
+Subject: [feat] desktop-icons-ng : add extra sorting criteria
+
+- support sorting icons by name, size, type
+- code cleanup and reorganize functions
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 48 +++++++++++++++++++++++----
+ extensions/desktop-icons-ng/enums.js          |  8 ++++-
+ 2 files changed, 48 insertions(+), 8 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 81a70ff..025685c 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -617,9 +617,7 @@ var DesktopManager = class {
+         selectAll.connect('activate', () => this._selectAll());
+         this._menu.add(selectAll);
+ 
+-        let sorting = new Gtk.MenuItem({ label: _('Sorting') });
+-        sorting.connect('activate', () => this._sorting());
+-        this._menu.add(sorting);
++        this._createSortingMenu();
+ 
+         this._menu.add(new Gtk.SeparatorMenuItem());
+ 
+@@ -684,18 +682,54 @@ var DesktopManager = class {
+         }
+     }
+ 
+-    _sorting() {
++    _createSortingMenu() {
++        this._sortingSubMenu = new Gtk.Menu();
++        this._sortingMenuItem = new Gtk.MenuItem({ label: _('Sorting') });
++        this._sortingMenuItem.set_submenu(this._sortingSubMenu);
++        this._menu.add(this._sortingMenuItem);
++
++        this._sortMenuByName = new Gtk.MenuItem({ label: _('Name') });
++        this._sortingSubMenu.add(this._sortMenuByName);
++        this._sortMenuByName.connect('activate', () =>
++            this._sortingByCriteria(Enums.SortingCriteria.Name));
++
++        this._sortMenuBySize = new Gtk.MenuItem({ label: _('Size') });
++        this._sortingSubMenu.add(this._sortMenuBySize);
++        this._sortMenuBySize.connect('activate', () =>
++            this._sortingByCriteria(Enums.SortingCriteria.Size));
++
++        this._sortMenuByType = new Gtk.MenuItem({ label: _('Type') });
++        this._sortingSubMenu.add(this._sortMenuByType);
++        this._sortMenuByType.connect('activate', () =>
++            this._sortingByCriteria(Enums.SortingCriteria.Type));
++    }
++
++
++    _sortingByCriteria(criteria) {
+         for (let fileItem of this._fileList) {
+             fileItem.removeFromGrid();
+             fileItem.savedCoordinates = null;
+         }
+ 
+         this._fileList.sort((a, b) => {
+-            if (a.displayName > b.displayName)
+-                return true;
++            switch (criteria) {
++            case Enums.SortingCriteria.Name:
++                if (a.displayName > b.displayName)
++                    return true;
+ 
+-            return false;
++                break;
++            case Enums.SortingCriteria.Size:
++                if (a.fileSize > b.fileSize)
++                    return true;
++
++                break;
++            case Enums.SortingCriteria.Type:
++                if (a.contentType > b.contentType)
++                    return true;
+ 
++                break;
++            }
++            return false;
+         });
+ 
+         this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.PRESERVE);
+diff --git a/extensions/desktop-icons-ng/enums.js b/extensions/desktop-icons-ng/enums.js
+index 1989f7b..8f00b7e 100644
+--- a/extensions/desktop-icons-ng/enums.js
++++ b/extensions/desktop-icons-ng/enums.js
+@@ -1,4 +1,4 @@
+-/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH */
++/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -69,6 +69,12 @@ var WhatToDoWithExecutable = {
+     CANCEL: 3,
+ };
+ 
++var SortingCriteria = {
++    Name: 0,
++    Size: 1,
++    Type: 2,
++};
++
+ var DEFAULT_ATTRIBUTES = 'metadata::*,standard::*,access::*,time::modified,unix::mode';
+ var TERMINAL_SCHEMA = 'org.gnome.desktop.default-applications.terminal';
+ var SCHEMA_GTK = 'org.gtk.Settings.FileChooser';

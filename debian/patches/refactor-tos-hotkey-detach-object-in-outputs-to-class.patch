@@ -1,0 +1,156 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 30 Aug 2021 16:04:42 +0900
+Subject: [refactor] tos-hotkey : detach object in outputs to class
+
+ - detach object in outputs to class Output
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 75 ++++++++++++++++++++--------------
+ 1 file changed, 45 insertions(+), 30 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 3c5428d..0d99ca9 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -1,6 +1,7 @@
+ const { GObject, GLib, Meta } = imports.gi;
+ 
+ const SystemActions = imports.misc.systemActions;
++const Params = imports.misc.params;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const BaseWidget = Me.imports.baseWidget;
+@@ -20,6 +21,36 @@ const SECONDARY_MODE_LABEL_TEXT = _('Screen 2 only');
+ 
+ const META_MONITORS_CONFIG_METHOD_PERSISTENT = 2;
+ 
++class Monitor {
++    _findClosestMode(width, height, refreshRate) {
++        let closest = null;
++
++        for (let mode of this.possibleModes) {
++            if (mode.width !== width || mode.height !== height)
++                continue;
++
++            if (mode.refreshRate === refreshRate) {
++                closest = mode;
++                break;
++            }
++
++            if (!closest || mode.refreshRate < refreshRate)
++                closest = mode;
++        }
++
++        return closest;
++    }
++
++    setConfig(config) {
++        config = Params.parse(config, {}, true);
++
++        let names = Object.getOwnPropertyNames(config);
++        for (let name of names)
++            this[`${name}`] = config[`${name}`];
++
++    }
++}
++
+ class DisplayConfig {
+     constructor(resources, currentState) {
+         this._outputs = []; // physical monitors
+@@ -58,13 +89,15 @@ class DisplayConfig {
+         // e.g) if the original list is [DP-1, DP-3, HDMI-1], then the number of each element would be 3, 2, 1.
+         for (let output of resources[2].reverse()) {
+             let productSerial = output[7]['serial'].deepUnpack();
+-            this._outputs.push({
++            let monitor = new Monitor();
++            monitor.setConfig({
+                 productSerial,
+                 'currentCrtc': output[2],
+                 'isPrimary': output[7]['primary'] ? output[7]['primary'].deepUnpack() : false,
+                 'underscanning': output[7]['underscanning'] ? output[7]['underscanning'] : false,
+                 'supportsUnderscanning': output[7]['supportsUnderscanning'] ? output[7]['supportsUnderscanning'] : false,
+             });
++            this._outputs.push(monitor);
+         }
+     }
+ 
+@@ -77,12 +110,14 @@ class DisplayConfig {
+             if (index === -1)
+                 return;
+ 
+-            let temp = this._outputs[index];
++            let config = {
++                'connector': monitor[0][0],
++                'possibleModes': [],
++                'isBuiltin': monitor[2]['is-builtin'] ? monitor[2]['is-builtin'].deepUnpack() : false,
++            };
+ 
+-            temp['connector'] = monitor[0][0];
+-            temp['possibleModes'] = [];
+             for (let mode of monitor[1]) {
+-                temp['possibleModes'].push({
++                config['possibleModes'].push({
+                     'modeID': mode[0],
+                     'width': mode[1],
+                     'height': mode[2],
+@@ -93,12 +128,11 @@ class DisplayConfig {
+                     'isPreferred': mode[6]['is-preferred'] ? mode[6]['is-preferred'].deepUnpack() : false,
+                 });
+                 if (mode[6]['is-current'] && mode[6]['is-current'].deepUnpack() === true)
+-                    temp['currentMode'] = mode[0];
++                    config['currentMode'] = mode[0];
+                 if (mode[6]['is-preferred'] && mode[6]['is-preferred'].deepUnpack() === true)
+-                    temp['preferredMode'] = mode[0];
++                    config['preferredMode'] = mode[0];
+             }
+-            temp['isBuiltin'] = monitor[2]['is-builtin'] ? monitor[2]['is-builtin'].deepUnpack() : false;
+-            this._outputs[index] = temp;
++            this._outputs[index].setConfig(config);
+         }
+ 
+         // built-in display is always 1.
+@@ -133,25 +167,6 @@ class DisplayConfig {
+         }
+     }
+ 
+-    _getClosestMode(modes, width, height, refreshRate) {
+-        let best = null;
+-
+-        for (let mode of modes) {
+-            if (mode.width !== width || mode.height !== height)
+-                continue;
+-
+-            if (mode.refreshRate === refreshRate) {
+-                best = mode;
+-                break;
+-            }
+-
+-            if (!best || mode.refreshRate < refreshRate)
+-                best = mode;
+-        }
+-
+-        return best;
+-    }
+-
+     _gatherMirrorModes() {
+         if (this._outputs.length < 2)
+             return null;
+@@ -164,7 +179,7 @@ class DisplayConfig {
+                 if (output.isPrimary)
+                     continue;
+ 
+-                let closestMode = this._getClosestMode(output.possibleModes, width, height, refreshRate);
++                let closestMode = output._findClosestMode(width, height, refreshRate);
+ 
+                 if (!closestMode) {
+                     possible = false;
+@@ -234,7 +249,7 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+ 
+         let logicalMonitor = [];
+         displayConfig._outputs.forEach(output => {
+-            let modeID = displayConfig._getClosestMode(output.possibleModes, mode.width, mode.height, mode.refreshRate).modeID;
++            let modeID = output._findClosestMode(mode.width, mode.height, mode.refreshRate).modeID;
+ 
+             let properties = {
+                 'enable_underscanning': output['underscanning'] ? output['underscanning'] : new GLib.Variant('b', false),

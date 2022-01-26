@@ -1,0 +1,24 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 27 Apr 2021 16:21:26 +0900
+Subject: [bugfix] AlternateTab: Fix SwitcherPopup width Logic
+
+  - Same as above
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index ce240de..f14798e 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -97,7 +97,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         let [, childNaturalWidth] = this._switcherList.get_preferred_width(childNaturalHeight);
+ 
+         childBox.x1 = Math.floor(primary.x + (primary.width - childNaturalWidth) / 2);
+-        childBox.x2 = childBox.x1 + childNaturalWidth;
++        childBox.x2 = Math.ceil(childBox.x1 + childNaturalWidth);
+ 
+         childBox.y1 = Math.max(primary.y + topPadding, primary.y + Math.floor((primary.height - childNaturalHeight) / 2));
+         childBox.y2 = Math.min(primary.y + primary.height - bottomPadding, childBox.y1 + childNaturalHeight);

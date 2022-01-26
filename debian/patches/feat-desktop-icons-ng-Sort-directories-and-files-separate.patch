@@ -1,0 +1,239 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 29 Sep 2021 17:06:16 +0900
+Subject: [feat] desktop-icons-ng : Sort directories and files separately
+
+- Sort directories and files separately and merge
+- Reconstruct code to create sorting menu
+- Save sort config value in dconf gsetting
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js      | 118 +++++++++++----------
+ extensions/desktop-icons-ng/po/ko.po               |  16 +++
+ .../org.gnome.shell.extensions.ding.gschema.xml    |  16 +++
+ 3 files changed, 94 insertions(+), 56 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 1d5d28c..6b74f03 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -684,69 +684,55 @@ var DesktopManager = class {
+     }
+ 
+     _createSortingMenu() {
+-        let fileInfo = this._desktopDir.query_info(Enums.DEFAULT_ATTRIBUTES, Gio.FileQueryInfoFlags.NONE, null);
+-        let sortCriteria = fileInfo.get_attribute_string('metadata::sortCriteria');
+-        let sortOrder = fileInfo.get_attribute_string('metadata::sortOrder');
+-
+-        this._orderAscending = sortOrder === '1';
++        let sortCriteria = Prefs.desktopSettings.get_string('sort-criteria');
+         this._currentSorting = Enums.StringToSortingCriteria(sortCriteria);
++        this._orderAscending = Prefs.desktopSettings.get_boolean('sort-order');
++
++        let sortingPair = { 'Name': Enums.SortingCriteria.Name,
++            'Size': Enums.SortingCriteria.Size,
++            'Content Type': Enums.SortingCriteria.Type,
++            'Modified Time': Enums.SortingCriteria.Time };
++
++        let orderPair = { 'Ascending': true,
++            'Descending': false };
+ 
+         this._sortingSubMenu = new Gtk.Menu();
+         this._sortingMenuItem = new Gtk.MenuItem({ label: _('Sorting Criteria') });
+         this._sortingMenuItem.set_submenu(this._sortingSubMenu);
+         this._menu.add(this._sortingMenuItem);
+ 
+-        this._sortMenuByName = new Gtk.RadioMenuItem({ label: _('Name') });
+-        this._sortingSubMenu.add(this._sortMenuByName);
+-        this._sortMenuByName.connect('activate', () =>
+-            this._sortingByCriteria(Enums.SortingCriteria.Name));
++        this._sortMenus = [];
++        let lastMenu = null;
++        for (let key in sortingPair) {
++            let sortingEnum = sortingPair[key];
++            let sortMenu = new Gtk.RadioMenuItem({ label: _(key) });
++            sortMenu.connect('activate', () => this._sortingByCriteria(sortingEnum));
++            sortMenu.join_group(lastMenu);
++            lastMenu = sortMenu;
+ 
+-        this._sortMenuBySize = new Gtk.RadioMenuItem({ label: _('Size') });
+-        this._sortingSubMenu.add(this._sortMenuBySize);
+-        this._sortMenuBySize.connect('activate', () =>
+-            this._sortingByCriteria(Enums.SortingCriteria.Size));
++            this._sortingSubMenu.add(sortMenu);
++            if (this._currentSorting === sortingEnum)
++                sortMenu.set_active(true);
+ 
+-        this._sortMenuByType = new Gtk.RadioMenuItem({ label: _('Content Type') });
+-        this._sortingSubMenu.add(this._sortMenuByType);
+-        this._sortMenuByType.connect('activate', () =>
+-            this._sortingByCriteria(Enums.SortingCriteria.Type));
+-
+-        this._sortMenuByTime = new Gtk.RadioMenuItem({ label: _('Modified Time') });
+-        this._sortingSubMenu.add(this._sortMenuByTime);
+-        this._sortMenuByTime.connect('activate', () =>
+-            this._sortingByCriteria(Enums.SortingCriteria.Time));
++            this._sortMenus.push(sortMenu);
++        }
+ 
+         this._sortingSubMenu.add(new Gtk.SeparatorMenuItem());
+ 
+-        this._sortMenuAscending = new Gtk.RadioMenuItem({ label: _('Ascending') });
+-        this._sortingSubMenu.add(this._sortMenuAscending);
+-        this._sortMenuAscending.connect('activate', () =>
+-            this._sortingByOrder(true));
+-
+-        this._sortMenuDescending = new Gtk.RadioMenuItem({ label: _('Descending') });
+-        this._sortingSubMenu.add(this._sortMenuDescending);
+-        this._sortMenuDescending.connect('activate', () =>
+-            this._sortingByOrder(false));
+-
+-        this._sortMenuByName.join_group(null);
+-        this._sortMenuBySize.join_group(this._sortMenuByName);
+-        this._sortMenuByType.join_group(this._sortMenuBySize);
+-        this._sortMenuByTime.join_group(this._sortMenuByType);
+-        this._sortMenuDescending.join_group(this._sortMenuAscending);
+-
+-        if (this._currentSorting === Enums.SortingCriteria.Name)
+-            this._sortMenuByName.set_active(true);
+-        else if (this._currentSorting === Enums.SortingCriteria.Size)
+-            this._sortMenuBySize.set_active(true);
+-        else
+-            this._sortMenuByType.set_active(true);
+-
++        lastMenu = null;
++        for (let key in orderPair) {
++            let isAscending = orderPair[key];
++            let sortMenu = new Gtk.RadioMenuItem({ label: _(key) });
++            sortMenu.connect('activate', () => this._sortingByOrder(isAscending));
++            sortMenu.join_group(lastMenu);
++            lastMenu = sortMenu;
+ 
+-        if (this._orderAscending)
+-            this._sortMenuAscending.set_active(true);
+-        else
+-            this._sortMenuDescending.set_active(true);
++            this._sortingSubMenu.add(sortMenu);
++            if (this._orderAscending === isAscending)
++                sortMenu.set_active(true);
+ 
++            this._sortMenus.push(sortMenu);
++        }
+     }
+ 
+     _sortingByOrder(order) {
+@@ -758,30 +744,50 @@ var DesktopManager = class {
+     }
+ 
+     _doSort(criteria, order) {
+-        let len = this._fileList.length;
++        let directoryList = [];
++        let fileList = [];
+ 
+-        for (let i = 0; i < len; i++) {
+-            let fileItem = this._fileList[i];
++        for (let fileItem of this._fileList) {
+             fileItem.removeFromGrid();
+             fileItem.savedCoordinates = null;
++            if (fileItem.isDirectory)
++                directoryList.push(fileItem);
++            else
++                fileList.push(fileItem);
++
+         }
+ 
+-        this._fileList.sort((a, b) => {
++        this._fileList = [];
++
++        directoryList.sort((a, b) => {
++            let compVal = SortUtil.compareValue(a, b, criteria);
++            return order === compVal ? 1 : -1;
++        });
++
++        fileList.sort((a, b) => {
+             let compVal = SortUtil.compareValue(a, b, criteria);
+             return order === compVal ? 1 : -1;
+         });
+ 
++        for (let item of directoryList)
++            this._fileList.push(item);
++
++
++        for (let item of fileList)
++            this._fileList.push(item);
++
++
+         this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.OVERWRITE);
+ 
+         this._orderAscending = order;
+         this._currentSorting = criteria;
+ 
+         let sortCriteria = Enums.SortingCriteriaToString(criteria);
+-        let sortOrder = order ? '1' : '0';
++
++        Prefs.desktopSettings.set_string('sort-criteria', sortCriteria);
++        Prefs.desktopSettings.set_boolean('sort-order', order);
+ 
+         let info = new Gio.FileInfo();
+-        info.set_attribute_string('metadata::sortCriteria', sortCriteria);
+-        info.set_attribute_string('metadata::sortOrder', sortOrder);
+         this._desktopDir.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+     }
+ 
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index 2a21b5c..540bdc2 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -467,3 +467,19 @@ msgid ""
+ "When doing a Drag'n'Drop operation, marks the place in the grid where the "
+ "icon will be put with a semitransparent rectangle."
+ msgstr "드래그 앤 드랍 시 아이콘이 드랍될 위치에 반투명한 사각형을 표시합니다."
++
++#: schemas/org.gnome.shell.extensions.ding.gschema.xml:69
++msgid "Desktop icons sort criteria"
++msgstr "바탕화면 아이콘 정렬 기준"
++
++#: schemas/org.gnome.shell.extensions.ding.gschema.xml:70
++msgid "Decide the sorting criteria for desktop icons"
++msgstr "바탕화면 아이콘 정렬 기준 지정"
++
++#: schemas/org.gnome.shell.extensions.ding.gschema.xml:74
++msgid "Set the desktop icon sorting order"
++msgstr "바탕화면 아이콘 정렬 순서 지정"
++
++#: schemas/org.gnome.shell.extensions.ding.gschema.xml:75
++msgid "Set to true if the sort order is ascending."
++msgstr "정렬 순서가 오름차순일 경우 참으로 설정"
+diff --git a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+index eaaa750..2248b63 100644
+--- a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
++++ b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+@@ -12,6 +12,12 @@
+         <value value="2" nick="bottom-left"/>
+         <value value="3" nick="bottom-right"/>
+     </enum>
++    <enum id="org.gnome.shell.extension.ding.SortCriteria">
++        <value value="0" nick="name"/>
++        <value value="1" nick="size"/>
++        <value value="2" nick="type"/>
++        <value value="3" nick="time"/>
++    </enum>
+     <schema path="/org/gnome/shell/extensions/ding/" id="org.gnome.shell.extensions.ding">
+     <key name="icon-size" enum="org.gnome.shell.extension.ding.ZoomLevel">
+         <default>'standard'</default>
+@@ -58,5 +64,15 @@
+         <summary>Shows a rectangle in the destination place during DnD</summary>
+         <description>When doing a Drag'n'Drop operation, marks the place in the grid where the icon will be put with a semitransparent rectangle.</description>
+     </key>
++    <key name="sort-criteria" enum="org.gnome.shell.extension.ding.SortCriteria">
++        <default>'name'</default>
++        <summary>Desktop icons sort criteria</summary>
++        <description>Decide the sorting criteria for desktop icons</description>
++    </key>
++    <key type="b" name="sort-order">
++        <default>true</default>
++        <summary>Set the desktop icon sorting order</summary>
++        <description>Set to true if the sort order is ascending.</description>
++    </key>
+   </schema>
+ </schemalist>

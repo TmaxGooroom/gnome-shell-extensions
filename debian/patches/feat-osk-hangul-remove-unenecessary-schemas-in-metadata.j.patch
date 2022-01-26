@@ -1,0 +1,29 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 6 Jul 2021 13:45:54 +0900
+Subject: [feat] osk-hangul: remove unenecessary schemas in metadata.json
+
+ - remove unenecessary schemas in metadata.json
+
+[IMS] N/A
+---
+ extensions/osk-hangul/metadata.json.in | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/extensions/osk-hangul/metadata.json.in b/extensions/osk-hangul/metadata.json.in
+index c77a3d7..a5f838a 100644
+--- a/extensions/osk-hangul/metadata.json.in
++++ b/extensions/osk-hangul/metadata.json.in
+@@ -1,12 +1,9 @@
+ {
+ "extension-id": "@extension_id@",
+ "uuid": "@uuid@",
+-"settings-schema": "@gschemaname@",
+-"gettext-domain": "osk-hangul",
+ "name": "osk-hangul",
+ "description": "Gnome-shell on screen keyboard extension for Korean users",
+ "original-authors": [  "Jiyun_ha" ],
+ "shell-version": [ "@shell_current@" ],
+-"url": "@url@",
+-"version": 9999
++"url": "@url@"
+ }

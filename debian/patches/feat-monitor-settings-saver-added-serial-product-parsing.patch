@@ -1,0 +1,75 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 27 Oct 2021 17:25:41 +0900
+Subject: [feat] monitor-settings-saver: added serial, product parsing
+
+- before, parsing logic exist for only serial and product name in display descriptor block
+- added serial, product parsing in basic block
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/xrandrParser.js | 27 +++++++++++++++--------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/xrandrParser.js b/extensions/monitor-settings-saver/xrandrParser.js
+index 64872d9..dfe4dd7 100644
+--- a/extensions/monitor-settings-saver/xrandrParser.js
++++ b/extensions/monitor-settings-saver/xrandrParser.js
+@@ -46,33 +46,37 @@ function xrandrParse() {
+                     monitor.rotation = 'upside_down';*/
+             }
+ 
++            let edid = '';
+             for (let j = i + 1; j < lines.length; j++) {
+                 // EDID parsing
+                 if (lines[j].includes('EDID:')) {
+-                    let edid = '';
+                     for (let k = 1; k <= 8; k++)
+                         edid += lines[j + k].replace('\n', '').replace('\t\t', '');
+-                    // vendor
++                    // vendor, serial, product
+                     let vendor = '';
+                     let bin = parseInt(edid.substr(16, 4), 16).toString(2).padStart(16, '0');
+                     vendor += String.fromCharCode(64 + parseInt(bin.substr(1, 5), 2));
+                     vendor += String.fromCharCode(64 + parseInt(bin.substr(6, 5), 2));
+                     vendor += String.fromCharCode(64 + parseInt(bin.substr(11, 5), 2));
+                     monitor.vendor = vendor;
+-                    // serial, product
++                    monitor.product = `0x${edid.substr(20, 4)}`;
++                    monitor.serial = `0x${edid.substr(24, 8)}`;
++                    // if serial, product information is in display descriptor, use it
+                     for (let k = 0; k < 4; k++) {
+                         let descriptor = edid.substr(108 + 36 * k, 36);
+                         if (descriptor.substr(0, 10) === '000000ff00') {
+-                            let serial = '';
++                            let dscSerial = '';
+                             for (let l = 10; l < descriptor.length; l += 2)
+-                                serial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+-                            monitor.serial = serial.trim();
++                                dscSerial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '').trim();
++                            if (dscSerial !== '')
++                                monitor.serial = dscSerial;
+                         }
+                         if (descriptor.substr(0, 10) === '000000fc00') {
+-                            let product = '';
++                            let dscProduct = '';
+                             for (let l = 10; l < descriptor.length; l += 2)
+-                                product += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+-                            monitor.product = product.trim();
++                                dscProduct += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '').trim();
++                            if (dscProduct !== '')
++                                monitor.product = dscProduct;
+                         }
+                     }
+                 } else if (lines[j].includes('*current')) {
+@@ -82,6 +86,11 @@ function xrandrParse() {
+                     let totalWidthPixel = Number(lines[j + 2].split(' ').filter(word => word.length > 1)[8]);
+                     monitor.rate = String(pixelClock * 1000000 / totalHeightPixel / totalWidthPixel);
+                 } else if (lines[j].includes('connected')) { // another connector, end
++                    if (!edid) { // edid info not found
++                        monitor.vendor = 'unknown';
++                        monitor.serial = 'unknown';
++                        monitor.product = 'unknown';
++                    }
+                     break;
+                 }
+             }

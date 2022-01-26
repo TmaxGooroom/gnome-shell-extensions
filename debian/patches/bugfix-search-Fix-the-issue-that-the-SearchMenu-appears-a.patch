@@ -1,0 +1,29 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 15 Jul 2021 16:01:51 +0900
+Subject: [bugfix] search : Fix the issue that the SearchMenu appears above on
+ screen keyboard
+
+ - Since PopupMenu always place its actor at the top of stage, so it
+   needs to be manually modified to bring the actor under the keyboard's
+   actor.
+
+[IMS] 264574
+---
+ extensions/search/menuButton.js | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index da7962a..1af3078 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -327,6 +327,10 @@ var SearchMenu = class SearchMenu extends PopupMenu.PopupMenu {
+         }
+         this._onOpenEvent();
+         super.open(animation);
++
++        // Since the super class(PopupMenu) always place its actor at the top of stage,
++        // it needs to be manually modified to bring the actor under the keyboard's actor.
++        Main.uiGroup.set_child_below_sibling(this.actor, Main.layoutManager.keyboardBox);
+     }
+ 
+     close(animation) {

@@ -1,0 +1,95 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 11 Aug 2021 18:09:30 +0900
+Subject: [feat] Greeter: Apply tos message
+
+- message displayed in case of login failure, account not entered, entry hint.
+
+[IMS] N/A
+---
+ extensions/greeter/authPrompt.js  | 17 +++++++++++++++++
+ extensions/greeter/loginDialog.js | 10 ++++++++--
+ 2 files changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index aa39200..3cd5397 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -20,11 +20,15 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const { Clutter, Gio, GObject, St } = imports.gi;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
++const GdmUtil = imports.gdm.util;
+ 
+ const UserWidget = Me.imports.userWidget;
+ const UserVerifier = Me.imports.userVerifier;
+ const Constants = Me.imports.constants;
+ 
++const Gettext = imports.gettext;
++const _ = Gettext.gettext;
++
+ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.AuthPrompt { // eslint-disable-line no-unused-vars
+     _init(gdmClient, mode) {
+         super._init(gdmClient, mode);
+@@ -110,11 +114,24 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+         secondary.icon_size = 30;
+     }
+ 
++    _onAskQuestion(verifier, serviceName, question, secret) {
++        super._onAskQuestion(verifier, serviceName, question, secret);
++        if (question === 'Password:' || question === 'Password: ' ||
++            question === '암호:' || question === '암호: ')
++            this.setQuestion(_('비밀번호'));
++    }
++
+     setQuestion(question) {
+         super.setQuestion(question);
+         this._entry.get_hint_actor().add_style_class_name('hint-style');
+     }
+ 
++    _onVerificationFailed(userVerifier, canRetry) {
++        if (this._queryingService === 'gdm-password')
++            this.setMessage(_('아이디 또는 비밀번호를 확인해주세요'), GdmUtil.MessageType.ERROR);
++        super._onVerificationFailed(userVerifier, canRetry);
++    }
++
+     setUser(user) {
+         this._userWidget.changeUser(user);
+         if (!user)
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index df41cd8..1cbdfa2 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -22,6 +22,7 @@ const { Gio, GLib, GObject, Clutter, St } = imports.gi;
+ const Main = imports.ui.main;
+ const GnomeLoginDialog = imports.gdm.loginDialog;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
++const GdmUtil = imports.gdm.util;
+ const Batch = imports.gdm.batch;
+ const CtrlAltTab = imports.ui.ctrlAltTab;
+ 
+@@ -336,7 +337,7 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     _askForUsernameAndBeginVerification() {
+         this._user = null;
+         this._authPrompt.setUser(null);
+-        this._authPrompt.setQuestion(_('Username'));
++        this._authPrompt.setQuestion(_('사용자 계정'));
+ 
+         this._showRealmLoginHint(this._realmManager.loginFormat);
+ 
+@@ -344,10 +345,15 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+             this._authPrompt.disconnect(this._nextSignalId);
+         this._nextSignalId = this._authPrompt.connect('next',
+             () => {
++                let answer = this._authPrompt.getAnswer();
++                if (answer.trim() === '') {
++                    this._authPrompt.setMessage(_('사용자 계정을 입력하세요'), GdmUtil.MessageType.ERROR);
++                    this._authPrompt.updateSensitivity(true);
++                    return;
++                }
+                 this._authPrompt.disconnect(this._nextSignalId);
+                 this._nextSignalId = 0;
+                 this._authPrompt.updateSensitivity(false);
+-                let answer = this._authPrompt.getAnswer();
+                 this._authPrompt._userWidget.setOnlyUserName(answer);
+                 this._authPrompt.clear();
+                 this._authPrompt.begin({ userName: answer });

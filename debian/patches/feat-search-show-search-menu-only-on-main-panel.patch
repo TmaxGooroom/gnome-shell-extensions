@@ -1,0 +1,27 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 15 Apr 2021 11:25:37 +0900
+Subject: [feat] search : show search menu only on main panel
+
+ - same as above
+
+[IMS] N/A
+---
+ extensions/search/extension.js | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/extensions/search/extension.js b/extensions/search/extension.js
+index 8b87cda..dbbace3 100644
+--- a/extensions/search/extension.js
++++ b/extensions/search/extension.js
+@@ -145,6 +145,11 @@ function _enableButtons() {
+         let panelArray = global.dashToPanel ? global.dashToPanel.panels.map(pw => pw) : [Main.panel];
+         let iterLength = multiMonitor ? panelArray.length : 1;
+         for (var index = 0; index < iterLength; index++) {
++            // must show this on primary panel only
++            let isPrimary = global.dashToPanel ? panelArray[index].isPrimary : false;
++            if (!isPrimary)
++                continue;
++
+             let panel = global.dashToPanel ? panelArray[index].panel : panelArray[index];
+             let panelParent = panelArray[index];
+ 

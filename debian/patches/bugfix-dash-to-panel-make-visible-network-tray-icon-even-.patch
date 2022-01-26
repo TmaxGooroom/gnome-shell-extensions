@@ -1,0 +1,49 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 25 Aug 2021 14:23:45 +0900
+Subject: [bugfix] dash-to-panel : make visible network tray icon even when
+ the network is disconnected
+
+ - always show network tray icon
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index fc754e8..8948b40 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -23,6 +23,13 @@ class Tray {
+             return Clutter.EVENT_PROPAGATE;
+         });
+ 
++        let network = this._originalTray._network;
++        this._originalNetworkUpdateIcon = network._updateIcon;
++        network._updateIcon = () => {
++            this._originalNetworkUpdateIcon.call(network);
++            network._primaryIndicator.visible = true;
++        };
++
+         let brightness = this._originalTray._brightness;
+         let brightnessIndicator = brightness._addIndicator();
+         brightnessIndicator.icon_name = 'display-brightness-symbolic';
+@@ -88,6 +95,10 @@ class Tray {
+ 
+         this._indicators.get_last_child().visible = true;
+ 
++        let network = this._originalTray._network;
++        network._updateIcon = this._originalNetworkUpdateIcon;
++        network._updateIcon();
++
+         let power = this._originalTray._power;
+         power.visible = true;
+ 
+@@ -111,6 +122,7 @@ class Tray {
+         this._indicators = null;
+         this._originalMenuItems = null;
+         this._originalEventFunc = null;
++        this._originalNetworkUpdateIcon = null;
+     }
+ 
+     _restoreOriginalMenu() {

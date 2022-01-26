@@ -1,0 +1,80 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Wed, 26 May 2021 16:49:09 +0900
+Subject: [feat] Add border to arc-menu, search, notification.
+
+ - Add border to arc-menu, search, notification.
+ - For white widgets, add border to separate the boundaries.
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuButton.js             | 2 +-
+ extensions/notification-center/stylesheet.css | 6 +++---
+ extensions/search/menuButton.js               | 2 +-
+ extensions/search/searchMenuLayout.js         | 2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index beaa69a..a62af0d 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -236,7 +236,7 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+         this.arcMenu.actor.style_class = 'popup-menu-boxpointer';
+         this.arcMenu.actor.add_style_class_name('popup-menu');
+ 
+-        this.arcMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 20px; -arrow-border-width: 0px;';
++        this.arcMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px; -arrow-border-color: black; -arrow-border-width: 2px;';
+         this.arcMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index 51847b5..c003a80 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -41,10 +41,10 @@
+ }
+ 
+ .notification-center-actor {
+-  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px;
++  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px; -arrow-border-radius: 16px; -arrow-border-color: black; -arrow-border-width: 2px;
+   background-color: rgba(255,255,255,255);
+   width: 328px;
+-  border-radius: 16px;
++  border-radius: 18px;
+ }
+ 
+ .notification-center-title-box {
+@@ -58,7 +58,7 @@
+   background-color: rgba(41, 41, 41, 255);
+   width: 328px;
+   height: 92px;
+-  border-radius: 16px;
++  border-radius: 14px;
+ }
+ 
+ .notification-center-empty-icon {
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index 0cc06fc..da7962a 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -143,7 +143,7 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+         this.searchMenu.actor.style_class = 'popup-menu-boxpointer';
+         this.searchMenu.actor.add_style_class_name('popup-menu');
+ 
+-        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 20px; -arrow-border-width: 0px;';
++        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px; -arrow-border-color: black; -arrow-border-width: 2px;';
+         this.searchMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index 5b72cb9..020abb6 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -83,7 +83,7 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+             vertical: true,
+             y_align: Clutter.ActorAlign.START,
+         });
+-        this.resultBox.style = 'width: 300px; background-color: rgb(255, 255, 255); color: rgb(0, 0 ,0); border-radius: 14px 0px 0px 14px;';
++        this.resultBox.style = 'width: 300px; background-color: transparent; color: rgb(0, 0 ,0); border-radius: 14px 0px 0px 14px;';
+         this.resultScrollBox = this._createScrollBox({
+             y_align: Clutter.ActorAlign.FILL,
+             overlay_scrollbars: true,

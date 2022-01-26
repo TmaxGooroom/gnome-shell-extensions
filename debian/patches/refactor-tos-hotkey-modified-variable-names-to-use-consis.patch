@@ -1,0 +1,53 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 30 Aug 2021 16:43:35 +0900
+Subject: [refactor] tos-hotkey : modified variable names to use consistent
+ terms
+
+ - modified variable names to use consistent terms.
+   e.g. crct (logical monitor), output/monitor (physical monitor a.k.a output device)
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 0d99ca9..01d5049 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -145,25 +145,25 @@ class DisplayConfig {
+             }
+         }
+ 
+-        for (let monitor of current[2]) {
+-            let serial = monitor[5][0][3];
+-            let physicalMonitor = this._outputs.find(ele => ele['productSerial'] === serial);
++        for (let crtc of current[2]) {
++            let serial = crtc[5][0][3];
++            let output = this._outputs.find(ele => ele['productSerial'] === serial);
+ 
+-            let crtcID = physicalMonitor['currentCrtc'];
++            let crtcID = output['currentCrtc'];
+ 
+             // validate scale
+-            let modeID = physicalMonitor['currentMode'] ? physicalMonitor['currentMode'] : physicalMonitor['preferredMode'];
+-            for (let mode of physicalMonitor['possibleModes']) {
++            let modeID = output['currentMode'] ? output['currentMode'] : output['preferredMode'];
++            for (let mode of output['possibleModes']) {
+                 if (mode['modeID'] !== modeID)
+                     continue;
+ 
+-                if (mode['possibleScale'].includes(monitor[2]))
+-                    this._crtcs[crtcID]['scale'] = monitor[2];
++                if (mode['possibleScale'].includes(crtc[2]))
++                    this._crtcs[crtcID]['scale'] = crtc[2];
+             }
+ 
+             // validate transform
+-            if (monitor[3] >= 0 && monitor[3] < this._crtcs[crtcID]['possibleTransforms'].length)
+-                this._crtcs[crtcID]['transform'] = monitor[3];
++            if (crtc[3] >= 0 && crtc[3] < this._crtcs[crtcID]['possibleTransforms'].length)
++                this._crtcs[crtcID]['transform'] = crtc[3];
+         }
+     }
+ 

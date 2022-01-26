@@ -1,0 +1,49 @@
+From: tos <tos@localhost.localdomain>
+Date: Thu, 13 May 2021 18:30:52 +0900
+Subject: [bugfix] Fix notification icon not displaying
+
+- fixed notification icon is not displayed if extension load order differs
+- update element positions after adding notificationcenter to allocationmap
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/panel.js | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index f13931a..58c2ada 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -171,11 +171,11 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+             // Catch adding notificationcenter to rightbox and put it in panel actor
+             // Needed when NotificationCenter loaded later than dtpPanel
+-            this.register_notificationcenter = this._rightBox.connect('actor-added', actor => {
+-                let container = actor.get_children()[actor.get_children().length - 1];
+-                let parent = actor;
+-                if (container.child.accessible_name !== 'NotificationCenter')
++            this.register_notificationcenter = this._rightBox.connect('actor-added', () => {
++                if (!this.statusArea.NotificationCenter)
+                     return;
++                let container = this.statusArea.NotificationCenter.container;
++                let parent = container.get_parent();
+                 container._dtpOriginalParent = parent;
+                 if (parent)
+                     parent.remove_child(container);
+@@ -906,11 +906,13 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             setMap(Pos.NOTI_CENTER, new St.BoxLayout({ name: 'dummy' }));
+ 
+         // setmap when notificationcenter loaded after dtpPanel
+-        this.setmap_notificationcenter = this._rightBox.connect('actor-added', actor => {
+-            let container = actor.get_children()[actor.get_children().length - 1];
+-            if (container.child.accessible_name !== 'NotificationCenter')
++
++        this.setmap_notificationcenter = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
++            if (extension.uuid !== 'notification-center@tmax-shell-extensions')
+                 return;
+             setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
++            // apply updated allocationMap to panel
++            this.updateElementPositions();
+         });
+ 
+         setMap(Pos.DESKTOP_BTN, this._showDesktopButton);

@@ -1,0 +1,594 @@
+From: junho_lee3 <junho_lee3>
+Date: Fri, 16 Apr 2021 15:42:02 +0900
+Subject: [feat] Logging : Install Logging Module for each Extensions
+
+ - Initial install the logging module for debugging extensions
+
+[IMS] N/A
+---
+ logging/README.md   | 171 ++++++++++++++++++++++++
+ logging/logging.js  | 371 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logging/meson.build |   8 ++
+ meson.build         |   1 +
+ 4 files changed, 551 insertions(+)
+ create mode 100644 logging/README.md
+ create mode 100644 logging/logging.js
+ create mode 100644 logging/meson.build
+
+diff --git a/logging/README.md b/logging/README.md
+new file mode 100644
+index 0000000..1bd7b30
+--- /dev/null
++++ b/logging/README.md
+@@ -0,0 +1,171 @@
++# Extension Debugger
++
++Extension Debugger is GUI tool for debugging gnome-shell-extension that use
++logging.js
++
++## 1. Logging APIs
++
++We provide several APIs for debugging the gnome-shell-extensions written in JS.
++You can use the following debugging components by inserting the APIs in your code:
++1. Function calls
++2. Backtrace (Call trace)
++3. Breakpoint
++4. Logging Message
++5. Watch variable (TBD.)
++6. Displaying the JS variable (TBD.)
++
++Before explain the usage of APIs, we introduce the basic notions appeared in APIs.
++
++### 1.1 Basic notions (Channel, Level, Output)
++
++We should set the channel and level before using the APIs.
++Currently, we parse the configuration file written in json (i.e. logging.json).
++
++#### 1.1.1 Channel
++
++The Channel is used for restrictly defining the module to record the logs.
++In other words, if you set the channel, the debugger save the logs only includes that.
++For clearly defining the channel to represent a module, we force to set the channel name as the uuid of extensions.
++If you set the channel arbitrarily, the debug module will cause the errors.
++
++For example, the case of search extension :
++
++```
++...
++'channel': 'search',
++...
++```
++
++#### 1.1.2 Level
++
++The level is used to set what kind of log to display and includes __INFO__, __WARNING__, __ERROR__.
++* __INFO__ presents the all information about the module. you can use this anywhere to remain logs.
++* __WARNING__ means that the code includes bugs potentially. Set this flag when it may causes errors.
++* __ERROR__ means a point that unreachable point. It is only used for exceptional cases.
++
++Also the level has the order, in other words, log all levels higher than itself (__INFO__ < __WARNING__ < __ERROR__).
++For example, if you set the level to the INFO, the result includes all of the records from __INFO__, __WARNING__ and __ERROR__.
++
++#### 1.1.3 Output
++
++You can set the path of output file which includes the information of logging.
++Debugger does not overwrite the given file, just append the logs on it.
++Therefore, if you want the newest logs, you should erase the file before executing the extension.
++The format of log in output:
++
++```
++...
++[$channel][$level][$logtype] messages
++...
++```
++
++#### 1.1.4 Configuration File
++
++Since we set the default values from parsing the configuration file, you should write it.
++It is formatted in json and should include the channel, level and output.
++Here is the example:
++
++```
++my_configure.json
++{
++    "channel":"$my_extension_uuid",
++    "level":"INFO",
++    "output":"$my_result_path"
++}
++```
++
++### 1.2 Function calls
++
++You can record the metadatas for calling the user-defined functions.
++It includes the arguments of the callee and the result of the function call.
++
++Let's consider the following example:
++
++```
++var MyObject = Class {
++    foo(a) {
++        ...;
++        return a;
++    }
++};
++
++var myObject = new MyObject();
++
++foo(5);
++foo(4);
++```
++
++In this case, we can insert the API for logging the `foo` function:
++
++```
++...
++var my Object = new MyObject();
++var debug = new Debugger();
++
++debug.loggingFunction('$channel', level, 'foo', myObject);
++
++foo(5);
++foo(4);
++```
++
++then the result will be following:
++
++```
++[Channel][Level][Log] Entering foo(5)
++[Channel][Level][Log] Leaving foo(5) -> 5
++[Channel][Level][Log] Entering foo(4)
++[Channel][Level][Log] Leaving foo(4) -> 4
++```
++
++When we want to log the function only when some predicate is satisfied:
++
++```
++...
++debug.loggingFunction('$channel', level, 'foo', myObject,
++    (function () { return this.predicate(); }).bind(myObject));
++...
++```
++
++### 1.3 Backtrace (Call trace)
++
++You can see the call trace at the time the API is called.
++It is similar to the __bt__ in GDB, however, it cannot display the arguments of calls and the state at the point.
++Insert this API where you want to see the backtraces:
++
++```
++function foo() {
++    debug.printBacktrace('$channel', level);
++}
++```
++
++### 1.4 Breakpoint
++
++It is used to stop the process when it calls with satisfied predicates.
++Note that, since it uses the `SIGTRAP` signal, you should use this with debugger(i.e. GDB).
++Otherwise, the process cannot handling the signal and will be died.
++Hence, we recommand using this on your local debugging setting. (Do not remain this on git)
++
++You can use `breakpointFunction` when stop before executing function.
++When you use this with predicate, you can stop only for specific cases:
++```
++debug.breakpointFunction('$channel', level, 'foo', myObject,
++    () => { return myObject.predicate() });
++```
++
++Also, we can insert the break anywhere:
++
++```
++debug.breakpoint('$channel', level, () => { return myObject.predicate(); });
++```
++
++Notice that, the predicate is not mandatory. (if the predicate is `undefined`, it will be replaced to the lambda function that always returns true.)
++
++### 1.5. Logging Message
++
++You can record customized message by inserting this API in your code.
++The arguments are channel, level, customized message and optional predicate.
++The simple example code is following:
++
++```
++debug.logging('$channel', level, 'test message', () => { return true; });
++```
+diff --git a/logging/logging.js b/logging/logging.js
+new file mode 100644
+index 0000000..3c2d485
+--- /dev/null
++++ b/logging/logging.js
+@@ -0,0 +1,371 @@
++/* exported Debugger */
++
++const System = imports.system;
++const GLib = imports.gi.GLib;
++const Gio = imports.gi.Gio;
++const ByteArray = imports.byteArray;
++
++/**
++ * Level:
++ *
++ * Public object for setting the level of logging.
++ * 'Debugger' present the logs which are upper cases of the determined level.
++ * (e.g. If the level is 'INFO', the logs for 'WARNING' and 'ERROR' are stamped also.)
++ * INFO: It is used for remaining the informations. Using it to find out all about the logs.
++ * WARNING: It is used for codes which potentially includes errors.
++ *          Set this flag when it may causes errors
++ * ERROR: It is used for unreachable state, which means that 'must not reach here'
++ */
++
++var Level = {
++    NONE: 0,
++    INFO: 1,
++    WARNING: 2,
++    ERROR: 3,
++};
++
++var BACKTRACE_LOG = 'Backtrace';
++var COMMON_LOG = 'Log';
++
++var Debugger = class {
++    constructor(confFile) {
++        this._breakpoints = 0;
++        this._output = '/.tos_shell_log.out';
++        this._level = Level.NONE;
++        this._channel = '';
++
++        this._parseConfigFile(confFile);
++    }
++
++    _parseConfigFile(confFile) {
++        if (confFile === undefined)
++            return;
++
++
++        let [result, contents] = GLib.file_get_contents(confFile);
++
++        if (!result)
++            return;
++
++
++        let json = JSON.parse(ByteArray.toString(contents));
++
++        this._channel = json['channel'];
++        this._level = this._stringToLevel(json['level']);
++        this._output = json['output'];
++    }
++
++    _stringToLevel(level) {
++        if (level === 'INFO')
++            return Level.INFO;
++        if (level === 'WARNING')
++            return Level.WARNING;
++        if (level === 'ERROR')
++            return Level.ERROR;
++        return Level.NONE;
++    }
++
++    _levelToString(level) {
++        if (level === Level.INFO)
++            return 'INFO';
++
++        if (level === Level.WARNING)
++            return 'WARNING';
++
++        if (level === Level.ERROR)
++            return 'ERROR';
++
++        return 'NONE';
++    }
++
++    _prettyPrintObject(obj) {
++        let str = obj.toString();
++        if (str.length > 15)
++            str = `${str.substr(0, 12)}...`;
++
++        return str;
++    }
++
++    _getPropertyDescriptor(obj, property) {
++        if (obj.hasOwnProperty(property))
++            return Object.getOwnPropertyDescriptor(obj, property);
++
++        return this._getPropertyDescriptor(obj, property);
++    }
++
++    _wrappingFunc(func, wrappedFunc, properties) {
++        wrappedFunc.isWrapped = true;
++        wrappedFunc.innerFunc = func;
++
++        for (let property in properties) {
++            let descriptor = this._getPropertyDescriptor(properties, property);
++            Object.defineProperty(wrappedFunc, property, descriptor);
++        }
++
++        return wrappedFunc;
++    }
++
++    _getTagValue(func, tag) {
++        while (func.isWrapped) {
++            if (func.hasOwnProperty(tag))
++                return func[tag];
++
++            func = func.innerFunc;
++        }
++        return undefined;
++    }
++
++    _isValid(channel, level) {
++        // TODO : Check whether the channel's uuid is included in extension list.
++
++        if (channel === undefined || level === Level.NONE)
++            return false;
++
++
++        return true;
++    }
++
++    _recordLogMessage(msg, logType) {
++        let logFile = Gio.File.new_for_path(this._output);
++        let outputStream = logFile.append_to(0, null);
++
++        msg = `[${this._channel}][${this._levelToString(this._level)}][${logType}] ${msg}\n`;
++
++        let byteStream = ByteArray.fromString(msg);
++        outputStream.write(byteStream, null);
++        outputStream.close(null);
++    }
++
++    // PUBLIC API
++
++    /*
++     * printBacktrace:
++     * @channel: The channel for logging. If the channel is not registered in 'Debugger',
++     *           logs are not recorded.
++     * @level: the level of printing backtrace for the state.
++     *
++     * Print the call-trace when this function is called.
++     * The purpose of this function is logging the call stack. (i.e. backtrace in GDB)
++     * The function calls are separated by lines, and each line includes
++     * function name, javascript file, and location of function.
++     * TODO: Remove the trace of the debugger's calls
++     */
++    printBacktrace(channel, level) {
++        if (!this._isValid(channel, level))
++            return;
++
++        try {
++            throw new Error();
++        } catch (e) {
++            let stack = e.stack.split('\n');
++
++            // sanitizing meaningless lines, i.e, erasing current function in trace
++            stack.pop();
++            stack.shift();
++            this._recordLogMessage('-------------------------', BACKTRACE_LOG);
++
++            stack.forEach(element => {
++                if (element.split('@')[0] === 'wrappedFunction')
++                    return;
++
++                this._recordLogMessage(element, BACKTRACE_LOG);
++            });
++            this._recordLogMessage('-------------------------', BACKTRACE_LOG);
++        }
++    }
++
++    /*
++     * loggingFunction:
++     * channel: channel for logging
++     * level: level of the logging function call
++     * funcName: a string name of function which is recoreded by logging
++     * obj: Actual object includes the function
++     * predicate: predicates for whether logging or not.
++     *            It should be a function that returns `bool` without any arguments.
++     *
++     * This function is used to wrap the given function with logging logics.
++     * If the channel and level are unsuitable for the debugger, it does not record the logs.
++     * The logging information includes the arguments and return value of the function.
++     * Also, we can set the conditions for recording logs.
++     * For example, we can logging the function call information only when the predicates
++     * are satisfied :
++     * ...
++     * loggingFunction(..., () => { return condition(); });
++     * ...
++     */
++    loggingFunction(channel, level, funcName, obj, predicate) {
++        if (!this._isValid(channel, level))
++            return;
++
++        let func = obj[funcName];
++
++        let pred = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        let prevPred = this._getTagValue(func, 'loggingPredicate');
++
++        // / if logging predicate was already registered
++        if (prevPred !== undefined) {
++            Object.defineProperty(func, 'loggingPredicate', {
++                value: () => {
++                    return prevPred() || pred();
++                },
++            });
++            return;
++        }
++
++        // TODO : How can we capture the member function of debugger in wrapped function..?
++        let print = this._prettyPrintObject;
++        let record = this._recordLogMessage.bind(this);
++
++        function wrappedFunction(...funcArgs) {
++            let log = typeof funcName === undefined ? 'anonymous function'
++                : funcName;
++            log += '(';
++
++            for (let i = 0; i < funcArgs.length; i++)
++                log = `${log + print(funcArgs[i])}, `;
++
++
++            if (funcArgs.length > 0)
++                log = log.slice(0, -2);
++
++            log += ')';
++
++            let isLogging = wrappedFunction['loggingPredicate']();
++
++            if (isLogging)
++                record(`Entering ${log}`, COMMON_LOG);
++
++            let ret = func.apply(obj, funcArgs);
++
++            let retStr = print(ret);
++
++            if (isLogging)
++                record(`Leaving ${log} -> ${retStr}`, COMMON_LOG);
++
++            return ret;
++        }
++
++        let properties = {
++            loggingPredicate: pred,
++        };
++
++        obj[funcName] = this._wrappingFunc(func, wrappedFunction, properties);
++    }
++
++    /*
++     * breakpointFunction:
++     * channel: channel for stopping
++     * level: level of the breakpoint
++     * funcName: a string name of function which will be stopped
++     * obj: Actual object includes the function
++     * predicate: predicates for whether stop or not.
++     *            It should be a function that returns `bool` without any arguments.
++     *
++     * Set a breakpoint for a given function.
++     * If channel and level are unsuitable, it may not stop.
++     * If the predicate is true, it will stop at the beginning of a function.
++     * Since it uses a signal (SIGTRAP), it must be used with the debugger (e.g. GDB).
++     * If you does not use below function with debugger, the application get the signal and
++     * will be turned off.
++     */
++    breakpointFunction(channel, level, funcName, obj, predicate) {
++        if (!this._isValid(channel, level))
++            return;
++
++        let func = obj[funcName];
++        let pred = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        let prevPred = this._getTagValue(func, 'breakPredicate');
++
++        if (prevPred !== undefined) {
++            Object.defineProperty(func, 'breakPredicate', {
++                value: () => {
++                    return prevPred() || pred();
++                },
++            });
++            return;
++        }
++
++        let record = this._recordLogMessage.bind(this);
++
++        function wrappedFunction(...funcArgs) {
++            if (wrappedFunction['breakPredicate']()) {
++                record(`Breakpoint ${wrappedFunction['breakpoint']} reached`, COMMON_LOG);
++                System.breakpoint();
++            }
++            return func.apply(obj, funcArgs);
++        }
++
++        let properties = {
++            breakpoint: ++this._breakpoints,
++            breakPredicate: pred,
++        };
++
++        obj[funcName] = this._wrappingFunc(func, wrappedFunction, properties);
++
++        this._recordLogMessage(`Breakpoint ${this._breakpoints} for ${obj.constructor.name}.${funcName} is registered`, COMMON_LOG);
++    }
++
++    /*
++     * breakpoint:
++     * channel: channel for stopping
++     * level: level of the breakpoint
++     * predicate: predicates for whether stop or not.
++     *            It should be a function that returns `bool` without any arguments.
++     *
++     * Set a breakpoint where the user insert it.
++     * If channel and level are unsuitable, it may not stop.
++     * If the predicate is true, it will stop at the line of the declared code.
++     * Since it uses a signal (SIGTRAP), it must be used with the debugger (e.g. GDB).
++     * If you does not use below function with debugger, the application get the signal and
++     * will be turned off.
++     */
++    breakpoint(channel, level, predicate) {
++        if (!this._isValid(channel, level))
++            return;
++
++        let pred = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        if (pred())
++            System.breakpoint();
++
++    }
++
++    /*
++     * logging:
++     * channel: channel for logging
++     * level: level of the logging function call
++     * message: logging message
++     * predicate: predicates for whether logging or not.
++     *            It should be a function that returns `bool` without any arguments.
++     *
++     * This function is used to log user-defined message.
++     * If the channel and level are unsuitable for the debugger, it does not record the logs.
++     * Also, we can set the conditions for recording logs.
++     * For example, we can logging the message only when the predicates are satisfied.
++     */
++
++    logging(channel, level, message, predicate) {
++        if (!this._isValid(channel, level))
++            return;
++
++        let pred = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        if (pred())
++            this._recordLogMessage(message, COMMON_LOG);
++
++    }
++};
+diff --git a/logging/meson.build b/logging/meson.build
+new file mode 100644
+index 0000000..fc86072
+--- /dev/null
++++ b/logging/meson.build
+@@ -0,0 +1,8 @@
++# Add Logging Module to TOS Extensions
++foreach e : tos_extensions
++  uuid = e + uuid_suffix
++  install_data (
++    'logging.js',
++    install_dir: join_paths(extensiondir, uuid)
++  )
++endforeach
+diff --git a/meson.build b/meson.build
+index aa6dcaf..bc03dc9 100644
+--- a/meson.build
++++ b/meson.build
+@@ -109,3 +109,4 @@ endif
+ 
+ subdir('extensions')
+ subdir('po')
++subdir('logging')

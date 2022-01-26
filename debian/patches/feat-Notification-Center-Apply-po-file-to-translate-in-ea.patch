@@ -1,0 +1,84 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 18 Jun 2021 17:15:31 +0900
+Subject: [feat] Notification Center : Apply po file to translate in easy
+ support Box
+
+- added korean translation
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 12 ++++++------
+ extensions/notification-center/locale/ko.po | 24 ++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 4243719..a7cefd8 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -189,14 +189,14 @@ const NotificationCenter = new LangClass({
+             x_expand: true,
+         });
+         this.supportControlDone = new St.Label({
+-            text: '완료',
++            text: _('Done'),
+             style_class: 'notification-center-support-control-done',
+             x_align: Clutter.ActorAlign.END,
+         });
+ 
+         this.supportIconRow = new St.BoxLayout({ style_class: 'notification-center-support-icon-row' });
+         this.dndItem        = new PopupMenu.PopupSwitchMenuItem(this._messageList._dndButton.label_actor.text, false, {});
+-        this.alarmIcon      = new SupportIcon('tos_desktop_ic_alarm_alarm.svg', '알람', true);
++        this.alarmIcon      = new SupportIcon('tos_desktop_ic_alarm_alarm.svg', _('Alarm'), true);
+ 
+         let scaleFactor     = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+         this.scrollView     = new St.ScrollView({ hscrollbar_policy: 2, style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.monitors[0].height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;` });
+@@ -661,10 +661,10 @@ const NotificationCenter = new LangClass({
+         this.easySupport.add_child(this.supportIconRow);
+ 
+         this.supportIconRow.add_child(this.alarmIcon);
+-        this.supportIconRow.add_child(new SupportIcon('tos_ic_alram_blutooth.svg', '블루투스', true));
+-        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_wifi.svg', '네트워크', false));
+-        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_setting.svg', '제어판', false));
+-        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_lock.svg', '잠금화면', false));
++        this.supportIconRow.add_child(new SupportIcon('tos_ic_alram_blutooth.svg', _('Bluetooth'), true));
++        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_wifi.svg', _('Network'), false));
++        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_setting.svg', _('Setting'), false));
++        this.supportIconRow.add_child(new SupportIcon('tos_desktop_ic_alarm_lock.svg', _('Lock Screen'), false));
+ 
+         // Because button is designed private property, we need to connectButton method in SupportIcon class.
+         this.alarmIcon._button.connect('clicked', () => this.dndToggle());
+diff --git a/extensions/notification-center/locale/ko.po b/extensions/notification-center/locale/ko.po
+index c3177e5..4ed82ed 100644
+--- a/extensions/notification-center/locale/ko.po
++++ b/extensions/notification-center/locale/ko.po
+@@ -33,6 +33,30 @@ msgstr "모두 비우기"
+ msgid "No Events"
+ msgstr ""
+ 
++#: notification-center@tmax-shell-extensions/extension.js:192
++msgid "Done"
++msgstr "완료"
++
++#: notification-center@tmax-shell-extensions/extension.js:199
++msgid "Alarm"
++msgstr "알람"
++
++#: notification-center@tmax-shell-extensions/extension.js:664
++msgid "Bluetooth"
++msgstr "블루투스"
++
++#: notification-center@tmax-shell-extensions/extension.js:665
++msgid "Network"
++msgstr "네트워크"
++
++#: notification-center@tmax-shell-extensions/extension.js:666
++msgid "Setting"
++msgstr "제어판"
++
++#: notification-center@tmax-shell-extensions/extension.js:667
++msgid "Lock Screen"
++msgstr "잠금화면"
++
+ #: notification-center@Selenium-H/prefs.js:84
+ #: notification-center@Selenium-H/prefs.js:93
+ msgid "Preferences"

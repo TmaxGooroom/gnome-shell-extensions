@@ -1,0 +1,32 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 13 May 2021 18:14:08 +0900
+Subject: [chore] Arc Menu : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuLayout.js | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index f434cc5..d42ffb4 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -234,6 +234,7 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+                 this.frequentAppsList.push(item);
+             }
+         }
++
+         let activeMenuItemSet = false;
+         for (let i = 0; i < this.frequentAppsList.length; i++) {
+             let item = this.frequentAppsList[i];
+@@ -251,7 +252,7 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         }
+ 
+         let appList = [];
+-        this.applicationsMap.forEach((value, key, map) => { // eslint-disable-line no-unused-vars
++        this.applicationsMap.forEach((value, key) => {
+             appList.push(key);
+         });
+         appList.sort((a, b) => {

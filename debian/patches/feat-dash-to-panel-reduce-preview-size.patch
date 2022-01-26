@@ -1,0 +1,48 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 12 Aug 2021 16:21:24 +0900
+Subject: [feat] dash-to-panel : reduce preview size
+
+ - reduced preview size
+
+[IMS] N/A
+---
+ .../dash-to-panel/schemas/10_dash-to-panel.gschema.override       | 2 ++
+ extensions/dash-to-panel/windowPreview.js                         | 8 ++++----
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index 85658bb..8cb2d19 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -18,3 +18,5 @@ scroll-panel-show-ws-popup = false
+ scroll-icon-action = 'NOTHING'
+ panel-element-positions = '{"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"NotificationCenter","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"NotificationCenter","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
+ secondarymenu-contains-showdetails = false
++window-preview-size=115
++window-preview-padding=6
+diff --git a/extensions/dash-to-panel/windowPreview.js b/extensions/dash-to-panel/windowPreview.js
+index bb71c03..951ce22 100644
+--- a/extensions/dash-to-panel/windowPreview.js
++++ b/extensions/dash-to-panel/windowPreview.js
+@@ -40,9 +40,9 @@ const T3 = 'peekTimeout';
+ const T4 = 'ensureVisibleTimeout';
+ 
+ const MAX_TRANSLATION = 40;
+-const HEADER_HEIGHT = 38;
+-const MAX_CLOSE_BUTTON_SIZE = 30;
+-const MIN_DIMENSION = 100;
++const HEADER_HEIGHT = 34;
++const MAX_CLOSE_BUTTON_SIZE = 20;
++const MIN_DIMENSION = 45;
+ const FOCUSED_COLOR_OFFSET = 24;
+ const HEADER_COLOR_OFFSET = -12;
+ const FADE_SIZE = 36;
+@@ -811,7 +811,7 @@ var Preview = Utils.defineClass({
+                         if (this._previewMenu.opened)
+                             _assignWindowClone();
+                     });
+-                    GLib.Source.set_name_by_id(this._waitWindowId, '[dash-to-panel] _assinWindow');
++                    GLib.Source.set_name_by_id(this._waitWindowId, '[dash-to-panel] _assignWindow');
+                 }
+             };
+ 

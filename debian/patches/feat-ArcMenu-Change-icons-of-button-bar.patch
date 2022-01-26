@@ -1,0 +1,219 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 24 Jan 2022 18:40:26 +0900
+Subject: [feat] ArcMenu: Change icons of button bar
+
+- change icons of user, file, setting, power button.
+
+[IMS] N/A
+---
+ extensions/arc-menu/constants.js                   | 41 ++++++++++++----------
+ extensions/arc-menu/media/icons/tos-ic-file.svg    |  6 ++++
+ .../arc-menu/media/icons/tos-ic-help-copy-2.svg    |  6 ++++
+ extensions/arc-menu/media/icons/tos-ic-power.svg   |  6 ++++
+ extensions/arc-menu/media/icons/tos-ic-setting.svg |  6 ++++
+ extensions/arc-menu/menuLayout.js                  |  3 +-
+ extensions/arc-menu/menuWidgets.js                 |  9 +++--
+ 7 files changed, 55 insertions(+), 22 deletions(-)
+ create mode 100644 extensions/arc-menu/media/icons/tos-ic-file.svg
+ create mode 100644 extensions/arc-menu/media/icons/tos-ic-help-copy-2.svg
+ create mode 100644 extensions/arc-menu/media/icons/tos-ic-power.svg
+ create mode 100644 extensions/arc-menu/media/icons/tos-ic-setting.svg
+
+diff --git a/extensions/arc-menu/constants.js b/extensions/arc-menu/constants.js
+index b6082d2..bd83b77 100644
+--- a/extensions/arc-menu/constants.js
++++ b/extensions/arc-menu/constants.js
+@@ -21,6 +21,8 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++/* exported CategoryType DefaultMenuView SoftwareManagerIDs CATEGORIES TooltipLocation SEPARATOR_ALIGNMENT MenuItemType SEPARATOR_STYLE HOT_KEY HOT_CORNERS_ACTION MENU_POSITION PowerType MENU_BUTTON_ICONS_PATH USER_BUTTON_ICONS_PATH FILE_BUTTON_ICONS_PATH SETTING_BUTTON_ICONS_PATH POWER_BUTTON_ICONS_PATH RESTART_ICON DEVELOPERS TRANSLATORS CONTRIBUTORS ARTWORK GNU_SOFTWARE */
++
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const _ = Gettext.gettext;
+@@ -40,19 +42,19 @@ var CategoryType = {
+ var DefaultMenuView = {
+     PINNED_APPS: 0,
+     CATEGORIES_LIST: 1,
+-    FREQUENT_APPS: 2
+-}
++    FREQUENT_APPS: 2,
++};
+ 
+ var SoftwareManagerIDs = ['org.manjaro.pamac.manager.desktop', 'pamac-manager.desktop', 'io.elementary.appcenter.desktop',
+-                            'snap-store_ubuntu-software.desktop', 'snap-store_snap-store.desktop', 'org.gnome.Software.desktop'];
++    'snap-store_ubuntu-software.desktop', 'snap-store_snap-store.desktop', 'org.gnome.Software.desktop'];
+ 
+ var CATEGORIES = [
+-    {Category: CategoryType.FAVORITES, Name: _("Favorites"), Icon: 'emblem-favorite-symbolic'},
+-    {Category: CategoryType.FREQUENT_APPS, Name: _("Frequent Apps"), Icon: 'user-bookmarks-symbolic'},
+-    {Category: CategoryType.ALL_PROGRAMS, Name: _("All Programs"), Icon: 'view-grid-symbolic'},
+-    {Category: CategoryType.PINNED_APPS, Name: _("Pinned Apps"), Icon: Me.path + '/media/icons/menu_icons/arc-menu-symbolic.svg'},
+-    {Category: CategoryType.RECENT_FILES, Name: _("Recent Files"), Icon: 'document-open-recent-symbolic'}
+-]
++    { Category: CategoryType.FAVORITES, Name: _('Favorites'), Icon: 'emblem-favorite-symbolic' },
++    { Category: CategoryType.FREQUENT_APPS, Name: _('Frequent Apps'), Icon: 'user-bookmarks-symbolic' },
++    { Category: CategoryType.ALL_PROGRAMS, Name: _('All Programs'), Icon: 'view-grid-symbolic' },
++    { Category: CategoryType.PINNED_APPS, Name: _('Pinned Apps'), Icon: `${Me.path}/media/icons/menu_icons/arc-menu-symbolic.svg` },
++    { Category: CategoryType.RECENT_FILES, Name: _('Recent Files'), Icon: 'document-open-recent-symbolic' },
++];
+ 
+ var TooltipLocation = {
+     TOP_CENTERED: 0,
+@@ -62,12 +64,12 @@ var TooltipLocation = {
+ 
+ var SEPARATOR_ALIGNMENT = {
+     VERTICAL: 0,
+-    HORIZONTAL: 1
++    HORIZONTAL: 1,
+ };
+ 
+ var MenuItemType = {
+     BUTTON: 0,
+-    MENU_ITEM: 1
++    MENU_ITEM: 1,
+ };
+ 
+ var SEPARATOR_STYLE = {
+@@ -96,13 +98,13 @@ var HOT_CORNERS_ACTION = {
+     Default: 0,
+     Disabled: 1,
+     ToggleArcMenu: 2,
+-    Custom: 3
+-}
++    Custom: 3,
++};
+ 
+ var MENU_POSITION = {
+     Left: 0,
+     Center: 1,
+-    Right: 2
++    Right: 2,
+ };
+ 
+ var PowerType = {
+@@ -110,14 +112,18 @@ var PowerType = {
+     LOCK: 2,
+     LOGOUT: 3,
+     SUSPEND: 4,
+-    RESTART: 5
++    RESTART: 5,
+ };
+ 
+ var MENU_BUTTON_ICONS_PATH = '/media/icons/tos_desktop_ic_dock_tmax .svg';
++var USER_BUTTON_ICONS_PATH = `${Me.path}/media/icons/tos-ic-help-copy-2.svg`;
++var FILE_BUTTON_ICONS_PATH = `${Me.path}/media/icons/tos-ic-file.svg`;
++var SETTING_BUTTON_ICONS_PATH = `${Me.path}/media/icons/tos-ic-setting.svg`;
++var POWER_BUTTON_ICONS_PATH = `${Me.path}/media/icons/tos-ic-power.svg`;
+ 
+ // Path to some files
+ var RESTART_ICON = {
+-    Path: '/media/icons/menu_icons/restart-symbolic.svg'
++    Path: '/media/icons/menu_icons/restart-symbolic.svg',
+ };
+ 
+ var DEVELOPERS = '<b>Andrew Zaech</b> <a href="https://gitlab.com/AndrewZaech">@AndrewZaech</a>\nLead Project Developer and Maintainer\t' +
+@@ -131,5 +137,4 @@ var ARTWORK = '<b>LinxGem33</b> aka <b>Andy C</b>\nWiki Screens, Icons, Wire-Fra
+ var GNU_SOFTWARE = '<span size="small">' +
+     'This program comes with absolutely no warranty.\n' +
+     'See the <a href="https://gnu.org/licenses/old-licenses/gpl-2.0.html">' +
+-	'GNU General Public License, version 2 or later</a> for details.' +
+-	'</span>';
++'GNU General Public License, version 2 or later</a> for details.</span>';
+diff --git a/extensions/arc-menu/media/icons/tos-ic-file.svg b/extensions/arc-menu/media/icons/tos-ic-file.svg
+new file mode 100644
+index 0000000..5c54329
+--- /dev/null
++++ b/extensions/arc-menu/media/icons/tos-ic-file.svg
+@@ -0,0 +1,6 @@
++<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
++    <g fill="none" fill-rule="evenodd">
++        <path d="M0 0h24v24H0z"/>
++        <path d="M19 3a2 2 0 0 1 2 2v9l-7 7H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14zm-1 2H6a1 1 0 0 0-.993.883L5 6v12a1 1 0 0 0 .883.993L6 19h8v-4a1 1 0 0 1 1-1h4V6a1 1 0 0 0-1-1zm-6 7a1 1 0 0 1 0 2H8a1 1 0 0 1 0-2h4zm4-4a1 1 0 0 1 0 2H8a1 1 0 1 1 0-2h8z" fill="#FFF"/>
++    </g>
++</svg>
+diff --git a/extensions/arc-menu/media/icons/tos-ic-help-copy-2.svg b/extensions/arc-menu/media/icons/tos-ic-help-copy-2.svg
+new file mode 100644
+index 0000000..1b0e7cf
+--- /dev/null
++++ b/extensions/arc-menu/media/icons/tos-ic-help-copy-2.svg
+@@ -0,0 +1,6 @@
++<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
++    <g fill="none" fill-rule="evenodd">
++        <path d="M0 0h24v24H0z"/>
++        <path d="M12 11c1.934 0 3.5-1.566 3.5-3.5S13.934 4 12 4a3.499 3.499 0 0 0-3.5 3.5c0 1.934 1.566 3.5 3.5 3.5zm0 2c-4.67 0-8 2.34-8 5v1c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-1c0-2.66-3.33-5-8-5z" fill="#FFF"/>
++    </g>
++</svg>
+diff --git a/extensions/arc-menu/media/icons/tos-ic-power.svg b/extensions/arc-menu/media/icons/tos-ic-power.svg
+new file mode 100644
+index 0000000..a5579fd
+--- /dev/null
++++ b/extensions/arc-menu/media/icons/tos-ic-power.svg
+@@ -0,0 +1,6 @@
++<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
++    <g fill="none" fill-rule="evenodd">
++        <path d="M0 0h24v24H0z"/>
++        <path d="M12 3c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1s1-.45 1-1V4c0-.55-.45-1-1-1zm5.14 2.86a.99.99 0 0 0-.01 1.39c1.13 1.2 1.83 2.8 1.87 4.57.09 3.83-3.08 7.13-6.91 7.17A6.981 6.981 0 0 1 5 12c0-1.84.71-3.51 1.87-4.76.37-.39.37-1-.01-1.38a.993.993 0 0 0-1.43.02A8.92 8.92 0 0 0 3 11.74c-.14 4.88 3.83 9.1 8.71 9.25 5.1.16 9.29-3.93 9.29-9 0-2.37-.92-4.51-2.42-6.11-.38-.41-1.04-.42-1.44-.02z" fill="#FFF"/>
++    </g>
++</svg>
+diff --git a/extensions/arc-menu/media/icons/tos-ic-setting.svg b/extensions/arc-menu/media/icons/tos-ic-setting.svg
+new file mode 100644
+index 0000000..a207745
+--- /dev/null
++++ b/extensions/arc-menu/media/icons/tos-ic-setting.svg
+@@ -0,0 +1,6 @@
++<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
++    <g fill="none" fill-rule="evenodd">
++        <path d="M0 0h24v24H0z"/>
++        <path d="M13 2a1 1 0 0 1 1 1v1.252c.734.19 1.427.48 2.064.856l.886-.886a1 1 0 0 1 1.414 0l1.414 1.414a1 1 0 0 1 0 1.414l-.886.886c.377.637.667 1.33.856 2.065L21 10a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1.252a7.952 7.952 0 0 1-.856 2.064l.886.886a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414 0l-.886-.886a7.952 7.952 0 0 1-2.064.856V21a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1.252a7.952 7.952 0 0 1-2.064-.856l-.886.886a1 1 0 0 1-1.414 0l-1.414-1.414a1 1 0 0 1 0-1.414l.886-.886A7.952 7.952 0 0 1 4.252 14H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h1.252c.189-.734.48-1.427.856-2.064l-.886-.886a1 1 0 0 1 0-1.414l1.414-1.414a1 1 0 0 1 1.414 0l.886.886a7.952 7.952 0 0 1 2.065-.856L10 3a1 1 0 0 1 1-1h2zm-1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill="#FFF"/>
++    </g>
++</svg>
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index 8bb3579..d8c074b 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -69,7 +69,8 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         // Documents Button
+         let path = GLib.get_user_special_dir(imports.gi.GLib.UserDirectory.DIRECTORY_DOCUMENTS);
+         if (path !== null) {
+-            let placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _('Documents'));
++            let iconPath = Constants.FILE_BUTTON_ICONS_PATH;
++            let placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _('Documents'), iconPath);
+             let placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+             this.actionsBox.add_actor(placeMenuItem.actor);
+         }
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index 7d7360e..b1f06b1 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -1027,7 +1027,8 @@ var ShortcutButtonItem = GObject.registerClass(class ArcMenuShortcutButtonItem e
+ // Settings Button
+ var SettingsButton = GObject.registerClass(class ArcMenuSettingsButton extends SessionButton { // eslint-disable-line no-unused-vars
+     _init(menuLayout) {
+-        super._init(menuLayout, _('Settings'), 'emblem-system-symbolic');
++        let iconPath = Constants.SETTING_BUTTON_ICONS_PATH;
++        super._init(menuLayout, _('Settings'), iconPath);
+     }
+ 
+     activate() {
+@@ -1037,7 +1038,8 @@ var SettingsButton = GObject.registerClass(class ArcMenuSettingsButton extends S
+ 
+ var LeaveButton = GObject.registerClass(class ArcMenuLeaveButton extends SessionButton { // eslint-disable-line no-unused-vars
+     _init(menuLayout) {
+-        super._init(menuLayout, _('Leave'), 'system-shutdown-symbolic');
++        let iconPath = Constants.POWER_BUTTON_ICONS_PATH;
++        super._init(menuLayout, _('Leave'), iconPath);
+         this.toggleMenuOnClick = false;
+     }
+ 
+@@ -1049,7 +1051,8 @@ var LeaveButton = GObject.registerClass(class ArcMenuLeaveButton extends Session
+ // User Button
+ var CurrentUserButton = GObject.registerClass(class ArcMenuCurrentUserButton extends SessionButton { // eslint-disable-line no-unused-vars
+     _init(menuLayout) {
+-        super._init(menuLayout, GLib.get_real_name(), 'system-users-symbolic');
++        let iconPath = Constants.USER_BUTTON_ICONS_PATH;
++        super._init(menuLayout, GLib.get_real_name(), iconPath);
+     }
+ 
+     activate() {

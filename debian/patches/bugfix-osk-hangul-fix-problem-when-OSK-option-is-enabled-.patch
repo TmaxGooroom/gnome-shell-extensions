@@ -1,0 +1,96 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 29 Oct 2021 17:48:43 +0900
+Subject: [bugfix] osk-hangul : fix problem when OSK option is enabled again
+
+ - osk-hangul is reset if the 'screen keyboard' option is disabled and
+   keyboard instance is destroyed. And it is created when 'Screen
+   Keyboard' option is enabled again. But since the wrapper still refer
+   to previous keyboard, newly created keyboard doesn't work. To fix
+   this problem, always delete adapter instance when _resetKeyboard() is
+   called.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js       | 36 ++++++++++++++++----------------
+ extensions/osk-hangul/keyboardWrapper.js |  2 +-
+ 2 files changed, 19 insertions(+), 19 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 3b484a2..067ea11 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -23,7 +23,6 @@ let _ibusFocusInId = null;
+ let _nimfFocusInId = null;
+ let _nimfFocusOutId = null;
+ let _keyboardDestroyId = null;
+-let _layoutKeyTypeChagnedId = null;
+ 
+ let adapter = null;
+ 
+@@ -58,7 +57,7 @@ function _getSyncKeyboardFunc() {
+                     _enable(Enums.KeyboardType.XKB);
+             });
+ 
+-            _layoutKeyTypeChagnedId = adapter.connect('layout-key-type', () => {
++            adapter.connect('layout-key-type', () => {
+                 KeyboardManager._keyboard._onKeyboardGroupsChanged();
+             });
+ 
+@@ -84,27 +83,28 @@ function _getSyncKeyboardFunc() {
+ 
+ function _resetKeyboard() {
+     let keyboard = KeyboardManager._keyboard;
+-    if (keyboard) {
+-        if (adapter)
+-            adapter.restoreAll();
+-
+-        let ibusManager = IBusManager.getIBusManager();
+-        if (_ibusFocusInId)
+-            ibusManager.disconnect(_ibusFocusInId);
+-
+-        if (_layoutKeyTypeChagnedId)
+-            adapter.disconnect(_layoutKeyTypeChagnedId);
+ 
+-        const nimfService = getNimfService();
+-        if (_nimfFocusInId)
+-            nimfService.disconnect(_nimfFocusInId);
+-
+-        if (_nimfFocusOutId)
+-            nimfService.disconnect(_nimfFocusOutId);
++    if (adapter) {
++        adapter.restoreAll();
++        adapter = null;
++    }
+ 
++    if (keyboard) {
++        keyboard._onKeyboardGroupsChanged();
+         if (_keyboardDestroyId)
+             keyboard.disconnect(_keyboardDestroyId);
+     }
++
++    let ibusManager = IBusManager.getIBusManager();
++    if (_ibusFocusInId)
++        ibusManager.disconnect(_ibusFocusInId);
++
++    const nimfService = getNimfService();
++    if (_nimfFocusInId)
++        nimfService.disconnect(_nimfFocusInId);
++
++    if (_nimfFocusOutId)
++        nimfService.disconnect(_nimfFocusOutId);
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index aaea7ae..d8db08e 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -95,7 +95,7 @@ class BaseKeyboardWrapper {
+             let { target, originalFunc, replaceFunc } = this._functionsToOverride[funcName];
+ 
+             if (!target[funcName])
+-                throw new Error(`such function name does not exist in ${target.name}!`);
++                throw new Error(`${funcName} does not exist in ${target.name}!`);
+ 
+             target[funcName] = function (...args) {
+                 return replaceFunc.apply(this, [originalFunc].concat(args));

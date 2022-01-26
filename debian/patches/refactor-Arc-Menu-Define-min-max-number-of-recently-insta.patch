@@ -1,0 +1,96 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 18 Jun 2021 14:43:53 +0900
+Subject: [refactor] Arc Menu : Define min/max number of recently installed
+ apps in schema
+
+- The min/max number can be changed through dconf.
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuLayout.js                  | 24 +++++++++++++---------
+ .../org.gnome.shell.extensions.arcmenu.gschema.xml | 10 +++++++++
+ 2 files changed, 24 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index 6952aca..8bb3579 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -40,8 +40,6 @@ const ROW_SPACING = 10;
+ const COLUMN_COUNT = 3;
+ 
+ // Recently Installed
+-const MIN_RECENT_SIZE = 4;
+-const MAX_RECENT_SIZE = 10;
+ const TWO_WEEKS = 60 * 60 * 24 * 12;
+ 
+ // Applist
+@@ -255,7 +253,8 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         });
+ 
+         let size = this.frequentAppsList.length;
+-        let end = size > MAX_RECENT_SIZE ? MAX_RECENT_SIZE : size;
++        let maxSize = this._settings.get_int('max-recent-app-size');
++        let end = size > maxSize ? maxSize : size;
+         for (let i = 0; i < end; i++) {
+             let item = this.frequentAppsList[i];
+ 
+@@ -303,7 +302,8 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+ 
+     createExpandButton() {
+         let size = this.frequentAppsList.length;
+-        if (size > MIN_RECENT_SIZE) {
++        let minSize = this._settings.get_int('min-recent-app-size');
++        if (size > minSize) {
+             let expandButton = new MW.ExpandButton(this);
+             expandButton.x_align = Clutter.ActorAlign.CENTER;
+             this.recentAppsBox.add_actor(expandButton);
+@@ -312,9 +312,11 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+ 
+     collapseAll() {
+         let size = this.frequentAppsList.length;
+-        if (size > MIN_RECENT_SIZE) {
+-            let end = size > MAX_RECENT_SIZE ? MAX_RECENT_SIZE : size;
+-            for (let i = MIN_RECENT_SIZE; i < end; i++)
++        let minSize = this._settings.get_int('min-recent-app-size');
++        if (size > minSize) {
++            let maxSize = this._settings.get_int('max-recent-app-size');
++            let end = size > maxSize ? maxSize : size;
++            for (let i = minSize; i < end; i++)
+                 this.frequentAppsList[i].hide();
+ 
+         }
+@@ -322,9 +324,11 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+ 
+     expandAll() {
+         let size = this.frequentAppsList.length;
+-        if (size > MIN_RECENT_SIZE) {
+-            let end = size > MAX_RECENT_SIZE ? MAX_RECENT_SIZE : size;
+-            for (let i = MIN_RECENT_SIZE; i < end; i++)
++        let minSize = this._settings.get_int('min-recent-app-size');
++        if (size > minSize) {
++            let maxSize = this._settings.get_int('max-recent-app-size');
++            let end = size > maxSize ? maxSize : size;
++            for (let i = minSize; i < end; i++)
+                 this.frequentAppsList[i].show();
+ 
+         }
+diff --git a/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml b/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
+index a0edb0d..5a0dd96 100644
+--- a/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
++++ b/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
+@@ -38,5 +38,15 @@
+       <summary>Menu position in Dash To Panel</summary>
+       <description>Menu position in Dash To Panel</description>
+     </key>
++    <key name="min-recent-app-size" type="i">
++      <default>4</default>
++      <summary>Number of apps initially visible in recently installed apps area.</summary>
++      <description>If the total number of recently installed apps exceeds this number, an extension button is added.</description>
++    </key>
++    <key name="max-recent-app-size" type="i">
++      <default>10</default>
++      <summary>Maximum number of apps to be seen in recenly installed apps area</summary>
++      <description>Maximum number of apps to be seen in recently installed apps area</description>
++    </key>
+   </schema>
+ </schemalist>

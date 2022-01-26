@@ -1,0 +1,68 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 16 Apr 2021 16:48:13 +0900
+Subject: [bugfix] Search : Fix unresponsive error when entering an enter key
+
+- Error caused by search result variable not updated after reload
+- Modify key events to be handled by search menu when entering an enter key
+- Use updated search result variable
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js |  7 +++++--
+ extensions/search/menuWidgets.js    | 11 -----------
+ 2 files changed, 5 insertions(+), 13 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 2aa55d5..5a726dc 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -126,6 +126,9 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             } else if (symbol === Clutter.KEY_Down) {
+                 this.newSearch.highlightDefault(false);
+                 return this._onMainBoxKeyPress(this.mainBox, event);
++            } else if (symbol === Clutter.KEY_Return ||
++                       symbol === Clutter.KEY_KP_Enter) {
++                return this._onMainBoxKeyPress(this.mainBox, event);
+             }
+         }
+         return Clutter.EVENT_PROPAGATE;
+@@ -216,8 +219,8 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         case Clutter.KEY_Return:
+         case Clutter.KEY_KP_Enter:
+             if (!this.searchBox.isEmpty()) {
+-                if (this.searchBox.newSearch.getTopResult())
+-                    this.searchBox.newSearch.getTopResult().activate(event);
++                if (this.newSearch.getTopResult())
++                    this.newSearch.getTopResult().activate(event);
+ 
+             }
+             return Clutter.EVENT_PROPAGATE;
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index df643e4..140fca8 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -822,7 +822,6 @@ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-v
+ var SearchBox = class ArcMenuSearchBox {
+     constructor(menuLayout) {
+         this.menuLayout = menuLayout;
+-        this.newSearch = this.menuLayout.newSearch;
+         this.actor = new St.BoxLayout({
+             x_expand: true,
+             style_class: 'search-box search-box-padding',
+@@ -963,16 +962,6 @@ var SearchBox = class ArcMenuSearchBox {
+     }
+ 
+     _onKeyPress(actor, event) {
+-        let symbol = event.get_key_symbol();
+-        if (symbol === Clutter.KEY_Return ||
+-            symbol === Clutter.KEY_KP_Enter) {
+-            if (!this.isEmpty()) {
+-                if (this.newSearch.getTopResult())
+-                    this.newSearch.getTopResult().activate(event);
+-
+-            }
+-            return Clutter.EVENT_STOP;
+-        }
+         this.emit('key-press-event', event);
+         return Clutter.EVENT_PROPAGATE;
+     }

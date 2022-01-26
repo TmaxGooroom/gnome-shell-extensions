@@ -1,0 +1,153 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 12 Aug 2021 16:31:45 +0900
+Subject: [feat] Greeter: Reorganize user list items
+
+- SOM accounts without last login time are not added to user list.
+- Sort user list items in the lasted order.
+
+[IMS] N/A
+---
+ extensions/greeter/loginDialog.js | 103 ++++++++++++++++++++++++++++----------
+ 1 file changed, 77 insertions(+), 26 deletions(-)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index b1c1034..df41cd8 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -31,6 +31,31 @@ const Constants = Me.imports.constants;
+ const Gettext = imports.gettext;
+ const _ = Gettext.gettext;
+ 
++const SOM_ACCOUNT_FIRST_UID = 50001;
++
++function _sortItems(items) {
++    let sorted = {};
++    let arr = [];
++
++    for (let userName in items) {
++        let item = items[userName];
++        arr.push(item);
++    }
++
++    arr.sort((item1, item2) => {
++        let user1 = item1.user;
++        let user2 = item2.user;
++        return user1.get_login_time() < user2.get_login_time();
++    });
++
++    for (let i = 0; i < arr.length; i++) {
++        let userName = arr[i].user.get_user_name();
++        sorted[userName] = items[userName];
++    }
++
++    return sorted;
++}
++
+ var UserListItem = GObject.registerClass(class UserListItem extends GnomeLoginDialog.UserListItem {
+     _init(user) {
+         super._init(user);
+@@ -94,12 +119,20 @@ var UserList = GObject.registerClass(class UserList extends GnomeLoginDialog.Use
+         if (!userName)
+             return;
+ 
++        let uid = user.get_uid();
++        let lastLoginTime = user.get_login_time();
++        if (uid >= SOM_ACCOUNT_FIRST_UID && lastLoginTime <= 0)
++            return;
++
+         this.removeUser(user);
+ 
+         let item = new UserListItem(user);
+-        this._box.add_child(item);
+-
+         this._items[userName] = item;
++        this._items = _sortItems(this._items);
++
++        let keys = Object.keys(this._items);
++        let index = keys.indexOf(userName);
++        this._box.insert_child_at_index(item, index);
+ 
+         item.connect('activate', this._onItemActivated.bind(this));
+ 
+@@ -170,11 +203,42 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     _loadUserList() {
+-        if (!this._userListLoaded)
+-            this._authPrompt.setUserList(this._userList);
++        if (this._userListLoaded)
++            return GLib.SOURCE_REMOVE;
++
++        this._userListLoaded = true;
++
++        this._authPrompt.setUserList(this._userList);
+ 
+-        super._loadUserList();
+-        this._authPrompt._userWidget.updateLabelStyleAndIconVisibility();
++        let users = this._userManager.list_users();
++
++        for (let i = 0; i < users.length; i++)
++            this._userList.addUser(users[i]);
++
++        this._updateDisableUserList();
++
++        this._userAddedId = this._userManager.connect('user-added',
++            (userManager, user) => {
++                this._userList.addUser(user);
++                this._updateDisableUserList();
++            });
++
++        this._userRemovedId = this._userManager.connect('user-removed',
++            (userManager, user) => {
++                this._userList.removeUser(user);
++                this._updateDisableUserList();
++            });
++
++        this._userChangedId = this._userManager.connect('user-changed',
++            (userManager, user) => {
++                if (this._userList.containsUser(user) && user.locked)
++                    this._userList.removeUser(user);
++                else if (!this._userList.containsUser(user) && !user.locked)
++                    this._userList.addUser(user);
++                this._updateDisableUserList();
++            });
++
++        this._showLastLoginUser();
+ 
+         return GLib.SOURCE_REMOVE;
+     }
+@@ -188,27 +252,14 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     _showLastLoginUser() {
+-        let users = this._userManager.list_users();
+-        users.sort((a, b) => {
+-            return a.get_login_time() < b.get_login_time();
+-        });
++        // To obtain the last login user, get first item of sorted UserList.
++        let items = this._userList._items;
++        let keys = Object.keys(items);
++        if (keys.length === 0)
++            return;
+ 
+-        let lastLoginUser;
+-        for (let i = 0; i < users.length; i++) {
+-            let user = users[i];
+-
+-            if (!user.get_user_name())
+-                continue;
+-            if (!user.is_loaded)
+-                continue;
+-            if (user.is_system_account())
+-                continue;
+-            if (user.locked)
+-                continue;
+-
+-            lastLoginUser = user;
+-            break;
+-        }
++        let lastLoginUserItem = items[keys[0]];
++        let lastLoginUser = lastLoginUserItem.user;
+ 
+         this._user = lastLoginUser;
+         this._changeUser(lastLoginUser);

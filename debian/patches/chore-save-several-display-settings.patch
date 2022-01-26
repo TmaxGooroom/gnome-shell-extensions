@@ -1,0 +1,68 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 30 Sep 2021 18:44:55 +0900
+Subject: [chore] save several display settings
+
+- saves several display settings including resolution, position in screen, rotate, primary
+- settings file location is home_dir/.config/monitorsettings
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 38 +++++++++++++++-----------
+ 1 file changed, 22 insertions(+), 16 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index a3fa217..ec2847e 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -51,29 +51,35 @@ function saveSettings() {
+     if (Main.layoutManager.monitors.length < 2)
+         return;
+ 
++    let monitorInfo = xrandrParse(runXrandr(''));
++
+     let outputStream = confFile.replace('', false, 0, null);
++    outputStream.write(monitorInfo, null);
+     outputStream.close(null);
+-
+-    let primaryMonitor = xrandrGetPrimary(runXrandr(''));
+-    if (primaryMonitor)
+-        writePrimary(primaryMonitor);
+ }
+ 
+-function xrandrGetPrimary(stdout) {
++function xrandrParse(stdout) {
+     if (!stdout)
+         return;
+ 
+-    let ret;
+-    let str = ByteArray.toString(stdout).split('\n');
+-    str.forEach(line => {
+-        if (line.includes('primary'))
+-            ret = line.split(' ')[0];
++    let ret = '';
++    ByteArray.toString(stdout).split('\n').forEach(line => {
++        if (line.includes(' connected')) {
++            log('connected');
++            let tok = line.split(' ');
++            ret += `--output ${tok[0]} `;
++            if (tok[2] === 'primary') {
++                ret += '--primary ';
++                tok.splice(2, 1);
++            }
++            let temp = tok[2].split('+');
++            ret += `--mode ${temp[0]} `;
++            ret += `--pos ${temp[1]}x${temp[2]} `;
++            if (tok[3] !== '(normal')
++                ret += `--rotate ${tok[4]} `;
++            else
++                ret += '--rotate normal ';
++        }
+     });
+     return ret;
+ }
+-
+-function writePrimary(monitor) {
+-    let outputStream = confFile.append_to(0, null);
+-    outputStream.write(`--output ${monitor} --primary `, null);
+-    outputStream.close(null);
+-}

@@ -1,0 +1,93 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 1 Oct 2021 17:53:24 +0900
+Subject: [refactor] code design change
+
+- code cleanup
+- case should be covered when cancelled applying display changes
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 42 ++++++++++++++++----------
+ 1 file changed, 26 insertions(+), 16 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index ec2847e..834c702 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -1,34 +1,45 @@
+ const ByteArray = imports.byteArray;
+ 
+-const { Gio, GLib } = imports.gi;
++const { Gio, GLib, Meta } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ 
+-var filename = `${GLib.get_home_dir()}/.config/monitorsettings`;
+-var confFile = Gio.File.new_for_path(filename);
++var monitorManager = Meta.MonitorManager.get();
++var customConfFile = `${GLib.get_home_dir()}/.config/monitorsettings`;
++var xmlConfFile = `${GLib.get_home_dir()}/.config/monitors.xml`;
++var customConf = Gio.File.new_for_path(customConfFile);
++var xmlConf = Gio.File.new_for_path(xmlConfFile);
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
++    applySettings();
++    saveSettings();
++
++    this._monitorChangeId = monitorManager.connect('monitors-changed', () => {
++        // if primaryindex change
++        // applySettings();
++        // else
++        saveSettings();
++    });
++}
++
++function disable() { // eslint-disable-line no-unused-vars
++    monitorManager.disconnect(this._monitorChangeId);
++}
++
++function applySettings() {
+     let ok, cmdLine;
+ 
+     // check settings saved before
+-    if (confFile.query_exists(null))
+-        [ok, cmdLine] = confFile.load_contents(null);
++    if (!customConf.query_exists(null) || xmlConf.query_exists(null))
++        return;
++    [ok, cmdLine] = customConf.load_contents(null);
+ 
+     // if settings are loaded and with multi-monitor environment, apply primary monitor setting
+     if (Main.layoutManager.monitors.length >= 2 && ok)
+         runXrandr(ByteArray.toString(cmdLine));
+-
+-    this._primaryMonitorId = Main.layoutManager.connect('monitors-changed', () => {
+-        saveSettings();
+-    });
+-    saveSettings();
+-}
+-
+-function disable() { // eslint-disable-line no-unused-vars
+-    Main.layoutManager.disconnect(this._primaryMonitorId);
+ }
+ 
+ function runXrandr(cmdLine) {
+@@ -53,7 +64,7 @@ function saveSettings() {
+ 
+     let monitorInfo = xrandrParse(runXrandr(''));
+ 
+-    let outputStream = confFile.replace('', false, 0, null);
++    let outputStream = customConf.replace('', false, 0, null);
+     outputStream.write(monitorInfo, null);
+     outputStream.close(null);
+ }
+@@ -65,7 +76,6 @@ function xrandrParse(stdout) {
+     let ret = '';
+     ByteArray.toString(stdout).split('\n').forEach(line => {
+         if (line.includes(' connected')) {
+-            log('connected');
+             let tok = line.split(' ');
+             ret += `--output ${tok[0]} `;
+             if (tok[2] === 'primary') {

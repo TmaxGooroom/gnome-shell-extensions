@@ -1,0 +1,103 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Thu, 13 May 2021 09:32:33 +0900
+Subject: [refactor] AlternateTab: Modify top & bottom arrow state update by
+ signal handling
+
+   - Remove Arrow's status update logic in scroll function
+   - Implment signal handler to update Arrow's state
+   - Connect singnal handler to adjustment's signal(notify::value)
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 37 ++++++++++++++++--------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 1db1dcb..7753e64 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -393,7 +393,8 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         let adjustment = this._scrollView.vscroll.adjustment;
+ 
+-        adjustment.connect('changed', this._updateBottomArrowAfterRemove.bind(this));
++        adjustment._changedSignalId = adjustment.connect('changed', this._updateBottomArrowAfterRemove.bind(this));
++        adjustment._notifiedSignalId = adjustment.connect('notify::value', this._updateArrowsStatus.bind(this));
+ 
+     }
+ 
+@@ -401,6 +402,8 @@ var WindowSwitcher = GObject.registerClass({
+         this.icons.forEach(icon => {
+             icon.window.disconnect(icon._unmanagedSignalId);
+         });
++        this._scrollView.vscroll.adjustment.disconnect(this._scrollView.vscroll.adjustment._changedSignalId);
++        this._scrollView.vscroll.adjustment.disconnect(this._scrollView.vscroll.adjustment._notifiedSignalId);
+     }
+ 
+     vfunc_get_preferred_width(forHeight) {
+@@ -586,15 +589,10 @@ var WindowSwitcher = GObject.registerClass({
+         else if (list.allocation.y2 > value + pageSize)
+             value = list.allocation.y1;
+ 
+-        this._changeBottomArrowState(true);
+-
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
+-                if (rowIndex === 0)
+-                    this._changeTopArrowState(false);
+-
+                 this.queue_relayout();
+             },
+         });
+@@ -612,15 +610,10 @@ var WindowSwitcher = GObject.registerClass({
+         else if (list.allocation.y2 > value + pageSize)
+             value = list.allocation.y1;
+ 
+-        this._changeTopArrowState(true);
+-
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
+-                if (this._findRowIndexFromItem(index) + this.visibleRows > this._rows)
+-                    this._changeBottomArrowState(false);
+-
+                 this.queue_relayout();
+             },
+         });
+@@ -683,16 +676,6 @@ var WindowSwitcher = GObject.registerClass({
+         }
+     }
+ 
+-    _changeBottomArrowState(isEnabled) {
+-        let bottomArrowPath = isEnabled ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg`;
+-        this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
+-    }
+-
+-    _changeTopArrowState(isEnabled) {
+-        let topArrowPath = isEnabled ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg`;
+-        this._topArrow.set_gicon(Gio.icon_new_for_string(topArrowPath));
+-    }
+-
+     _updateBottomArrowAfterRemove() {
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+@@ -701,4 +684,16 @@ var WindowSwitcher = GObject.registerClass({
+             this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
+         }
+     }
++
++    _updateArrowsStatus() {
++        let adjustment = this._scrollView.vscroll.adjustment;
++        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++
++        let topArrowPath = value === 0 ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg`;
++        let bottomArrowPath = value + pageSize >= upper ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg`;
++
++        this._topArrow.set_gicon(Gio.icon_new_for_string(topArrowPath));
++        this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
++    }
++
+ });

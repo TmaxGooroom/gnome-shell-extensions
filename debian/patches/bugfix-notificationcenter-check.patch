@@ -1,0 +1,151 @@
+From: tos <tos@localhost.localdomain>
+Date: Thu, 13 May 2021 11:24:16 +0900
+Subject: [bugfix] notificationcenter check
+
+- Added checking logic whether notification extension is loaded or not
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/panel.js | 56 +++++++++++++++++++++++++++------------
+ 1 file changed, 39 insertions(+), 17 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index 08b62db..abffb00 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -108,7 +108,7 @@ var dtpPanel = Utils.defineClass({
+         // might be different from the system's primary monitor.
+         this.isStandalone = isStandalone;
+         this.isPrimary = !isStandalone || Me.settings.get_boolean('stockgs-keep-top-panel') &&
+-                                           monitor == panelManager.dtpPrimaryMonitor;
++      monitor == panelManager.dtpPrimaryMonitor;
+ 
+         this._sessionStyle = null;
+         this._unmappedButtons = [];
+@@ -162,7 +162,11 @@ var dtpPanel = Utils.defineClass({
+ 
+             panelBoxes.forEach(p => this[p] = Main.panel[p]);
+ 
+-            ['activities', 'aggregateMenu', 'dateMenu'].forEach(b => {
++
++            // Add NotificationCenter to panel actor when NotificationCenter loaded earlier than dtpPanel
++            ['activities', 'aggregateMenu', 'dateMenu', 'NotificationCenter'].forEach(b => {
++                if (!this.statusArea[b])
++                    return;
+                 let container = this.statusArea[b].container;
+                 let parent = container.get_parent();
+ 
+@@ -171,7 +175,8 @@ var dtpPanel = Utils.defineClass({
+                 this.panel.actor.add_child(container);
+             });
+ 
+-            // signal to catch adding notificationcenter to rightbox
++            // Catch adding notificationcenter to rightbox and put it in panel actor
++            // Needed when NotificationCenter loaded later than dtpPanel
+             this.register_notificationcenter = this._rightBox.connect('actor-added', actor => {
+                 let container = actor.get_children()[actor.get_children().length - 1];
+                 let parent = actor;
+@@ -479,6 +484,7 @@ var dtpPanel = Utils.defineClass({
+ 
+             // signal for catch adding notificationcenter to rightbox disconnect
+             this._rightBox.disconnect(this.register_notificationcenter);
++            this._rightBox.disconnect(this.setmap_notificationcenter);
+ 
+             this.statusArea.dateMenu._clockDisplay.text = this.statusArea.dateMenu._clock.clock;
+ 
+@@ -548,7 +554,7 @@ var dtpPanel = Utils.defineClass({
+     },
+ 
+     getPosition() {
+-        // for now, use the previous "global" position setting as default. The 'panel-position' should be deleted in the future
++    // for now, use the previous "global" position setting as default. The 'panel-position' should be deleted in the future
+         let position = this.panelManager.panelPositions[this.monitor.index] || Me.settings.get_string('panel-position');
+ 
+         if (position == Pos.TOP)
+@@ -626,9 +632,9 @@ var dtpPanel = Utils.defineClass({
+ 
+ 
+                 if (!previousPosition ||
+-                    previousPosition == Pos.STACKED_TL && currentPosition != Pos.STACKED_TL ||
+-                    previousPosition != Pos.STACKED_BR && currentPosition == Pos.STACKED_BR ||
+-                    isCentered && previousPosition != currentPosition && previousPosition != Pos.STACKED_BR) {
++          previousPosition == Pos.STACKED_TL && currentPosition != Pos.STACKED_TL ||
++          previousPosition != Pos.STACKED_BR && currentPosition == Pos.STACKED_BR ||
++          isCentered && previousPosition != currentPosition && previousPosition != Pos.STACKED_BR) {
+                     this._elementGroups[++currentGroup] = { elements: [], index: this._elementGroups.length, expandableIndex: -1 };
+                     previousCenteredPosition = 0;
+                 }
+@@ -894,10 +900,26 @@ var dtpPanel = Utils.defineClass({
+         setMap(Pos.DATE_MENU, this.statusArea.dateMenu.container);
+         setMap(Pos.SYSTEM_MENU, this.statusArea.aggregateMenu.container);
+         setMap(Pos.RIGHT_BOX, this._rightBox, 1);
+-        if (!this.isStandalone)
++        // Check whether notificationcenter extension is enabled
++        if (!this.isStandalone && this.statusArea.NotificationCenter)
+             setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
+         else
++        // NotificationCenter is not displayed on additional monitor
+             setMap(Pos.NOTI_CENTER, new St.BoxLayout({ name: 'dummy' }));
++
++        // setmap when notificationcenter loaded after dtpPanel
++        this.setmap_notificationcenter = this._rightBox.connect('actor-added', actor => {
++            let container = actor.get_children()[actor.get_children().length - 1];
++            if (container.child.accessible_name !== 'NotificationCenter')
++                return;
++            let setMap = (name, actor, isBox) => this.allocationMap[name] = {
++                actor,
++                isBox: isBox || 0,
++                box: new Clutter.ActorBox(),
++            };
++            setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
++        });
++
+         setMap(Pos.DESKTOP_BTN, this._showDesktopButton);
+     },
+ 
+@@ -1114,8 +1136,8 @@ var dtpPanel = Utils.defineClass({
+ 
+             return Clutter.EVENT_STOP;
+         } else if (Main.modalCount > 0 || event.get_source() != actor ||
+-            !isPress && type != Clutter.EventType.TOUCH_BEGIN ||
+-            isPress && button != 1) {
++      !isPress && type != Clutter.EventType.TOUCH_BEGIN ||
++      isPress && button != 1) {
+             return Clutter.EVENT_PROPAGATE;
+         }
+ 
+@@ -1147,10 +1169,10 @@ var dtpPanel = Utils.defineClass({
+             let rect = metaWindow.get_frame_rect();
+ 
+             return metaWindow.get_monitor() == this.monitor.index &&
+-                   metaWindow.showing_on_its_workspace() &&
+-                   metaWindow.get_window_type() != Meta.WindowType.DESKTOP &&
+-                   metaWindow[maximizedProp] &&
+-                   stageCoord > rect[coord] && stageCoord < rect[coord] + rect[dimension];
++        metaWindow.showing_on_its_workspace() &&
++        metaWindow.get_window_type() != Meta.WindowType.DESKTOP &&
++        metaWindow[maximizedProp] &&
++        stageCoord > rect[coord] && stageCoord < rect[coord] + rect[dimension];
+         });
+     },
+ 
+@@ -1230,7 +1252,7 @@ var dtpPanel = Utils.defineClass({
+     },
+ 
+     _formatVerticalClock() {
+-        // https://github.com/GNOME/gnome-desktop/blob/master/libgnome-desktop/gnome-wall-clock.c#L310
++    // https://github.com/GNOME/gnome-desktop/blob/master/libgnome-desktop/gnome-wall-clock.c#L310
+         if (this.statusArea.dateMenu) {
+             let datetime = this.statusArea.dateMenu._clock.clock;
+             let datetimeParts = datetime.split(' ');
+@@ -1259,8 +1281,8 @@ var dtpPanel = Utils.defineClass({
+             }
+ 
+             if (!setClockText(datetime) &&
+-                !setClockText(datetimeParts) &&
+-                !setClockText(time)) {
++        !setClockText(datetimeParts) &&
++        !setClockText(time)) {
+                 let timeParts = time.split('∶');
+ 
+                 if (!this._clockFormat)

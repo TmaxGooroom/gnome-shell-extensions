@@ -1,0 +1,386 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Thu, 15 Jul 2021 16:30:29 +0900
+Subject: [feat] Calibrator : Implement calibration state load & save feature
+
+- Save calibration matrix information at user specific directory(/home/$username/.local/gnome-shell/calibration) when calibrating done.
+- Load when user login sequence (extension enabling)
+
+[IMS] N/A
+---
+ extensions/calibrator/extension.js   | 295 +++++++++++++++++------------------
+ extensions/calibrator/stylesheet.css |   1 +
+ 2 files changed, 146 insertions(+), 150 deletions(-)
+ create mode 100644 extensions/calibrator/stylesheet.css
+
+diff --git a/extensions/calibrator/extension.js b/extensions/calibrator/extension.js
+index 972dbf6..255fbc2 100644
+--- a/extensions/calibrator/extension.js
++++ b/extensions/calibrator/extension.js
+@@ -1,215 +1,210 @@
+ const ByteArray = imports.byteArray;
+ 
+-const { Gio, GLib, Meta } = imports.gi;
++const { Gio, GLib } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ 
+-var isCalibrating = false;
++const IdentityMatrix = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1];
+ 
+-var monitorManager;
+-var resolution = [-1, -1];
++var _resolution = [-1, -1];
+ 
+-var calibratableDeviceList = [];
+-var calibratableDeviceId = [];
+-var calibrationElement = [];
++var _monitorId;
+ 
+-var identityMatrix = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+-var calibrationMatrix;
+-var calibrationCommandArray = ['xinput', '--set-prop', 0, '"libinput Calibration Matrix"'];
+-
+-var stdoutLines = [];
+-
+-// var i = 0;
+-
+-function format() {
+-    var args = Array.prototype.slice.call(arguments, 1);  // eslint-disable-line prefer-rest-params
+-    return arguments[0].replace(/\{(\d+)\}/g, (match, index) => { // eslint-disable-line prefer-rest-params
+-        return args[index];
+-    });
+-}
+-
+-function readOutput(outputStream, lineBuffer) {
+-    // let temp = i;
+-    // global.log("readoutput start! : " + temp);
+-    // i = i + 1;
+-    outputStream.read_line_async(0, null, (stream, res) => {
+-        try {
+-            let line = outputStream.read_line_finish_utf8(res)[0];
+-
+-            if (line !== null) {
+-                lineBuffer.push(line);
+-                // global.log(line);
+-                readOutput(outputStream, lineBuffer);
+-            }
+-        } catch (e) {
+-            global.log(e);
+-        }
+-        // global.log("read async end!: " + temp);
+-    });
+-    // global.log("readouput end : " + temp);
++function _getXInputCommand(device, matrix = IdentityMatrix) {
++    let CommandArray = ['xinput', '--set-prop', device, '"libinput Calibration Matrix"'];
++    CommandArray = CommandArray.concat(matrix);
++    return CommandArray.join(' ');
+ }
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
+-    global.log('initialize phase!');
+-    global.log(Main.layoutManager.primaryMonitor.width);
+-    global.log(Main.layoutManager.primaryMonitor.height);
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+-    monitorManager = Meta.MonitorManager.get();
+-    this._monitorId = monitorManager.connect('monitors-changed', () => {
+-        global.log('monitor-change!');
+-        if (resolution[0] === -1 && resolution[1] === -1) {
+-            resolution[0] = Main.layoutManager.primaryMonitor.width;
+-            resolution[1] = Main.layoutManager.primaryMonitor.height;
+-            global.log('no need to calibrate');
+-        } else if (resolution[0] !== Main.layoutManager.primaryMonitor.width ||
+-                   resolution[1] !== Main.layoutManager.primaryMonitor.height) {
+-            global.log('need to calibrate');
+-            resolution[0] = Main.layoutManager.primaryMonitor.width;
+-            resolution[1] = Main.layoutManager.primaryMonitor.height;
+-            calibratableDeviceId = [];
+-            getCalibratableDeviceList();
+-            if (calibratableDeviceId.length > 0)
+-                calibrate();
++    _monitorId = Main.layoutManager.connect('monitors-changed', () => {
++        let calibratableDeviceId = _getCalibratableDeviceList();
++        if (calibratableDeviceId.length <= 0)
++            return;
++
++        if (_resolution[0] === -1 && _resolution[1] === -1) {
++            _resolution[0] = Main.layoutManager.primaryMonitor.width;
++            _resolution[1] = Main.layoutManager.primaryMonitor.height;
++        } else if (_resolution[0] !== Main.layoutManager.primaryMonitor.width ||
++                   _resolution[1] !== Main.layoutManager.primaryMonitor.height) {
++            _resolution[0] = Main.layoutManager.primaryMonitor.width;
++            _resolution[1] = Main.layoutManager.primaryMonitor.height;
++            _calibrate(calibratableDeviceId);
+         }
+     });
+ 
+     // Of course, when 'monitors-changed' signal is emitted, DeviceId array will be refreshed. but maybe need it later.
+-    getCalibratableDeviceList();
+-}
+-
+-function disable() { // eslint-disable-line no-unused-vars
+-    monitorManager.disconnect(this._monitorId);
+-
+-    global.log('Device ID list ');
+-    global.log(calibratableDeviceId);
++    let calibratableDeviceId = _getCalibratableDeviceList();
++    let logFile = Gio.File.new_for_path(`${global.userdatadir}/calibration`);
++    if (logFile.query_exists(null)) {
++        let [ok, logByteArray] = logFile.load_contents(null);
++        if (!ok) {
++            global.log('there are something wrong during load file contents');
++            return;
++        }
+ 
+-    global.log('calibrationElement');
+-    global.log(calibrationElement);
++        let logCalibrationMatrix = ByteArray.toString(logByteArray);
++        let logCommand = _getXInputCommand(calibratableDeviceId[0], logCalibrationMatrix);
++        GLib.spawn_command_line_sync(logCommand);
+ 
+-    calibratableDeviceList = [];
+-    calibratableDeviceId = [];
+-    calibrationElement = [];
++        // GalaxyBook S pen hardcode it will be deleted.
++        /*
++        logCommand[2] = 13;
++        GLib.spawn_command_line_sync(logCommand.join(' '));
++        */
++    }
++}
+ 
+-    global.log('okay bye...');
++function disable() { // eslint-disable-line no-unused-vars
++    Main.layoutManager.disconnect(_monitorId);
+ }
+ 
+-function extractCalibrationElement() {
+-    let  startIndex;
+-    if (stdoutLines.length <= 3) {
+-        stdoutLines = [];
+-        return;
++
++/*
++ * stdoutLines' format is following lines
++ *
++ * Calibrating standard Xorg driver "ELAN902C:00 04F3:2DCF"
++ * current calibration values: min_x=$min_x, max_x=$max_x and min_y=$min_y, max_y=$max_y
++ * If these values are estimated wrong, either supply it manually with the --precalib option, or run the 'get_precalib.sh' script to automatically get it (through HAL).
++ * --> Making the calibration permanent <--
++ * copy the snippet below into '/etc/X11/xorg.conf.d/99-calibration.conf' (/usr/share/X11/xorg.conf.d/ in some distro's)
++ * Section "InputClass"
++ * Identifier "calibration"
++ * MatchProduct "ELAN902C:00 04F3:2DCF"
++ * Option\t"MinX"\t"$MinX"
++ * Option\t"MaxX"\t"$MaxX"
++ * Option\t"MinY"\t"$MinY"
++ * Option\t"MaxY"\t"$MaxY"
++ * Option\t"SwapXY"\t"0" # unless it was already set to 1
++ * Option\t"InvertX"\t"0" # unless it was already set
++ * Option\tInvertY"\t"0" # unless it was already set
++ * EndSection
++ *
++ * Then, we need to get values of $min_x, $max_x, $min_y, $max_y, $MinX, $MaxX, $MinY, $MaxY.
++ * After we get values of above variable, we can generate calibration matrix.
++*/
++
++function _extractCalibrationElement(stdoutLines, calibratableDeviceId) {
++    let calibrationElement = [];
++    let stdoutString = stdoutLines.join(' ');
++
++    let filterWord = ['min_x=', 'max_x=', 'min_y=', 'max_y=', '"MinX"\t"', '"MaxX"\t"', '"MinY"\t"', '"MaxY"\t"'];
++
++    for (let word of filterWord) {
++        let argumentIndex = stdoutString.indexOf(word);
++        stdoutString = stdoutString.slice(argumentIndex + word.length);
++        calibrationElement.push(parseInt(stdoutString));
+     }
+-    if (calibratableDeviceId.length > 1)
+-        startIndex = 3;
+-    else
+-        startIndex = 1;
+ 
+-    global.log(stdoutLines[startIndex]);
+-    let range = stdoutLines[startIndex].split('=');
++    let calibrationMatrix = [];
++
++    for (var i in IdentityMatrix)
++        calibrationMatrix[i] = IdentityMatrix[i];
+ 
+-    global.log(range);
+-    for (let i = 1; i <= 4; i++)
+-        calibrationElement.push(parseInt(range[i]));
+ 
+-    for (let i = startIndex + 7; i <= startIndex + 10; i++) {
+-        let minMax = stdoutLines[i].split('"');
+-        calibrationElement.push(parseInt(minMax[3]));
+-    }
+-    calibrationMatrix = identityMatrix;
+     calibrationMatrix[0] = (calibrationElement[1] - calibrationElement[0]) / (calibrationElement[5] - calibrationElement[4]);
+     calibrationMatrix[2] = -1 * calibrationElement[4] * calibrationMatrix[0] / (calibrationElement[1] - calibrationElement[0]);
+     calibrationMatrix[4] = (calibrationElement[3] - calibrationElement[2]) / (calibrationElement[7] - calibrationElement[6]);
+     calibrationMatrix[5] = -1 * calibrationElement[6] * calibrationMatrix[4] / (calibrationElement[3] - calibrationElement[2]);
+ 
+-    let enterString = calibrationCommandArray;
+-    enterString[2] = calibratableDeviceId[0];
+-    let newString = enterString.concat(calibrationMatrix);
++    // we log the calbration matrix value for restore configuration. filepath : $homeDir/.local/share/gnome-shell/calibrtaion
++    let logString = calibrationMatrix.join(' ');
++    let logByteStream = ByteArray.fromString(logString);
+ 
+-    global.log(newString);
+-    GLib.spawn_command_line_sync(newString.join(' '));
++    let logFile = Gio.File.new_for_path(`${global.userdatadir}/calibration`);
++    let outputStream = logFile.replace(null, true, Gio.FileCreateFlags.NONE, null);
++
++    outputStream.write(logByteStream, null);
++    outputStream.close(null);
++    let newString = _getXInputCommand(calibratableDeviceId[0], calibrationMatrix);
+ 
++    GLib.spawn_command_line_sync(newString);
++
++/*  this lines are for galaxybook360 S pen configuration.
+     newString[2] = 13;
+ 
+     GLib.spawn_command_line_sync(newString.join(' '));
+-
+-    stdoutLines = [];
+-    calibrationElement = [];
++*/
+ }
+ 
++function _calibrate(calibratableDeviceId) {
+ 
+-function calibrate() {
+-    if (!isCalibrating) {
+-        isCalibrating = true;
++    // HandleMe : During calibrating, resolution can be changed. then we close old one, and start new one. it can be happen.
+ 
+-        // Before calibrating, We need to unset previous Calibration Matrix. Because, It causes that wrong Calibration Matrix.
+-        let initCommand = format('xinput --set-prop {0} "libinput Calibration Matrix" 1 0 0 0 1 0 0 0 1', calibratableDeviceId[0]);
+-        // global.log(initCommand);
+-        GLib.spawn_command_line_sync(initCommand);
++    // Before calibrating, We need to unset previous Calibration Matrix. Because, It causes that wrong Calibration Matrix.
++    let initCommand = _getXInputCommand(calibratableDeviceId[0]);
++    // initCommand[2] = calibratableDeviceId[0];
++    GLib.spawn_command_line_sync(initCommand);
+ 
+-        // global.log("enter");
++    // we must run xinput-calibrator asynchronously.
++    // If it runs synchronously, it cause Blackscreen.
++    let [, calibratorPid, stdin, stdout] = GLib.spawn_async_with_pipes(global.userdatadir,
++        ['xinput_calibrator'],
++        null,
++        GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
++        null
++    );
+ 
+-        // we must run xinput-calibrator asynchronously.
+-        // If it runs synchronously, it cause Blackscreen.
+-        let [, calibratorPid, stdin, stdout] = GLib.spawn_async_with_pipes('/home/ttt/',
+-            ['xinput_calibrator'],
+-            null,
+-            GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+-            null
+-        );
+-        // we don't need stdin value
+-        GLib.close(stdin);
++    // we don't need stdin value
++    GLib.close(stdin);
+ 
+-        // open the stdout file descriptor to read xinput-calibrator's output.
++    // we need to watch xinput-calibrator's processing, when it's execution is done, we can get xinput-calibrator's output.
++    GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, calibratorPid, (pid, status) => { // eslint-disable-line no-unused-vars
+         let stdoutStream = new Gio.DataInputStream({
+             base_stream: new Gio.UnixInputStream({ fd: stdout, close_fd: true }),
+             close_base_stream: true,
+         });
++        let stdoutLines = [];
++        let [outputByteArray, length] = stdoutStream.read_line(null);
+ 
+-        readOutput(stdoutStream, stdoutLines);
++        if (length === 0)
++            return;
+ 
+-        // we need to watch xinput-calibrator's processing, when it's execution is done, we can get xinput-calibrator's output.
+-        GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, calibratorPid, (pid, status) => {
+-            if (status === 0)
+-                global.log(stdoutLines.join('\n'));
+-
+-            stdoutStream.close(null);
+-            GLib.spawn_close_pid(pid);
++        while (length !== 0) {
++            stdoutLines.push(ByteArray.toString(outputByteArray));
++            [outputByteArray, length] = stdoutStream.read_line(null);
++        }
+ 
+-            global.log('calibrator done');
++        stdoutStream.close(null);
++        GLib.spawn_close_pid(pid);
+ 
+-            isCalibrating = false;
+-            extractCalibrationElement();
+-        });
+-        global.log('exit');
+-    }
++        _extractCalibrationElement(stdoutLines, calibratableDeviceId);
++    });
+ }
+ 
+-function getCalibratableDeviceList() {
++function _getCalibratableDeviceList() {
+     let listCommand = 'xinput_calibrator --list';
+-    let [isOk_, listByteArray] = GLib.spawn_command_line_sync(listCommand);
++    let [isOk, listByteArray] = GLib.spawn_command_line_sync(listCommand);
++
++    if (!isOk) {
++        global.log('there are something wrong happen during get calibratable device list');
++        return;
++    }
++
+     let listString = ByteArray.toString(listByteArray);
+ 
+     // get "xinput-calibrator --list" output, and split by line by line.
+-    // If there are two more line, multiple calibratable device detected. and there are two more lines printed to warning.
++    // If there are two more line, multiple calibratable device detected.
+     // If there are one line, either no device detetecd or one deivce detected.
+-    calibratableDeviceList =  listString.split('\n');
++    let calibratableDeviceList =  listString.split('\n');
++    let deviceId = [];
+     if (calibratableDeviceList.length <= 2) {
+         let deviceQuery = calibratableDeviceList[0].split('id=');
+-        if (deviceQuery.length === 2) {
+-            global.log(`id : ${deviceQuery[1]}`);
+-            calibratableDeviceId.push(parseInt(deviceQuery[1]));
+-        } else {
++        if (deviceQuery.length === 2)
++            deviceId.push(parseInt(deviceQuery[1]));
++        else
+             global.log('there is no calibratable Device');
+-        }
++
+     } else {
+-        for (let i = 0; i < calibratableDeviceList.length; i++) {
+-            let deviceQuery = calibratableDeviceList[i].split('id=');
+-            if (deviceQuery.length === 2) {
+-                global.log(`id : ${deviceQuery[1]}`);
+-                calibratableDeviceId.push(parseInt(deviceQuery[1]));
+-            }
+-        }
++        calibratableDeviceList.forEach(calibratableDevice => {
++            let deviceQuery = calibratableDevice.split('id=');
++            if (deviceQuery.length === 2)
++                deviceId.push(parseInt(deviceQuery[1]));
++
++        });
+     }
++    return deviceId;
+ }
+diff --git a/extensions/calibrator/stylesheet.css b/extensions/calibrator/stylesheet.css
+new file mode 100644
+index 0000000..25134b6
+--- /dev/null
++++ b/extensions/calibrator/stylesheet.css
+@@ -0,0 +1 @@
++/* This extensions requires no special styling */

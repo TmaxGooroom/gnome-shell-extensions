@@ -1,0 +1,47 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Thu, 1 Apr 2021 13:42:13 +0900
+Subject: [feat] desktop-icons-ng : Modify Drop Highlight Style When File Is
+ Dropped To Another File
+
+- Remove drop highlight effect of file
+- When a file becomes a drop target, the same style is applied as when it is hovered
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/fileItem.js | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index d8257a7..1ea1f7f 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -208,7 +208,7 @@ var FileItem = class {
+     }
+ 
+     _setDropDestination(dropDestination) {
+-        dropDestination.drag_dest_set(Gtk.DestDefaults.ALL, null, Gdk.DragAction.MOVE);
++        dropDestination.drag_dest_set(Gtk.DestDefaults.DROP | Gtk.DestDefaults.MOTION, null, Gdk.DragAction.MOVE);
+         if ((this._fileExtra == Enums.FileType.USER_DIRECTORY_TRASH) ||
+             (this._fileExtra == Enums.FileType.USER_DIRECTORY_HOME) ||
+             (this._fileExtra != Enums.FileType.EXTERNAL_DRIVE) ||
+@@ -262,6 +262,20 @@ var FileItem = class {
+                         }
+                     }
+                 });
++
++
++                dropDestination.connect('drag-motion', (widget, context, x, y, time) => {
++                    if (!this._styleContext.has_class('file-item-hover'))
++                    {
++                    this._styleContext.add_class('file-item-hover');
++                    };
++                });
++                dropDestination.connect('drag-leave', (widget, context, time) => {
++                    if (this._styleContext.has_class('file-item-hover'))
++                    {
++                    this._styleContext.remove_class('file-item-hover');
++                    }
++                    });
+         }
+     }
+ 

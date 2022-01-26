@@ -1,0 +1,53 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 3 May 2021 16:07:15 +0900
+Subject: [feat] tos-hotkey : added open-task-manager hotkey
+
+ - new schema for open-task-manager
+ - launch gnome-system-monitor when pressing the key
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/extension.js                                 | 7 +++++++
+ .../schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml      | 7 +++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+index f7447cf..e99fff3 100644
+--- a/extensions/tos-hotkey/extension.js
++++ b/extensions/tos-hotkey/extension.js
+@@ -63,6 +63,12 @@ function enable() { // eslint-disable-line no-unused-vars
+         Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         _launchApp.bind(null, 'org.gnome.Terminal.desktop'));
+ 
++    _addKeybinding('open-task-manager',
++        SHELL_EXTENSIONS_TOS_HOTKEY,
++        Meta.KeyBindingFlags.NONE,
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
++        _launchApp.bind(null, 'gnome-system-monitor.desktop'));
++
+     Main.wm.setCustomKeybindingHandler('close',
+         Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         _handleAltF4);
+@@ -71,4 +77,5 @@ function enable() { // eslint-disable-line no-unused-vars
+ function disable() { // eslint-disable-line no-unused-vars
+     Main.wm.removeKeybinding('open-file-manager');
+     Main.wm.removeKeybinding('open-terminal');
++    Main.wm.removeKeybinding('open-task-manager');
+ }
+diff --git a/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml b/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+index 1d161f8..9aaac31 100644
+--- a/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
++++ b/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+@@ -15,5 +15,12 @@
+         Keybinding to open the application menu.
+       </description>
+     </key>
++    <key name="open-task-manager" type="as">
++      <default>["&lt;Control&gt;&lt;Alt&gt;delete"]</default>
++      <summary>Keybinding to open default file manager.</summary>
++      <description>
++        Keybinding to open the application menu.
++      </description>
++    </key>
+   </schema>
+ </schemalist>

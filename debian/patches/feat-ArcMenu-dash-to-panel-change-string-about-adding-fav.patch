@@ -1,0 +1,85 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 2 Jun 2021 16:33:17 +0900
+Subject: [feat] ArcMenu,
+ dash-to-panel : change string about adding favorite apps
+
+ - change 'add to/remove from favorites' to 'add to/remove from Dock'
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuWidgets.js   | 4 ++--
+ extensions/arc-menu/po/ko_KR.po      | 4 ++--
+ extensions/dash-to-panel/appIcons.js | 4 ++--
+ extensions/dash-to-panel/po/ko.po    | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index bac1eaf..cf38df9 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -259,13 +259,13 @@ var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMe
+                         this._appendSeparator();
+                         let isFavorite = AppFavorites.getAppFavorites().isFavorite(this._app.get_id());
+                         if (isFavorite) {
+-                            let item = this._appendMenuItem(_('Remove from Favorites'));
++                            let item = this._appendMenuItem(_('Remove from Dock'));
+                             item.connect('activate', () => {
+                                 let favs = AppFavorites.getAppFavorites();
+                                 favs.removeFavorite(this._app.get_id());
+                             });
+                         } else {
+-                            let item = this._appendMenuItem(_('Add to Favorites'));
++                            let item = this._appendMenuItem(_('Add to Dock'));
+                             item.connect('activate', () => {
+                                 let favs = AppFavorites.getAppFavorites();
+                                 favs.addFavorite(this._app.get_id());
+diff --git a/extensions/arc-menu/po/ko_KR.po b/extensions/arc-menu/po/ko_KR.po
+index bb639f4..e401c3e 100644
+--- a/extensions/arc-menu/po/ko_KR.po
++++ b/extensions/arc-menu/po/ko_KR.po
+@@ -106,11 +106,11 @@ msgid "Create Desktop Shortcut"
+ msgstr "바탕화면에 바로가기 생성"
+ 
+ #: menuWidgets.js:262
+-msgid "Remove from Favorites"
++msgid "Remove from Dock"
+ msgstr "Dock 에서 제거"
+ 
+ #: menuWidgets.js:268
+-msgid "Add to Favorites"
++msgid "Add to Dock"
+ msgstr "Dock 에 추가"
+ 
+ #: menuWidgets.js:285 menuWidgets.js:332
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 9ef3516..0083f7e 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1431,10 +1431,10 @@ var taskbarSecondaryMenu = Utils.defineClass({
+             // compare label_actor's text with translations from gnome-shell. Generally, gnome-shell and dash-to-panel's translations are the same.
+             // but in this case, they are different. So first compare label_actor's text with gnome-shell's translation, and change it to dash-to-panel's.
+                 _icon.gicon = Gio.Icon.new_for_string('view-pin-symbolic');
+-                menuitem.actor.label_actor.text = _('Add to Favorites');
++                menuitem.actor.label_actor.text = _('Add to Dock');
+             } else if (menuitem.actor.label_actor.text === __('Remove from Favorites')) {
+                 _icon.gicon = Gio.Icon.new_for_string('view-pin-symbolic');
+-                menuitem.actor.label_actor.text = _('Remove from Favorites');
++                menuitem.actor.label_actor.text = _('Remove from Dock');
+             } else {
+                 // When the shell-window-tracker get app from window use .desktop file
+                 // if the window created from a binary without .desktop file,
+diff --git a/extensions/dash-to-panel/po/ko.po b/extensions/dash-to-panel/po/ko.po
+index 6b40b9a..0b3f532 100644
+--- a/extensions/dash-to-panel/po/ko.po
++++ b/extensions/dash-to-panel/po/ko.po
+@@ -1320,8 +1320,8 @@ msgstr "비활성화 시, 헤더 바 크기에 창 미리보기 아이콘 크기
+ msgid "Quit %d windows"
+ msgstr "%d개 창 끝내기"
+ 
+-msgid "Add to Favorites"
++msgid "Add to Dock"
+ msgstr "Dock 에 추가"
+ 
+-msgid "Remove from Favorites"
++msgid "Remove from Dock"
+ msgstr "Dock 에서 제거"

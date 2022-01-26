@@ -1,0 +1,272 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 24 Aug 2021 17:59:32 +0900
+Subject: [refactor] dash-to-panel : extract functions from code fragment in
+ SecondaryMenu
+
+ - SecondaryMenu._dtpRedisplay() function has too much lines and
+   callback functions inside. So it makes harder to understand its
+   functionality. So extracted some functions from code fragment.
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/appIcons.js | 210 ++++++++++++++++++++---------------
+ 1 file changed, 123 insertions(+), 87 deletions(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index c86887e..e5c9728 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1458,130 +1458,166 @@ var taskbarSecondaryMenu = Utils.defineClass({
+         metaWindow.delete(global.get_current_time());
+     },
+ 
+-    _dtpRedisplay() {
+-        this.removeAll();
+-
+-        let app = this._source.app;
++    // If the application has defined an action, add a button to execute that action.
++    // for more information about 'actions', see freedesktops' desktop entry specification.
++    _addApplicationActions(app, icon) {
+         let appInfo = app.get_app_info();
+-        let icon;
+-        if (appInfo)
+-            icon = appInfo.get_icon();
+-        let actions = appInfo ? appInfo.list_actions() : [];
++        if (!appInfo)
++            return;
+ 
+-        let newWindowAction;
++        let actions = appInfo.list_actions() || [];
+ 
+-        // 'action' button
+-        // If the application has defined an action, add a button to execute that action.
+-        // for more information about 'actions', see freedesktops' desktop entry specification.
+         for (let action of actions) {
+             // 'New Window' button is defined by default.
+-            // Therefore, if the app defined same behaviour in action, use `launch_action` function to open new window.
+-            // If not, use `open_new_window` function.
+-            if (action === 'new-window') {
+-                newWindowAction = event => {
+-                    this._source.animateLaunch();
+-                    app.launch_action(action, event.get_time(), -1);
+-                };
++            // So even if the action 'new-window' is defined, do not show its button in the same section of other actions.
++            // Because if 'new-window' button is appear twice, it can confuse the user.
++            if (action === 'new-window')
+                 continue;
+-            }
++
+ 
+             let callback = event => {
+                 app.launch_action(action, event.get_time(), -1);
+                 this.emit('activate-window', null);
+             };
+ 
+-            this.addAction(appInfo.get_action_name(action), callback, appInfo.get_icon());
++            this.addAction(appInfo.get_action_name(action), callback, icon);
+         }
++    },
+ 
+-        this._appendSeparator();
++    _addCreateDesktopShortcutButton(app) {
++        let appInfo = app.get_app_info();
++        if (!appInfo)
++            return;
+ 
+-        if (app.app_info) {
+-            this.addAction(_('Create Desktop Shortcut'),
+-                () => {
+-                    let name = app.app_info.get_display_name();
+-
+-                    // NOTE : gvfs change the desktop file's mime type from application/x-destkop to text/plain
+-                    // if the file name does not contain .desktop at the end of its name.
+-                    let desktopDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+-                    let shortcutFile = Gio.File.new_for_path(`${desktopDir}/${name}.desktop`);
+-                    let originalDesktopFile = Gio.File.new_for_path(`${app.app_info.get_filename()}`);
+-
+-                    let copyFlag = Gio.FileCopyFlags.OVERWRITE;
+-                    if (!originalDesktopFile.copy(shortcutFile, copyFlag, null, null))
+-                        return;
+-
+-
+-                    // Change the file's permission to make the file executable in ding(desktop-icons-ng)
+-                    // See FileItem._doOpenContext() for more detail.
+-                    let fileInfo = shortcutFile.query_info('unix::mode', Gio.FileQueryInfoFlags.NONE, null);
+-                    let mode = fileInfo.get_attribute_uint32('unix::mode');
+-                    const S_IXUSR = 0o00100;
+-                    const S_IWOTH = 0o00002;
+-                    mode |= S_IXUSR;
+-                    mode &= ~S_IWOTH;
+-                    fileInfo.set_attribute_uint32('unix::mode', mode);
+-                    shortcutFile.set_attributes_from_info(fileInfo, Gio.FileQueryInfoFlags.NONE, null);
+-                }, 'computer-symbolic');
+-        }
+-        // 'Add to favorites' / 'Remove from favorites' button
++        let callback = () => {
++            let name = app.app_info.get_display_name();
++
++            // NOTE : gvfs change the desktop file's mime type from application/x-destkop to text/plain
++            // if the file name does not contain .desktop at the end of its name.
++            let desktopDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
++            let shortcutFile = Gio.File.new_for_path(`${desktopDir}/${name}.desktop`);
++            let originalDesktopFile = Gio.File.new_for_path(`${app.app_info.get_filename()}`);
++
++            let copyFlag = Gio.FileCopyFlags.OVERWRITE;
++            if (!originalDesktopFile.copy(shortcutFile, copyFlag, null, null))
++                return;
++
++            // Change the file's permission to make the file executable in ding(desktop-icons-ng)
++            // See FileItem._doOpenContext() for more detail.
++            let fileInfo = shortcutFile.query_info('unix::mode', Gio.FileQueryInfoFlags.NONE, null);
++            let mode = fileInfo.get_attribute_uint32('unix::mode');
++            const S_IXUSR = 0o00100;
++            const S_IWOTH = 0o00002;
++            mode |= S_IXUSR;
++            mode &= ~S_IWOTH;
++            fileInfo.set_attribute_uint32('unix::mode', mode);
++            shortcutFile.set_attributes_from_info(fileInfo, Gio.FileQueryInfoFlags.NONE, null);
++        };
++
++        this.addAction(_('Create Desktop Shortcut'), callback, 'computer-symbolic');
++    },
++
++    _addDockFavoriteButton(app) {
++        let appInfo = app.get_app_info();
+         let canFavorite = appInfo ? global.settings.is_writable('favorite-apps') &&
+                           this._parentalControlsManager.shouldShowApp(appInfo) : false;
+ 
+-        if (canFavorite) {
+-            let appID = app.get_id();
+-            let appFavorites = AppFavorites.getAppFavorites();
+-            let isFavorite = appFavorites.isFavorite(appID);
++        if (!canFavorite)
++            return;
+ 
+-            if (isFavorite) {
+-                this.addAction(_('Remove from Dock'),
+-                    () => {
+-                        appFavorites.removeFavorite(appID);
+-                    }, 'view-pin-symbolic');
+-            } else {
+-                this.addAction(_('Add to Dock'),
+-                    () => {
+-                        appFavorites.addFavorite(appID);
+-                    }, 'view-pin-symbolic');
+-            }
++        let appID = app.get_id();
++        let appFavorites = AppFavorites.getAppFavorites();
++        let isFavorite = appFavorites.isFavorite(appID);
++
++        let label, callback, icon;
++        if (isFavorite) {
++            label = _('Remove from Dock');
++            callback = appFavorites.removeFavorite.bind(appFavorites, appID);
++            icon = 'view-pin-symbolic';
++        } else {
++            label = _('Add to Dock');
++            callback = appFavorites.addFavorite.bind(appFavorites, appID);
++            icon = 'view-pin-symbolic';
+         }
+ 
+-        let count = getInterestingWindows(app).length;
++        this.addAction(label, callback, icon);
++    },
++
++    _getNewWindowAction(app) {
++        let appInfo = app.get_app_info();
++        if (!appInfo)
++            return null;
+ 
+-        // 'New Window' button
+-        // This should be activated when there is at least one window
+-        // or gnome-shell can open the window with `open_new_window` function.
+-        if (!newWindowAction && app.can_open_new_window()) {
++        let actions = appInfo.list_actions() || [];
++
++        let newWindowIndex = actions.indexOf('new-window');
++        let newWindowAction = null;
++        if (newWindowIndex > -1) {
++            newWindowAction = event => {
++                this._source.animateLaunch();
++                app.launch_action(actions[newWindowIndex], event.get_time(), -1);
++            };
++        } else if (app.can_open_new_window()) {
+             newWindowAction = () => {
+                 this._source.animateLaunch();
+                 app.open_new_window(-1);
+                 this.emit('activate-window', null);
+             };
+         }
+-        let button = this.addAction(_('New Window'), newWindowAction, icon);
++        return newWindowAction;
++    },
+ 
+-        // activate button there is at least one window or shell can open the window(see the comments above)
+-        if (count === 0 || !newWindowAction)
+-            button.reactive = false;
++    // add 'New Window' button to context menu.
++    // This should be activated when there is at least one window
++    // or gnome-shell can open the window with `open_new_window` function.
++    _addNewWindowAction(app, icon) {
++        let callback = this._getNewWindowAction(app);
++        let button = this.addAction(_('New Window'), callback, icon);
+ 
+-        // 'Quit' / 'Open' button
+-        // show 'Quit' label when one ore more windows are opened. Otherwise, show 'Open' label.
+-        if (count > 0) {
+-            let quitFromTaskbarMenuText = '';
+-            if (count === 1)
+-                quitFromTaskbarMenuText = _('Quit');
+-            else
+-                quitFromTaskbarMenuText = _('Quit %d windows').format(count);
++        // activate button there is at least one window and shell can open the window
++        let reactive = getInterestingWindows(app).length && callback;
++        button.reactive = reactive;
++    },
+ 
+-            let closeWindowFunc = () => {
++    // create 'Quit' / 'Open' button
++    // show 'Quit' label when one ore more windows are opened. Otherwise, show 'Open' label.
++    _addOpenCloseWindowButton(app, icon) {
++        let label, callback;
++        let count = getInterestingWindows(app).length;
++
++        if (count > 0) {
++            label = count > 1 ? _('Quit %d windows').format(count) : _('Quit');
++            callback = () => {
+                 let windows = app.get_windows();
+                 for (let j = 0; j < windows.length; j++)
+                     this._closeWindowInstance(windows[j]);
+             };
+-
+-            this.addAction(quitFromTaskbarMenuText, closeWindowFunc.bind(this), 'window-close-symbolic');
++            icon = 'window-close-symbolic';
+         } else {
+-            this.addAction(_('Open'), newWindowAction, icon);
++            label = _('Open');
++            callback = this._getNewWindowAction(app);
+         }
++
++        this.addAction(label, callback, icon);
++    },
++
++    _dtpRedisplay() {
++        this.removeAll();
++
++        let app = this._source.app;
++        let appInfo = app.get_app_info();
++        let icon;
++        if (appInfo)
++            icon = appInfo.get_icon();
++
++        this._addApplicationActions(app, icon);
++
++        this._appendSeparator();
++
++        this._addCreateDesktopShortcutButton(app);
++        this._addDockFavoriteButton(app);
++        this._addNewWindowAction(app, icon);
++        this._addOpenCloseWindowButton(app, icon);
+     },
+ });
+ Signals.addSignalMethods(taskbarSecondaryMenu.prototype);

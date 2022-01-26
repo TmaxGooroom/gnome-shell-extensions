@@ -1,0 +1,25 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 15 Sep 2021 17:42:49 +0900
+Subject: [chore] dashtopanel: change control center page in dock context menu
+
+- changed initial page of control center in dock context menu
+- do not display wifi page, but information overview page
+
+[IMS] 269731
+---
+ extensions/dash-to-panel/appIcons.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index e5c9728..6cc8c44 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1945,7 +1945,7 @@ var MyShowAppsIconMenu = Utils.defineClass({
+ 
+         _appendItem(this, {
+             title: 'Settings',
+-            cmd: ['gnome-control-center', 'wifi'],
++            cmd: ['gnome-control-center', 'info-overview'],
+         });
+ 
+         _appendList(

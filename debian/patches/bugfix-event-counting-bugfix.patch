@@ -1,0 +1,35 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 23 Aug 2021 15:25:52 +0900
+Subject: [bugfix] event counting bugfix
+
+- event counting function compared _('No events') and event text
+- 'No events' was not translated in po file, so compare always produced false
+- fixed bug by adding translation of 'No events'
+
+[IMS] 268482
+---
+ extensions/notification-center/locale/ko.po | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/notification-center/locale/ko.po b/extensions/notification-center/locale/ko.po
+index 4ed82ed..ba5f50b 100644
+--- a/extensions/notification-center/locale/ko.po
++++ b/extensions/notification-center/locale/ko.po
+@@ -19,7 +19,7 @@ msgstr ""
+ 
+ #: notification-center@Selenium-H/extension.js:97
+ msgid "No New Notifications"
+-msgstr "새 알림이 없습니다."
++msgstr "새 알림이 없습니다"
+ 
+ #: notification-center@Selenium-H/extension.js:98
+ msgid "Notification Center"
+@@ -31,7 +31,7 @@ msgstr "모두 비우기"
+ 
+ #: notification-center@Selenium-H/extension.js:458
+ msgid "No Events"
+-msgstr ""
++msgstr "행사 없음"
+ 
+ #: notification-center@tmax-shell-extensions/extension.js:192
+ msgid "Done"

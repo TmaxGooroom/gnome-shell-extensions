@@ -1,0 +1,25 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 6 May 2021 13:14:05 +0900
+Subject: [bugfix] tos-hotkey : resolved where hotkey doesn't work on numeric
+ keypad
+
+ - added kp_delete key to open-task-manager schemas
+
+[IMS] N/A
+---
+ .../schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml           | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml b/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+index 9aaac31..9bdcb45 100644
+--- a/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
++++ b/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+@@ -16,7 +16,7 @@
+       </description>
+     </key>
+     <key name="open-task-manager" type="as">
+-      <default>["&lt;Control&gt;&lt;Alt&gt;delete"]</default>
++      <default>["&lt;Control&gt;&lt;Alt&gt;delete", "&lt;Control&gt;&lt;Alt&gt;KP_delete"]</default>
+       <summary>Keybinding to open default file manager.</summary>
+       <description>
+         Keybinding to open the application menu.

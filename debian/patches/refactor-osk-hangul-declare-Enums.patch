@@ -1,0 +1,127 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 19 Oct 2021 15:28:41 +0900
+Subject: [refactor] osk-hangul: declare Enums
+
+ - declare Enums in utils.js
+
+[IMS] N/A
+---
+ extensions/osk-hangul/adapter.js   | 21 +++++++--------------
+ extensions/osk-hangul/extension.js | 10 +++++-----
+ extensions/osk-hangul/utils.js     | 16 +++++++++++++++-
+ 3 files changed, 27 insertions(+), 20 deletions(-)
+
+diff --git a/extensions/osk-hangul/adapter.js b/extensions/osk-hangul/adapter.js
+index 967c28b..8ea1849 100644
+--- a/extensions/osk-hangul/adapter.js
++++ b/extensions/osk-hangul/adapter.js
+@@ -5,29 +5,22 @@ const Signals = imports.signals;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const KeyboardWrapper = Me.imports.keyboardWrapper;
+-
+-const LayoutKeyType = {
+-    ICON: 0,  // original icon(keyboard-layout-filled-symbolic) for gnome-shell OSK keyboard
+-    LABEL: 1, // 한/영 label for this extension
+-};
++const { Enums } = Me.imports.utils;
+ 
+ var Adapter = class Adapter {
+     constructor() {
+         this.wrappers = {
+-            xkb: {
+-                inputMethod: 'xkb',
++            [Enums.KeyboardType.XKB]: {
+                 wrapper: new KeyboardWrapper.XkbKeyboardWrapper(),
+-                type: LayoutKeyType.ICON,
++                type: Enums.LayoutKeyType.ICON,
+             },
+-            ibus: {
+-                inputMethod: 'ibus',
++            [Enums.KeyboardType.IBUS]: {
+                 wrapper: new KeyboardWrapper.IbusKeyboardWrapper(),
+-                type: LayoutKeyType.LABEL,
++                type: Enums.LayoutKeyType.LABEL,
+             },
+-            nimf: {
+-                inputMethod: 'nimf',
++            [Enums.KeyboardType.NIMF]: {
+                 wrapper: new KeyboardWrapper.NimfKeyboardWrapper(),
+-                type: LayoutKeyType.LABEL,
++                type: Enums.LayoutKeyType.LABEL,
+             },
+         };
+ 
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 583924e..0dd0226 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -9,7 +9,7 @@ const IBusManager = imports.misc.ibusManager;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Adapter = Me.imports.adapter;
+-const { changeIBusPurposeToClutterPurpose, getNimfService } = Me.imports.utils;
++const { changeIBusPurposeToClutterPurpose, getNimfService, Enums } = Me.imports.utils;
+ 
+ const BASIC_KEYBOARD_LAYOUT = 0;
+ 
+@@ -31,7 +31,7 @@ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+ 
+-function _enable(inputMethod = 'xkb') {
++function _enable(inputMethod = Enums.KeyboardType.XKB) {
+     if (!adapter)
+         adapter = new Adapter.Adapter();
+ 
+@@ -52,9 +52,9 @@ function _getSyncKeyboardFunc() {
+             const ibusManager = IBusManager.getIBusManager();
+             _ibusFocusInId = ibusManager.connect('focus-in', () => {
+                 if (ibusManager._currentEngineName === 'hangul')
+-                    _enable('ibus');
++                    _enable(Enums.KeyboardType.IBUS);
+                 else
+-                    _enable('xkb');
++                    _enable(Enums.KeyboardType.XKB);
+             });
+ 
+             _layoutKeyTypeChagnedId = adapter.connect('layout-key-type', () => {
+@@ -64,7 +64,7 @@ function _getSyncKeyboardFunc() {
+             const nimfService = getNimfService();
+             const focusTracker = KeyboardManager._keyboard._focusTracker;
+             _nimfFocusInId = nimfService.connect('focus-in', () => {
+-                _enable('nimf');
++                _enable(Enums.KeyboardType.NIMF);
+                 focusTracker.emit('focus-changed', true);
+             });
+             _nimfFocusOutId = nimfService.connect('focus-out', () => {
+diff --git a/extensions/osk-hangul/utils.js b/extensions/osk-hangul/utils.js
+index 5f6cec2..828c13f 100644
+--- a/extensions/osk-hangul/utils.js
++++ b/extensions/osk-hangul/utils.js
+@@ -1,10 +1,24 @@
+-/* exported getIBusHangul, getNimfService, changeIBusPurposeToClutterPurpose */
++/* exported Enums, getIBusHangul, getNimfService, changeIBusPurposeToClutterPurpose */
+ 
+ const { Clutter, IBus, Nimf } = imports.gi;
+ const Main = imports.ui.main;
+ 
+ let nimfService = null;
+ 
++const Enums = {
++    LayoutKeyType: {
++        ICON: 0,  // original icon(keyboard-layout-filled-symbolic) for gnome-shell OSK keyboard
++        LABEL: 1, // 한/영 label for this extension
++    },
++
++    KeyboardType: {
++        XKB: 0,
++        IBUS: 1,
++        NIMF: 2,
++    },
++};
++
++
+ function getIBusHangul() {
+     let inputSourceManager = Main.inputMethod._inputSourceManager;
+     let inputSources = inputSourceManager.inputSources;

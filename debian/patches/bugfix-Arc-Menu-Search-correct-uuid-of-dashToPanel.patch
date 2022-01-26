@@ -1,0 +1,38 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 6 Apr 2021 16:51:38 +0900
+Subject: [bugfix] Arc Menu, Search : correct uuid of dashToPanel
+
+- correct uuid of dashToPanel
+
+[IMS] N/A
+---
+ extensions/arc-menu/extension.js | 2 +-
+ extensions/search/extension.js   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/arc-menu/extension.js b/extensions/arc-menu/extension.js
+index 3736a99..380e10b 100644
+--- a/extensions/arc-menu/extension.js
++++ b/extensions/arc-menu/extension.js
+@@ -52,7 +52,7 @@ function enable() { // eslint-disable-line no-unused-vars
+ 
+     // dash to panel might get enabled after Arc-Menu
+     extensionChangedId = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+-        if (extension.uuid === 'dash-to-panel@jderose9.github.com') {
++        if (extension.uuid === 'dash-to-panel@tmax-shell-extensions') {
+             if (extension.state === 1) {
+                 _connectDtpSignals();
+                 _enableButtons();
+diff --git a/extensions/search/extension.js b/extensions/search/extension.js
+index f670988..3d2a1bf 100644
+--- a/extensions/search/extension.js
++++ b/extensions/search/extension.js
+@@ -54,7 +54,7 @@ function enable() { // eslint-disable-line no-unused-vars
+ 
+     // dash to panel might get enabled after Search
+     extensionChangedId = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+-        if (extension.uuid === 'dash-to-panel@tos-shell-extensions') {
++        if (extension.uuid === 'dash-to-panel@tmax-shell-extensions') {
+             if (extension.state === 1) {
+                 _connectDtpSignals();
+                 _enableButtons();

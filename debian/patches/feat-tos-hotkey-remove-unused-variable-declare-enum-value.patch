@@ -1,0 +1,92 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 26 May 2021 16:45:59 +0900
+Subject: [feat] tos-hotkey : remove unused variable, declare enum values,
+ change function scope
+
+ - removed unused variable at switchMonitor
+ - declared variable for ApplyMonitorsConfig's method
+ - change some function of DisplayConfig to private
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 451b692..29fce56 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -18,16 +18,18 @@ const MIRROR_MODE_LABEL_TEXT = _('Duplicate');
+ const JOIN_MODE_LABEL_TEXT = _('Expand');
+ const SECONDARY_MODE_LABEL_TEXT = _('Screen 2 only');
+ 
+-var DisplayConfig = class { // eslint-disable-line no-unused-vars
++const META_MONITORS_CONFIG_METHOD_PERSISTENT = 2;
++
++class DisplayConfig {
+     constructor(resources, currentState) {
+         this._outputs = {}; // physical monitors
+         if (resources)
+-            this.setResources(resources);
++            this._setResources(resources);
+         if (currentState)
+-            this.setCurrentState(currentState);
++            this._setCurrentState(currentState);
+     }
+ 
+-    setResources(resources) {
++    _setResources(resources) {
+         this._serial = resources[0];
+         this._crtcs = [];
+         for (let crtc of resources[1]) {
+@@ -56,12 +58,9 @@ var DisplayConfig = class { // eslint-disable-line no-unused-vars
+             if (this._outputs.get(productSerial)['isPrimary'])
+                 this._primaryMonitor = this._outputs.get(productSerial);
+         }
+-        this._availableModes = resources[3];
+-        this._maxScreenWidth = resources[4];
+-        this._maxScreenHeight = resources[5];
+     }
+ 
+-    setCurrentState(current) {
++    _setCurrentState(current) {
+         this._serial = current[0];
+         for (let monitor of current[1]) {
+             let serial = monitor[0][3];
+@@ -107,7 +106,7 @@ var DisplayConfig = class { // eslint-disable-line no-unused-vars
+                 this._crtcs[crtcID]['transform'] = monitor[3];
+         }
+     }
+-};
++}
+ 
+ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+     constructor() {
+@@ -126,7 +125,7 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+         let displayConfig = new DisplayConfig(resources, currentState);
+ 
+         let serial = displayConfig._serial;
+-        let method = 2;
++        let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+         let scale, transform;
+ 
+         let logicalMonitor = [];
+@@ -149,7 +148,8 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+ 
+         });
+ 
+-        let logicalMonitors = [0, 0, scale, transform, true]; // x, y, scale, transform, is primary
++        // x, y, scale, transform, is primary
++        let logicalMonitors = [0, 0, scale, transform, true];
+         logicalMonitors.push(logicalMonitor);
+ 
+         try {
+@@ -166,7 +166,7 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+         let displayConfig = new DisplayConfig(resources, currentState);
+ 
+         let serial = displayConfig._serial;
+-        let method = 2;
++        let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+ 
+         let logicalMonitors = [];
+         displayConfig._outputs.forEach(output => {

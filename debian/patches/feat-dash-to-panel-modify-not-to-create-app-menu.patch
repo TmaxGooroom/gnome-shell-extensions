@@ -1,0 +1,146 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 18 May 2021 16:26:24 +0900
+Subject: [feat] dash-to-panel : modify not to create app menu
+
+ - remove if statement when creating actions item in appIcon context menu
+ - modify some code not to create app menu(it is deprecated since gnome-shell 3.32
+ - add translation string 'open' for context menu
+ - make 'New window' button in context menu always shown and set its visual state by the number of opened window
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/appIcons.js | 72 +++++++++++++++++-------------------
+ extensions/dash-to-panel/po/ko.po    |  3 ++
+ 2 files changed, 36 insertions(+), 39 deletions(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 204d00c..ce60b7d 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1403,7 +1403,7 @@ var taskbarSecondaryMenu = Utils.defineClass({
+         this.callParent('_init', source);
+ 
+         let side = panel.getPosition();
+-        //        // Change the initialized side where required.
++        // Change the initialized side where required.
+         this._arrowSide = side;
+         this._boxPointer._arrowSide = side;
+         this._boxPointer._userArrowSide = side;
+@@ -1418,35 +1418,36 @@ var taskbarSecondaryMenu = Utils.defineClass({
+         this.removeAll();
+ 
+         let appInfo = this._source.app.get_app_info();
++        let icon;
++        if (appInfo)
++            icon = appInfo.get_icon();
+         let actions = appInfo ? appInfo.list_actions() : [];
+ 
+         let newWindowAction;
+ 
+-        // prepend items from the appMenu (for native gnome apps)
+-        if (Me.settings.get_boolean('secondarymenu-contains-appmenu')) {
+-            // app menu(actions)
+-            for (let action of actions) {
+-                if (action === 'new-window') {
+-                    newWindowAction = event => {
+-                        this._source.animateLaunch();
+-                        this._source.app.launch_action(action, event.get_time(), -1);
+-                    };
+-                    continue;
+-                }
+-
+-                let callback = event => {
++        // actions(see desktop entry specification for more information)
++        for (let action of actions) {
++            if (action === 'new-window') {
++                newWindowAction = event => {
++                    this._source.animateLaunch();
+                     this._source.app.launch_action(action, event.get_time(), -1);
+-                    this.emit('activate-window', null);
+                 };
+-
+-                this.addAction(appInfo.get_action_name(action), callback, appInfo.get_icon());
++                continue;
+             }
++
++            let callback = event => {
++                this._source.app.launch_action(action, event.get_time(), -1);
++                this.emit('activate-window', null);
++            };
++
++            this.addAction(appInfo.get_action_name(action), callback, appInfo.get_icon());
+         }
++
+         this._appendSeparator();
+ 
+-        // dock에 추가/제거
++        // add to favorites / remove from favorites
+         let canFavorite = appInfo ? global.settings.is_writable('favorite-apps') &&
+-                          this._parentalControlsManager.shouldShowApp(appInfo) : null;
++                          this._parentalControlsManager.shouldShowApp(appInfo) : false;
+ 
+         if (canFavorite) {
+             let isFavorite = AppFavorites.getAppFavorites().isFavorite(this._source.app.get_id());
+@@ -1466,22 +1467,22 @@ var taskbarSecondaryMenu = Utils.defineClass({
+             }
+         }
+ 
+-        // quit menu
+         let app = this._source.app;
+         let window = this._source.window;
+         let count = window ? 1 : getInterestingWindows(app).length;
+ 
+-        // new window (there one or more opened window)
+-        if (count > 0 && appInfo) {
+-            if (!newWindowAction) {
+-                newWindowAction = () => {
+-                    this._source.animateLaunch();
+-                    this._source.app.open_new_window(-1);
+-                    this.emit('activate-window', null);
+-                };
+-            }
+-            this.addAction(_('New Window'), newWindowAction, appInfo.get_icon());
++        // new window button (enabled when there one or more opened window)
++        if (!newWindowAction) {
++            newWindowAction = () => {
++                this._source.animateLaunch();
++                this._source.app.open_new_window(-1);
++                this.emit('activate-window', null);
++            };
+         }
++        let button = this.addAction(_('New Window'), newWindowAction, icon);
++
++        if (count === 0 || !appInfo)
++            button.reactive = false;
+ 
+         // quit (one or more window opened) / open (no window)
+         if (count > 0) {
+@@ -1498,15 +1499,8 @@ var taskbarSecondaryMenu = Utils.defineClass({
+             };
+ 
+             this.addAction(quitFromTaskbarMenuText, closeWindowFunc.bind(this), 'window-close-symbolic');
+-        } else {
+-            if (!newWindowAction) {
+-                newWindowAction = () => {
+-                    this._source.animateLaunch();
+-                    this._source.app.open_new_window(-1);
+-                    this.emit('activate-window', null);
+-                };
+-            }
+-            this.addAction(_('New Window'), newWindowAction, appInfo.get_icon());
++        } else if (appInfo) {
++            this.addAction(_('Open'), newWindowAction, icon);
+         }
+     },
+ });
+diff --git a/extensions/dash-to-panel/po/ko.po b/extensions/dash-to-panel/po/ko.po
+index 53199c4..75dc384 100644
+--- a/extensions/dash-to-panel/po/ko.po
++++ b/extensions/dash-to-panel/po/ko.po
+@@ -1325,3 +1325,6 @@ msgstr "Dock 에 추가"
+ 
+ msgid "Remove from Dock"
+ msgstr "Dock 에서 제거"
++
++msgid "Open"
++msgstr "열기"

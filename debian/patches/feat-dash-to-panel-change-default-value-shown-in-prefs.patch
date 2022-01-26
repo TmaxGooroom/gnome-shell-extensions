@@ -1,0 +1,107 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 25 Jan 2022 10:51:21 +0900
+Subject: [feat] dash-to-panel : change default value shown in prefs
+
+ - Same as above
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/Settings.ui                         |  6 +++---
+ extensions/dash-to-panel/po/ko.po                            | 12 ++++++------
+ .../org.gnome.shell.extensions.dash-to-panel.gschema.xml     |  6 +++---
+ 3 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/extensions/dash-to-panel/Settings.ui b/extensions/dash-to-panel/Settings.ui
+index 7ce31ec..9bb5545 100644
+--- a/extensions/dash-to-panel/Settings.ui
++++ b/extensions/dash-to-panel/Settings.ui
+@@ -4992,7 +4992,7 @@
+                             <property name="visible">True</property>
+                             <property name="can_focus">False</property>
+                             <property name="label" translatable="yes">Panel Size
+-(default is 48)</property>
++(default is 42)</property>
+                             <property name="xalign">0</property>
+                           </object>
+                           <packing>
+@@ -5042,7 +5042,7 @@
+                             <property name="visible">True</property>
+                             <property name="can_focus">False</property>
+                             <property name="label" translatable="yes">App Icon Margin
+-(default is 8)</property>
++(default is 3)</property>
+                             <property name="xalign">0</property>
+                           </object>
+                           <packing>
+@@ -5091,7 +5091,7 @@
+                             <property name="visible">True</property>
+                             <property name="can_focus">False</property>
+                             <property name="label" translatable="yes">App Icon Padding
+-(default is 4)</property>
++(default is 8)</property>
+                             <property name="xalign">0</property>
+                           </object>
+                           <packing>
+diff --git a/extensions/dash-to-panel/po/ko.po b/extensions/dash-to-panel/po/ko.po
+index ab23a48..bdc1329 100644
+--- a/extensions/dash-to-panel/po/ko.po
++++ b/extensions/dash-to-panel/po/ko.po
+@@ -544,24 +544,24 @@ msgstr "위치"
+ #: Settings.ui.h:155
+ msgid ""
+ "Panel Size\n"
+-"(default is 48)"
++"(default is 42)"
+ msgstr ""
+ "패널 크기\n"
+-"(기본 48)"
++"(기본 42)"
+ 
+ #: Settings.ui.h:157
+ msgid ""
+ "App Icon Margin\n"
+-"(default is 8)"
++"(default is 3)"
+ msgstr ""
+ "프로그램 아이콘 바깥 너비\n"
+-"(기본 8)"
++"(기본 3)"
+ 
+ #: Settings.ui.h:159
+ msgid ""
+ "App Icon Padding\n"
+-"(default is 4)"
+-msgstr "프로그램 아이콘 안쪽 너비 (기본 4)"
++"(default is 8)"
++msgstr "프로그램 아이콘 안쪽 너비 (기본 8)"
+ 
+ #: Settings.ui.h:161
+ msgid "Running indicator position"
+diff --git a/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml b/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
+index 17f3ce8..dda738a 100644
+--- a/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
++++ b/extensions/dash-to-panel/schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
+@@ -89,7 +89,7 @@
+       <description>Panel element positions (JSON).</description>
+     </key>
+     <key type="i" name="panel-size">
+-      <default>48</default>
++      <default>42</default>
+       <summary>Panel size</summary>
+       <description>Set the size of the panel.</description>
+     </key>
+@@ -716,12 +716,12 @@
+         <description>Set the size of the leftBox font. (0 for default)</description>
+     </key>
+     <key type="i" name="appicon-margin">
+-        <default>8</default>
++        <default>3</default>
+         <summary>App icon margin</summary>
+         <description>Set the margin for application icons in the embedded dash.</description>
+     </key>
+     <key type="i" name="appicon-padding">
+-        <default>4</default>
++        <default>8</default>
+         <summary>App icon padding</summary>
+         <description>Set the padding for application icons in the embedded dash.</description>
+     </key>

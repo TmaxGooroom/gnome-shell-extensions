@@ -1,0 +1,45 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 3 May 2021 17:26:37 +0900
+Subject: [bugfix] Search: Fix error that search bar disappears when file path
+ does not exist
+
+- This is caused by using a file path that does not exist, such as a network folder that has been disconnected.
+- Change to use file uri because file path is not used.
+
+[IMS] 260275
+---
+ extensions/search/baseMenuLayout.js | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 9db48ef..e93616a 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -318,9 +318,9 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+ 
+     createRecentFileItem(menuItemArray) {
+         let placeInfo, placeMenuItem;
+-        let path = menuItemArray[2];
++        let fileUri = menuItemArray[2];
+         placeInfo = new MW.PlaceInfo(
+-            Gio.File.new_for_path(path), menuItemArray[0], menuItemArray[1]);
++            Gio.File.new_for_uri(fileUri), menuItemArray[0], menuItemArray[1]);
+         placeMenuItem = new MW.PlaceMenuItem(this, placeInfo);
+         placeMenuItem.y_align = Clutter.ActorAlign.START;
+ 
+@@ -346,12 +346,12 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             if (i > this._recentFiles.length - 1)
+                 break;
+ 
+-            let file = Gio.File.new_for_uri(this._recentFiles[i].get_uri()).get_path();
++            let fileUri = this._recentFiles[i].get_uri();
+             let name = this._recentFiles[i].get_display_name();
+             let icon = Gio.content_type_get_symbolic_icon(this._recentFiles[i].get_mime_type()).to_string();
+-            let recentFileItem = this.createRecentFileItem([name, icon, file]);
++            let recentFileItem = this.createRecentFileItem([name, icon, fileUri]);
+             recentFileItem.description = this._recentFiles[i].get_uri_display().replace(homeRegExp, '~');
+-            recentFileItem.fileUri = this._recentFiles[i].get_uri();
++            recentFileItem.fileUri = fileUri;
+             this.recentFileItemsBox.add_actor(recentFileItem);
+         }
+     }

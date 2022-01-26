@@ -1,0 +1,36 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Wed, 28 Apr 2021 19:23:15 +0900
+Subject: [bugfix] Modify loading of notification empty icon correctly.
+
+ - Modify loading of notification empty icon correctly.
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 12da325..580da8c 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -10,8 +10,10 @@ const Config              = imports.misc.config;
+ const ExtensionUtils      = imports.misc.extensionUtils;
+ const Gtk                 = imports.gi.Gtk;
+ const Gettext             = imports.gettext;
++const Gio                 = imports.gi.Gio;
+ const LangClass           = imports.lang.Class;
+ const Main                = imports.ui.main;
++const Me                  = imports.misc.extensionUtils.getCurrentExtension();
+ const MetaKeyBindingFlags = imports.gi.Meta.KeyBindingFlags;
+ const PanelMenuButton     = imports.ui.panelMenu.Button;
+ const PopupMenu           = imports.ui.popupMenu;
+@@ -95,7 +97,8 @@ const NotificationCenter = new LangClass({
+         this.eventsIcon        = new St.Icon({ style_class: 'system-status-icon', visible: false, icon_name: 'x-office-calendar-symbolic' });
+         this.mediaIcon         = new St.Icon({ style_class: 'system-status-icon', visible: false, icon_name: 'audio-x-generic-symbolic'  });
+         this.notificationIcon  = new St.Icon({ style_class: 'system-status-icon', visible: false });
+-        this.emptyIcon         = new St.Icon({ style_class: 'notification-center-empty-icon', icon_name: 'tos_img_alarm_none', icon_size: 142, x_align: Clutter.ActorAlign.CENTER, visible: false });
++        let gicon              = Gio.icon_new_for_string(`${Me.path}/img/tos_img_alarm_none.png`);
++        this.emptyIcon         = new St.Icon({ gicon, style_class: 'notification-center-empty-icon', icon_size: 142, x_align: Clutter.ActorAlign.CENTER, visible: false });
+         this.emptyLabel        = new St.Label({ style_class: 'notification-center-empty-label', text: _('No New Notifications'), x_align: Clutter.ActorAlign.CENTER, visible: false });
+         this.titleLabel        = new St.Label({ style_class: 'notification-center-title-label', text: _('Notification Center') });
+         this.eventsLabel       = new St.Label({ text: '• ', visible: false });

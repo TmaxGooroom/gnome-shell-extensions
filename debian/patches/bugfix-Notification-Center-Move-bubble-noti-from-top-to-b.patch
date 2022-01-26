@@ -1,0 +1,31 @@
+From: root <root@localhost.localdomain>
+Date: Mon, 12 Apr 2021 17:35:51 +0900
+Subject: [bugfix] Notification Center : Move bubble noti from top to bottom.
+
+ - Move bubble noti from top to bottom.
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 2966c84..9c2de6c 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -5,6 +5,7 @@ Version 22.03
+ 
+ */
+ 
++const Clutter             = imports.gi.Clutter;
+ const ExtensionUtils      = imports.misc.extensionUtils;
+ const Gtk                 = imports.gi.Gtk;
+ const LangClass           = imports.lang.Class;
+@@ -509,6 +510,7 @@ const NotificationCenter = new LangClass({
+     this.resetIndicator();
+ 
+     Main.messageTray.bannerAlignment = this.prefs.get_enum('banner-pos');
++    Main.messageTray.set_y_align(Clutter.ActorAlign.END);
+     //this.removeDotAndBorderFromDateMenu();
+     Main.panel.statusArea.dateMenu.get_children()[0].remove_actor(Main.panel.statusArea.dateMenu._indicator)
+     this.dtActors=Main.panel.statusArea.dateMenu.get_children()[0].get_children();

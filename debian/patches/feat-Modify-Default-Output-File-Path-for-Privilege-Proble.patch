@@ -1,0 +1,161 @@
+From: junho_lee3 <junho_lee3>
+Date: Mon, 10 May 2021 14:56:03 +0900
+Subject: [feat] Modify Default Output File Path for Privilege Problem
+
+ - Enhance the default setting for when no configuration file(json file) is provided
+ - Debugger records the log only if the channel is equal to the uuid
+
+[IMS] N/A
+---
+ logging/logging.js | 55 ++++++++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 41 insertions(+), 14 deletions(-)
+
+diff --git a/logging/logging.js b/logging/logging.js
+index 9a2761a..778e748 100644
+--- a/logging/logging.js
++++ b/logging/logging.js
+@@ -30,9 +30,9 @@ var COMMON_LOG = 'Log';
+ var Debugger = class {
+     constructor(confFile) {
+         this._breakpoints = 0;
+-        this._output = '/.tos_shell_log.out';
++        this._output = `${GLib.get_home_dir()}/.tos_shell_log.out`;
+         this._level = Level.NONE;
+-        this._channel = '';
++        this._channel = this._getDefaultChannel();
+ 
+         this._parseConfigFile(confFile);
+     }
+@@ -55,6 +55,29 @@ var Debugger = class {
+         this._output = json['output'];
+     }
+ 
++    _getDefaultChannel() {
++        let metadata = 'metadata.json';
++
++        if (!GLib.file_test(metadata, GLib.FileTest.EXISTS))
++            return 'ALL';
++
++
++        let [result, contents] = GLib.file_get_contents(metadata);
++
++        if (!result)
++            return 'ALL';
++
++        let json = JSON.parse(ByteArray.toString(contents));
++
++        let uuid = json['uuid'];
++
++        if (json['uuid'] === undefined)
++            return 'ALL';
++
++
++        return uuid;
++    }
++
+     _stringToLevel(level) {
+         if (level === 'INFO')
+             return Level.INFO;
+@@ -118,7 +141,11 @@ var Debugger = class {
+     _isValid(channel, level) {
+         // TODO : Check whether the channel's uuid is included in extension list.
+ 
+-        if (channel === undefined || level === Level.NONE)
++        if (channel !== this._channel && this._channel !== 'ALL')
++            return false;
++
++
++        if (this._level > level)
+             return false;
+ 
+ 
+@@ -196,7 +223,7 @@ var Debugger = class {
+         return str;
+     }
+ 
+-    _recordLogMessage(msg, logType) {
++    _recordLogMessage(channel, level, msg, logType) {
+         let logFile = Gio.File.new_for_path(this._output);
+         let outputStream = logFile.append_to(0, null);
+ 
+@@ -205,7 +232,7 @@ var Debugger = class {
+         let res = '';
+ 
+         lines.forEach(element => {
+-            res += `[${this._channel}][${this._levelToString(this._level)}][${logType}][${this._getCurrentDateTime()}] ${element}\n`;
++            res += `[${channel}][${this._levelToString(level)}][${logType}][${this._getCurrentDateTime()}] ${element}\n`;
+         });
+ 
+         let byteStream = ByteArray.fromString(res);
+@@ -281,7 +308,7 @@ var Debugger = class {
+             let ret = func.apply(obj, funcArgs);
+ 
+             if (isLogging) {
+-                record(`Backtrace for ${log}`, BACKTRACE_LOG);
++                record(channel, level, `Backtrace for ${log}`, BACKTRACE_LOG);
+                 print(channel, level);
+             }
+ 
+@@ -319,15 +346,15 @@ var Debugger = class {
+             // sanitizing meaningless lines, i.e, erasing current function in trace
+             stack.pop();
+             stack.shift();
+-            this._recordLogMessage('-------------------------', BACKTRACE_LOG);
++            this._recordLogMessage(channel, level, '-------------------------', BACKTRACE_LOG);
+ 
+             stack.forEach(element => {
+                 if (element.split('@')[0] === 'wrappedFunction')
+                     return;
+ 
+-                this._recordLogMessage(element, BACKTRACE_LOG);
++                this._recordLogMessage(channel, level, element, BACKTRACE_LOG);
+             });
+-            this._recordLogMessage('-------------------------', BACKTRACE_LOG);
++            this._recordLogMessage(channel, level, '-------------------------', BACKTRACE_LOG);
+         }
+     }
+ 
+@@ -387,14 +414,14 @@ var Debugger = class {
+             let isLogging = wrappedFunction['loggingPredicate']();
+ 
+             if (isLogging)
+-                record(`Entering ${log}`, COMMON_LOG);
++                record(channel, level, `Entering ${log}`, COMMON_LOG);
+ 
+             let ret = func.apply(obj, funcArgs);
+ 
+             let retStr = print(ret, 0, false);
+ 
+             if (isLogging)
+-                record(`Leaving ${log} -> ${retStr}`, COMMON_LOG);
++                record(channel, level, `Leaving ${log} -> ${retStr}`, COMMON_LOG);
+ 
+             return ret;
+         }
+@@ -430,7 +457,7 @@ var Debugger = class {
+             };
+ 
+         if (pred())
+-            this._recordLogMessage(message, COMMON_LOG);
++            this._recordLogMessage(channel, level, message, COMMON_LOG);
+ 
+ 
+     }
+@@ -471,7 +498,7 @@ var Debugger = class {
+ 
+         function wrappedFunction(...funcArgs) {
+             if (wrappedFunction['breakPredicate']()) {
+-                record(`Breakpoint ${wrappedFunction['breakpoint']} reached`, COMMON_LOG);
++                record(channel, level, `Breakpoint ${wrappedFunction['breakpoint']} reached`, COMMON_LOG);
+                 System.breakpoint();
+             }
+             return func.apply(obj, funcArgs);
+@@ -484,7 +511,7 @@ var Debugger = class {
+ 
+         obj[funcName] = this._wrappingFunc(func, wrappedFunction, properties);
+ 
+-        this._recordLogMessage(`Breakpoint ${this._breakpoints} for ${obj.constructor.name}.${funcName} is registered`, COMMON_LOG);
++        this._recordLogMessage(channel, level, `Breakpoint ${this._breakpoints} for ${obj.constructor.name}.${funcName} is registered`, COMMON_LOG);
+     }
+ 
+     /*

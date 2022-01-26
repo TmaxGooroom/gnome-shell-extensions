@@ -1,0 +1,178 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 4 May 2021 16:20:53 +0900
+Subject: [feat] AlternateTab : Add Up & Down Arrow function,
+ Modify Scroll up Logic
+
+    - Add Up & Down Arrow
+    - If it can scroll down or up, up & down Arrow shows accordingly
+    - Modify Scroll up Logic - Scroll page by page as it possible
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 88 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 78 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 7ddea84..1d5cf9f 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -105,6 +105,9 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+                                             (visibleRows - 1) * switcherVerticalSpacing
+         );
+ 
++        if (this._switcherList.visibleRows < 0)
++            this._switcherList.visibleRows = visibleRows;
++
+ 
+         let topPadding = Math.ceil(verticalPadding / 2);
+         let bottomPadding = Math.ceil(verticalPadding / 2);
+@@ -266,6 +269,28 @@ var WindowSwitcher = GObject.registerClass({
+     _init(windows, mode) {
+         super._init(false);
+ 
++        this.visibleRows = -1;
++
++        this._topArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
++            pseudo_class: 'highlighted' });
++        this._topArrow.connect('repaint', () => {
++            SwitcherPopup.drawArrow(this._topArrow, St.Side.TOP);
++        });
++
++        this._bottomArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
++            pseudo_class: 'highlighted' });
++        this._bottomArrow.connect('repaint', () => {
++            SwitcherPopup.drawArrow(this._bottomArrow, St.Side.BOTTOM);
++        });
++
++        this._scrollableDown = true;
++        this._scrollableUp = false;
++
++        this._removeFlag = false;
++
++        this.add_actor(this._topArrow);
++        this.add_actor(this._bottomArrow);
++
+         this._rows = 0;
+ 
+         this._rowList = new St.BoxLayout({ style_class: 'switcher-list-item-container',
+@@ -342,6 +367,47 @@ var WindowSwitcher = GObject.registerClass({
+ 
+     vfunc_allocate(box) {
+         super.vfunc_allocate(box);
++
++        let contentBox = this.get_theme_node().get_content_box(box);
++        let width = contentBox.x2 - contentBox.x1;
++        let height = contentBox.y2 - contentBox.y1;
++
++        let topPadding = this.get_theme_node().get_padding(St.Side.TOP);
++        let bottomPadding = this.get_theme_node().get_padding(St.Side.BOTTOM);
++        let leftPadding = this.get_theme_node().get_padding(St.Side.LEFT);
++
++        let verticalScrollable = this._rows >= this.visibleRows;
++        if (this._removeFlag) {
++            let adjustment = this._scrollView.vscroll.adjustment;
++            let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++            if (upper - pageSize <= value)
++                this._scrollableDown = false;
++            this._removeFlag = false;
++        }
++        let childBox = new Clutter.ActorBox();
++
++        let arrowHeight = Math.floor(topPadding / 2);
++        let arrowWidth = arrowHeight * 2;
++
++        childBox.x1 = leftPadding + width / 2 - arrowHeight;
++        childBox.x2 = childBox.x1 + arrowWidth;
++        childBox.y1 = topPadding / 2;
++        childBox.y2 = childBox.y1 + arrowHeight;
++
++        this._topArrow.allocate(childBox);
++        this._topArrow.opacity =  verticalScrollable && this._scrollableUp ? 255 : 0;
++
++        arrowHeight = Math.ceil(bottomPadding / 2);
++        arrowWidth = arrowHeight * 2;
++
++        childBox.x1 = leftPadding + width / 2 - arrowHeight;
++        childBox.x2 = childBox.x1 +  arrowWidth;
++        childBox.y1 = Math.ceil(height + bottomPadding);
++        childBox.y2 = childBox.y1 + arrowHeight;
++
++        this._bottomArrow.allocate(childBox);
++        this._bottomArrow.opacity = verticalScrollable && this._scrollableDown ?  255 : 0;
++
+     }
+ 
+     precalculateRowWidth(index) {
+@@ -453,7 +519,7 @@ var WindowSwitcher = GObject.registerClass({
+         this.transform_stage_point(absItemX_, absItemY);
+         let [containerWidth_, containerHeight] = this.get_transformed_size();
+ 
+-        if (this._lists[rowIndex].allocation.y2 > containerHeight)
++        if (this._lists[rowIndex].allocation.y2 - value > containerHeight)
+             this._scrollToDown(index);
+         else if (this._lists[rowIndex].allocation.y1 - value < 0)
+             this._scrollToUp(index);
+@@ -461,23 +527,24 @@ var WindowSwitcher = GObject.registerClass({
+ 
+     _scrollToUp(index) {
+         let adjustment = this._scrollView.vscroll.adjustment;
+-        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++        let [value, lower_, upper_, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+         let rowIndex = this._findRowIndexFromItem(index);
++        rowIndex = Math.max(0, rowIndex - this.visibleRows + 1);
+         let list = this._lists[rowIndex];
+ 
+         if (list.allocation.y1 < value)
+             value = Math.max(0, list.allocation.y1);
+         else if (list.allocation.y2 > value + pageSize)
+-            value = Math.min(upper, list.allocation.y2 - pageSize);
++            value = list.allocation.y1;
+ 
+-        this._scrollableRight = true;
++        this._scrollableDown = true;
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
+-                if (index === 0)
+-                    this._scrollableLeft = false;
++                if (rowIndex === 0)
++                    this._scrollableUp = false;
+                 this.queue_relayout();
+             },
+         });
+@@ -485,7 +552,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+     _scrollToDown(index) {
+         let adjustment = this._scrollView.vscroll.adjustment;
+-        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++        let [value, lower_, upper_, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+         let rowIndex = this._findRowIndexFromItem(index);
+         let list = this._lists[rowIndex];
+@@ -495,14 +562,14 @@ var WindowSwitcher = GObject.registerClass({
+         else if (list.allocation.y2 > value + pageSize)
+             value = list.allocation.y1;
+ 
+-        this._scrollableLeft = true;
++        this._scrollableUp = true;
+ 
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
+-                if (list.allocation.y1 + pageSize > upper)
+-                    this._scrollableRight = false;
++                if (this._findRowIndexFromItem(index) + this.visibleRows > this._rows)
++                    this._scrollableDown = false;
+                 this.queue_relayout();
+             },
+         });
+@@ -551,5 +618,6 @@ var WindowSwitcher = GObject.registerClass({
+                 break;
+             }
+         }
++        this._removeFlag = true;
+     }
+ });

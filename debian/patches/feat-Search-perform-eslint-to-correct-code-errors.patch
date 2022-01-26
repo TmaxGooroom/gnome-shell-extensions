@@ -1,0 +1,362 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 6 Apr 2021 11:48:11 +0900
+Subject: [feat] Search : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/search/menuWidgets.js      | 132 ++++++++++++++++------------------
+ extensions/search/searchMenuLayout.js |   6 +-
+ 2 files changed, 64 insertions(+), 74 deletions(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 9384546..275eb38 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -23,9 +23,7 @@
+ 
+ // Import Libraries
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+-const { Atk, Clutter, Gio, GLib, GMenu, GObject, Gtk, Shell, St } = imports.gi;
+-const AccountsService = imports.gi.AccountsService;
+-const AppFavorites = imports.ui.appFavorites;
++const { Atk, Clutter, Gio, GLib, GObject, Gtk, Shell, St } = imports.gi;
+ const Constants = Me.imports.constants;
+ const Dash = imports.ui.dash;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+@@ -49,14 +47,7 @@ const SwitcherooProxyInterface = '<node> \
+ 
+ const SwitcherooProxy = Gio.DBusProxy.makeProxyWrapper(SwitcherooProxyInterface);
+ 
+-// Menu Size variables
+-const LARGE_ICON_SIZE = 34;
+-const MEDIUM_ICON_SIZE = 25;
+-const INDICATOR_ICON_SIZE = 18;
+-const SMALL_ICON_SIZE = 16;
+-const USER_AVATAR_SIZE = 28;
+-
+-var ApplicationContextMenu = class Arc_Menu_ApplicationContextMenu extends PopupMenu.PopupMenu {
++var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMenu.PopupMenu {
+     constructor(actor, app, menuLayout) {
+         super(actor, 0.0, St.Side.TOP);
+         this._menuLayout = menuLayout;
+@@ -151,7 +142,7 @@ var ApplicationContextMenu = class Arc_Menu_ApplicationContextMenu extends Popup
+         this.actor.add_style_class_name('popup-menu');
+ 
+         if (this._app instanceof Shell.App) {
+-            if (this._path != undefined) {
++            if (this._path !== undefined) {
+                 this._newWindowMenuItem = this._appendMenuItem(_('Open Folder Location'));
+                 this._newWindowMenuItem.connect('activate', () => {
+                     Util.spawnCommandLine(`nautilus "${this._path}"`);
+@@ -193,7 +184,7 @@ var ApplicationContextMenu = class Arc_Menu_ApplicationContextMenu extends Popup
+                         });
+                     }
+                     if (this.discreteGpuAvailable &&
+-                        this._app.state == Shell.AppState.STOPPED &&
++                        this._app.state === Shell.AppState.STOPPED &&
+                         !actions.includes('activate-discrete-gpu')) {
+                         this._onDiscreteGpuMenuItem = this._appendMenuItem(_('Launch using Dedicated Graphics Card'));
+                         this._onDiscreteGpuMenuItem.connect('activate', () => {
+@@ -324,13 +315,13 @@ var ApplicationContextMenu = class Arc_Menu_ApplicationContextMenu extends Popup
+             return Clutter.EVENT_PROPAGATE;
+ 
+         let symbol = event.get_key_symbol();
+-        if (symbol == Clutter.KEY_space || symbol == Clutter.KEY_Return) {
++        if (symbol === Clutter.KEY_space || symbol === Clutter.KEY_Return) {
+             this.toggle();
+             return Clutter.EVENT_STOP;
+-        } else if (symbol == Clutter.KEY_Escape && this.isOpen) {
++        } else if (symbol === Clutter.KEY_Escape && this.isOpen) {
+             this.close();
+             return Clutter.EVENT_STOP;
+-        } else if (symbol == navKey) {
++        } else if (symbol === navKey) {
+             if (this.isOpen) {
+                 this.actor.navigate_focus(null, Gtk.DirectionType.TAB_FORWARD, false);
+                 return Clutter.EVENT_STOP;
+@@ -343,8 +334,8 @@ var ApplicationContextMenu = class Arc_Menu_ApplicationContextMenu extends Popup
+     }
+ };
+ 
+-var ScrollView = GObject.registerClass(
+-    class Arc_Menu_ScrollView extends St.ScrollView {
++var ScrollView = GObject.registerClass( // eslint-disable-line no-unused-vars
++    class ArcMenuScrollView extends St.ScrollView {
+         _init(params) {
+             super._init(params);
+             this.mouse_scroll = false;
+@@ -355,10 +346,10 @@ var ScrollView = GObject.registerClass(
+             switch (event.direction) {
+             case Clutter.SCROLL_SMOOTH:
+                 callback = () => {
+-                    let delta_x, delta_y;
+-                    [delta_x, delta_y] = event.get_scroll_delta();
+-                    this.hscroll.adjustment.adjust_for_scroll_event(delta_x);
+-                    this.vscroll.adjustment.adjust_for_scroll_event(delta_y);
++                    let deltaX, deltaY;
++                    [deltaX, deltaY] = event.get_scroll_delta();
++                    this.hscroll.adjustment.adjust_for_scroll_event(deltaX);
++                    this.vscroll.adjustment.adjust_for_scroll_event(deltaY);
+                 };
+                 break;
+             case Clutter.ScrollDirection.DOWN:
+@@ -406,7 +397,7 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+         'activate': { param_types: [Clutter.Event.$gtype] },
+     },
+ 
+-},   class Arc_Menu_PopupBaseMenuItem extends St.BoxLayout {
++},   class ArcMenuPopupBaseMenuItem extends St.BoxLayout {
+     _init(menuLayout, params) {
+         params = imports.misc.params.parse(params, {
+             reactive: true,
+@@ -459,7 +450,7 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+     }
+ 
+     set active(active) {
+-        let activeChanged = active != this.active;
++        let activeChanged = active !== this.active;
+         if (activeChanged) {
+             this._active = active;
+             if (active) {
+@@ -486,7 +477,7 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+     _onHover() {
+         if (this.actor.hover && this._menuLayout.newSearch && this._menuLayout.newSearch._highlightDefault)
+             this._menuLayout.newSearch.highlightDefault(false);
+-        if (this.tooltip == undefined && this.actor.hover && this.label) {
++        if (this.tooltip === undefined && this.actor.hover && this.label) {
+             let description = this.description;
+             if (this._app)
+                 description = this._app.get_description();
+@@ -497,12 +488,12 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+     vfunc_button_press_event() {
+         let event = Clutter.get_current_event();
+         this.pressed = false;
+-        if (event.get_button() == 1) {
++        if (event.get_button() === 1) {
+             this._menuLayout._blockActivateEvent = false;
+             this.pressed = true;
+             if (this.hasContextMenu)
+                 this.contextMenuTimeOut();
+-        } else if (event.get_button() == 3) {
++        } else if (event.get_button() === 3) {
+             this.pressed = true;
+         }
+         this.add_style_pseudo_class('active');
+@@ -511,12 +502,12 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+ 
+     vfunc_button_release_event() {
+         let event = Clutter.get_current_event();
+-        if (event.get_button() == 1 && !this._menuLayout._blockActivateEvent && this.pressed) {
++        if (event.get_button() === 1 && !this._menuLayout._blockActivateEvent && this.pressed) {
+             this.pressed = false;
+             this.activate(event);
+             this.remove_style_pseudo_class('active');
+         }
+-        if (event.get_button() == 3 && this.pressed) {
++        if (event.get_button() === 3 && this.pressed) {
+             this.pressed = false;
+             if (this.hasContextMenu)
+                 this.popupContextMenu();
+@@ -560,7 +551,7 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+             return Clutter.EVENT_PROPAGATE;
+ 
+         let symbol = keyEvent.keyval;
+-        if (symbol == Clutter.KEY_space || symbol == Clutter.KEY_Return) {
++        if (symbol === Clutter.KEY_space || symbol === Clutter.KEY_Return) {
+             this.activate(Clutter.get_current_event());
+             return Clutter.EVENT_STOP;
+         }
+@@ -568,18 +559,18 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+     }
+ 
+     vfunc_touch_event(event) {
+-        if (event.type == Clutter.EventType.TOUCH_END && !this._menuLayout._blockActivateEvent && this.pressed) {
++        if (event.type === Clutter.EventType.TOUCH_END && !this._menuLayout._blockActivateEvent && this.pressed) {
+             this.remove_style_pseudo_class('active');
+             this.activate(Clutter.get_current_event());
+             this.pressed = false;
+             return Clutter.EVENT_STOP;
+-        } else if (event.type == Clutter.EventType.TOUCH_BEGIN && !this._menuLayout.contextMenuManager.activeMenu) {
++        } else if (event.type === Clutter.EventType.TOUCH_BEGIN && !this._menuLayout.contextMenuManager.activeMenu) {
+             this.pressed = true;
+             this._menuLayout._blockActivateEvent = false;
+             if (this.hasContextMenu)
+                 this.contextMenuTimeOut();
+             this.add_style_pseudo_class('active');
+-        } else if (event.type == Clutter.EventType.TOUCH_BEGIN && this._menuLayout.contextMenuManager.activeMenu) {
++        } else if (event.type === Clutter.EventType.TOUCH_BEGIN && this._menuLayout.contextMenuManager.activeMenu) {
+             this.pressed = false;
+             this._menuLayout._blockActivateEvent = false;
+             this._menuLayout.contextMenuManager.activeMenu.toggle();
+@@ -608,7 +599,7 @@ var SearchMenuPopupBaseMenuItem = GObject.registerClass({
+     }
+ });
+ 
+-var Tooltip = class Arc_Menu_Tooltip {
++var Tooltip = class ArcMenuTooltip { // eslint-disable-line no-unused-vars
+     constructor(menuLayout, sourceActor, title, description) {
+         this._menuButton = menuLayout.menuButton;
+         this._settings = this._menuButton._settings;
+@@ -798,36 +789,37 @@ var Tooltip = class Arc_Menu_Tooltip {
+     }
+ };
+ 
+-var SearchResultItem = GObject.registerClass(class Arc_Menu_SearchResultItem extends SearchMenuPopupBaseMenuItem {
+-    _init(menuLayout, app, path) {
+-        super._init(menuLayout);
+-        this._menuLayout = menuLayout;
+-        this._app = app;
+-        this.hasContextMenu = !!this._app;
+-        this._path = path;
+-    }
+-
+-    _createIcon(iconSize) {
+-        return this._app.create_icon_texture(iconSize);
+-    }
++var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-vars
++    class ArcMenuSearchResultItem extends SearchMenuPopupBaseMenuItem {
++        _init(menuLayout, app, path) {
++            super._init(menuLayout);
++            this._menuLayout = menuLayout;
++            this._app = app;
++            this.hasContextMenu = !!this._app;
++            this._path = path;
++        }
+ 
+-    popupContextMenu() {
+-        if (this._app && this.contextMenu == undefined) {
+-            this.contextMenu = new ApplicationContextMenu(this.actor, this._app, this._menuLayout);
+-            if (this._path)
+-                this.contextMenu.path = this._path;
++        _createIcon(iconSize) {
++            return this._app.create_icon_texture(iconSize);
+         }
+-        if (this.contextMenu != undefined) {
+-            if (this.tooltip != undefined)
+-                this.tooltip.hide();
+-            if (!this.contextMenu.isOpen)
+-                this.contextMenu.redisplay();
+-            this.contextMenu.toggle();
++
++        popupContextMenu() {
++            if (this._app && this.contextMenu === undefined) {
++                this.contextMenu = new ApplicationContextMenu(this.actor, this._app, this._menuLayout);
++                if (this._path)
++                    this.contextMenu.path = this._path;
++            }
++            if (this.contextMenu !== undefined) {
++                if (this.tooltip !== undefined)
++                    this.tooltip.hide();
++                if (!this.contextMenu.isOpen)
++                    this.contextMenu.redisplay();
++                this.contextMenu.toggle();
++            }
+         }
+-    }
+-});
++    });
+ 
+-var SearchBox = class Arc_Menu_SearchBox {
++var SearchBox = class ArcMenuSearchBox {
+     constructor(menuLayout) {
+         this.menuLayout = menuLayout;
+         this.newSearch = this.menuLayout.newSearch;
+@@ -881,14 +873,14 @@ var SearchBox = class Arc_Menu_SearchBox {
+     }
+ 
+     _pushInput(searchString) {
+-        if (this._inputHistory.length == this._maxInputHistory)
++        if (this._inputHistory.length === this._maxInputHistory)
+             this._inputHistory.shift();
+ 
+         this._inputHistory.push(searchString);
+     }
+ 
+     _lastInput() {
+-        if (this._inputHistory.length != 0)
++        if (this._inputHistory.length !== 0)
+             return this._inputHistory[this._inputHistory.length - 1];
+ 
+         return '';
+@@ -923,16 +915,16 @@ var SearchBox = class Arc_Menu_SearchBox {
+     }
+ 
+     isEmpty() {
+-        return this._stEntry.get_text() == '';
++        return this._stEntry.get_text() === '';
+     }
+ 
+     _isActivated() {
+-        return this._stEntry.get_text() != '';
++        return this._stEntry.get_text() !== '';
+     }
+ 
+     _setClearIcon() {
+         this._stEntry.set_secondary_icon(this._clearIcon);
+-        if (this._searchIconClickedId == 0) {
++        if (this._searchIconClickedId === 0) {
+             this._searchIconClickedId = this._stEntry.connect('secondary-icon-clicked',
+                 this.clear.bind(this));
+         }
+@@ -946,14 +938,14 @@ var SearchBox = class Arc_Menu_SearchBox {
+         this._stEntry.set_secondary_icon(null);
+     }
+ 
+-    _onTextChanged(entryText) {
++    _onTextChanged(/* entryText*/) {
+         let searchString = this._stEntry.get_text();
+         this._pushInput(searchString);
+         if (this._isActivated()) {
+             this._setClearIcon();
+         } else {
+             this._unsetClearIcon();
+-            if (searchString == '' && this._previousInput() != '')
++            if (searchString === '' && this._previousInput() !== '')
+                 this.emit('cleared');
+ 
+ 
+@@ -963,8 +955,8 @@ var SearchBox = class Arc_Menu_SearchBox {
+ 
+     _onKeyPress(actor, event) {
+         let symbol = event.get_key_symbol();
+-        if (symbol == Clutter.KEY_Return ||
+-            symbol == Clutter.KEY_KP_Enter) {
++        if (symbol === Clutter.KEY_Return ||
++            symbol === Clutter.KEY_KP_Enter) {
+             if (!this.isEmpty()) {
+                 if (this.newSearch.getTopResult())
+                     this.newSearch.getTopResult().activate(event);
+@@ -976,7 +968,7 @@ var SearchBox = class Arc_Menu_SearchBox {
+         return Clutter.EVENT_PROPAGATE;
+     }
+ 
+-    _onKeyFocusIn(actor) {
++    _onKeyFocusIn(/* actor*/) {
+         this.emit('key-focus-in');
+         return Clutter.EVENT_PROPAGATE;
+     }
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index d1fb4a7..84b1357 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -23,16 +23,14 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Clutter, GLib, Gio, Gtk, Shell, St } = imports.gi;
++const { Clutter, St } = imports.gi;
+ const BaseMenuLayout = Me.imports.baseMenuLayout;
+-const Constants = Me.imports.constants;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const MW = Me.imports.menuWidgets;
+ const PopupMenu = imports.ui.popupMenu;
+-const Utils =  Me.imports.utils;
+ const _ = Gettext.gettext;
+ 
+-var createMenu = class extends BaseMenuLayout.BaseLayout {
++var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-line no-unused-vars
+     constructor(mainButton) {
+         super(mainButton);
+         this.searchMenu = mainButton.searchMenu;

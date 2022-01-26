@@ -1,0 +1,28 @@
+From: junho_lee3 <junho_lee3>
+Date: Mon, 19 Apr 2021 10:35:18 +0900
+Subject: [feat] Initial commit for gitignore
+
+ - add gitignore file
+
+[IMS] N/A
+---
+ .gitignore | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+ create mode 100644 .gitignore
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..26e1fcd
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,10 @@
++*.sw?
++*.gmo
++*gschemas.compiled
++obj-x86-linux-gnu/
++obj-x86_64-linux-gnu/
++debian/.debhelper
++debian/debhelper-build-stamp
++debian/gnome-shell-extensions/
++debian/gnome-shell-extensions.debhelper.log
++debian/gnome-shell-extensions.substvars

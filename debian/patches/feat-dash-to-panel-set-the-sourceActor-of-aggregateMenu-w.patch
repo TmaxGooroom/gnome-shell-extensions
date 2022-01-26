@@ -1,0 +1,68 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 11 Jun 2021 13:58:39 +0900
+Subject: [feat] dash-to-panel : set the sourceActor of aggregateMenu when
+ tray is disabled
+
+ - when the indicator is clicked, tray changes the sourceActor of popupMenu from aggregateMenu to indicator to set the position of box pointer.
+ - And this prevents that other indicators from being registered to the menu manager of panel when the tray is enabled
+ - So when disabling the tray, should change the sourceActor from one indicator to aggregateMenu
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 33 +++++++++++++++++++++------------
+ 1 file changed, 21 insertions(+), 12 deletions(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 04b2cee..10357b9 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -44,6 +44,7 @@ class Tray {
+         this._originalMenuItems.forEach(menuItem => {
+             this._menu.addMenuItem(menuItem);
+         });
++        this._menu.sourceActor = this._originalTray;
+     }
+ 
+     _clearMenu() {
+@@ -53,21 +54,29 @@ class Tray {
+         });
+     }
+ 
+-    _onTrayClicked(actor, event) {
+-        if (event.type() === Clutter.EventType.TOUCH_BEGIN ||
+-           event.type() === Clutter.EventType.BUTTON_PRESS) {
+-            this._clearMenu();
+-
+-            if (!actor.menu)
+-                return;
+-
+-            this._menu.addMenuItem(actor.menu);
+-            if (actor === this._originalTray._power)
+-                this._menu.addMenuItem(this._originalTray._system.menu);
++    _changeSourceIndicator(actor) {
++        this._clearMenu();
++        this._menu.addMenuItem(actor.menu);
++        this._menu.sourceActor = actor;
++    }
+ 
+-            this._menu.sourceActor = actor;
++    _onTrayClicked(actor, event) {
++        if (actor.menu &&
++          (event.type() === Clutter.EventType.TOUCH_BEGIN ||
++           event.type() === Clutter.EventType.BUTTON_PRESS)) {
++            this._changeSourceIndicator(actor);
+             this._menu.toggle(true);
++        } else if (actor.menu && (event.type() === Clutter.EventType.MOTION ||
++                    event.type() === Clutter.EventType.ENTER ||
++                    event.type() === Clutter.EventType.LEAVE)) {
++            if (this._menu.isOpen && this._menu.sourceActor !== actor) {
++                this._menu.close();
++                this._changeSourceIndicator(actor);
++                this._menu.open();
++            }
+         }
++
++        return Clutter.EVENT_STOP;
+     }
+ }
+ 

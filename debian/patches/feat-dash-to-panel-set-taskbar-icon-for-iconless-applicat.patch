@@ -1,0 +1,77 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 15 Jun 2021 14:06:06 +0900
+Subject: [feat] dash-to-panel : set taskbar icon for iconless application
+
+- if launched app has no desktop file, set TOS unknown icon as taskbar icon
+- add file unknown svg file
+
+[IMS] 261620
+---
+ extensions/dash-to-panel/appIcons.js          | 20 ++++++++++++++++++++
+ extensions/dash-to-panel/img/file_unknown.svg | 25 +++++++++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+ create mode 100644 extensions/dash-to-panel/img/file_unknown.svg
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 5a433ba..0ca8c54 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -138,6 +138,26 @@ var taskbarAppIcon = Utils.defineClass({
+ 
+         this.callParent('_init', appInfo.app, iconParams);
+ 
++        // If app does not have .desktop file, get_app_info() return null.
++        // we regard it iconless app. And set icon directly
++        // Also, if desktop file does not have icon, do same
++        let desktopAppInfo = appInfo.app.get_app_info();
++        if (!desktopAppInfo || !desktopAppInfo.get_icon()) {
++            this.icon._createIconTexture = function (size) {
++                if (this.icon)
++                    this.icon.destroy();
++
++                this.iconSize = size;
++                this.icon = new St.Icon({ icon_name: 'file-unknown',
++                    icon_size: size });
++
++                let path = `${Me.path}/img/file_unknown.svg`;
++                this.icon.set_gicon(Gio.Icon.new_for_string(path));
++                this._iconBin.set_child(this.icon);
++            };
++        }
++
++
+         Utils.wrapActor(this.icon);
+         Utils.wrapActor(this);
+ 
+diff --git a/extensions/dash-to-panel/img/file_unknown.svg b/extensions/dash-to-panel/img/file_unknown.svg
+new file mode 100644
+index 0000000..b398c30
+--- /dev/null
++++ b/extensions/dash-to-panel/img/file_unknown.svg
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="56px" height="56px" viewBox="0 0 56 56" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_app_ic/file_unknown</title>
++    <defs>
++        <linearGradient x1="90.782612%" y1="0.343926477%" x2="9.93779164%" y2="98.8510771%" id="linearGradient-1">
++            <stop stop-color="#FFFFFF" offset="0.00527871622%"></stop>
++            <stop stop-color="#F4F4F4" offset="100%"></stop>
++        </linearGradient>
++        <linearGradient x1="64.555861%" y1="0.20532974%" x2="35.5086639%" y2="99.6465687%" id="linearGradient-2">
++            <stop stop-color="#5C687A" offset="0%"></stop>
++            <stop stop-color="#515C6B" offset="100%"></stop>
++        </linearGradient>
++    </defs>
++    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="Group" transform="translate(-4.000000, -4.000000)">
++            <g transform="translate(4.000000, 4.000000)">
++                <path d="M54,0.5 C54.4142136,0.5 54.7892136,0.667893219 55.0606602,0.939339828 C55.3321068,1.21078644 55.5,1.58578644 55.5,2 L55.5,2 L55.5,41.7928932 L41.7928932,55.5 L2,55.5 C1.58578644,55.5 1.21078644,55.3321068 0.939339828,55.0606602 C0.667893219,54.7892136 0.5,54.4142136 0.5,54 L0.5,54 L0.5,2 C0.5,1.58578644 0.667893219,1.21078644 0.939339828,0.939339828 C1.21078644,0.667893219 1.58578644,0.5 2,0.5 L2,0.5 Z" id="Combined-Shape" stroke="#D3D8E0" fill="url(#linearGradient-1)"></path>
++                <g transform="translate(18.000000, 11.000000)" fill="url(#linearGradient-2)" id="?">
++                    <path d="M10,25.4545455 C10.6198347,25.4545455 11.1329201,25.2546229 11.5392562,24.8547778 C11.9455923,24.4549327 12.1487603,23.9500436 12.1487603,23.3401104 C12.1487603,22.0524736 12.6997245,20.8664924 13.8016529,19.7821667 L13.8016529,19.7821667 L17.0454545,16.8341563 C19.0151515,14.8552619 20,12.5239617 20,9.84025559 C20,8.51195663 19.7348485,7.25142802 19.2045455,6.05866976 C18.6742424,4.86591151 17.9545455,3.82224804 17.0454545,2.92767935 C16.1363636,2.03311066 15.0757576,1.32152193 13.8636364,0.792913157 C12.6515152,0.264304386 11.3636364,0 10,0 C8.63636364,0 7.34848485,0.25752735 6.13636364,0.772582051 C4.92424242,1.28763675 3.86363636,1.99244845 2.95454545,2.88701714 C2.04545455,3.78158583 1.32575758,4.8252493 0.795454545,6.01800755 C0.265151515,7.21076581 0,8.48484848 0,9.84025559 C0,10.4501888 0.203168044,10.9584665 0.609504132,11.3650886 C1.01584022,11.7717107 1.52892562,11.9750218 2.14876033,11.9750218 C2.45179063,11.9750218 2.73415978,11.9208055 2.99586777,11.8123729 C3.25757576,11.7039404 3.48484848,11.5514571 3.67768595,11.354923 C3.87052342,11.158389 4.02548209,10.9313583 4.14256198,10.673831 C4.25964187,10.4163036 4.31818182,10.1384452 4.31818182,9.84025559 C4.31818182,9.05411947 4.46625344,8.32219963 4.76239669,7.64449608 C5.05853994,6.96679253 5.46487603,6.37719043 5.98140496,5.87568981 C6.49793388,5.37418918 7.10055096,4.9777326 7.7892562,4.68632007 C8.47796143,4.39490754 9.21487603,4.24920128 10,4.24920128 C10.7713499,4.24920128 11.5013774,4.39829606 12.1900826,4.69648562 C12.8787879,4.99467519 13.481405,5.3979088 13.9979339,5.90618647 C14.5144628,6.41446413 14.9242424,7.00745474 15.2272727,7.68515829 C15.530303,8.36286185 15.6818182,9.08122761 15.6818182,9.84025559 C15.6818182,11.3583116 15.130854,12.6798335 14.0289256,13.8048214 L14.0289256,13.8048214 L10.785124,16.7731629 C8.815427,18.7113951 7.83057851,20.9003776 7.83057851,23.3401104 C7.83057851,23.9500436 8.03719008,24.4549327 8.45041322,24.8547778 C8.86363636,25.2546229 9.38016529,25.4545455 10,25.4545455 Z M10,33.5238095 C10.6858931,33.5238095 11.2700648,33.2825844 11.7525151,32.8001341 C12.2349653,32.3176839 12.4761905,31.7335122 12.4761905,31.047619 C12.4761905,30.3617259 12.2349653,29.7775542 11.7525151,29.295104 C11.2700648,28.8126537 10.6858931,28.5714286 10,28.5714286 C9.31410686,28.5714286 8.72993517,28.8126537 8.24748491,29.295104 C7.76503465,29.7775542 7.52380952,30.3617259 7.52380952,31.047619 C7.52380952,31.7335122 7.76503465,32.3176839 8.24748491,32.8001341 C8.72993517,33.2825844 9.31410686,33.5238095 10,33.5238095 Z"></path>
++                </g>
++                <path d="M42,56 L42,44 C42,42.8954305 42.8954305,42 44,42 L56,42 L42,56 Z" id="Combined-Shape" fill="#BCC1CA"></path>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file

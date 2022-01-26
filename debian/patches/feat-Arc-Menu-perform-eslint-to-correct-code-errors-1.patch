@@ -1,0 +1,158 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 6 Apr 2021 16:50:23 +0900
+Subject: [feat] Arc Menu : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/arc-menu/extension.js | 62 +++++++++++++++++++---------------------
+ 1 file changed, 30 insertions(+), 32 deletions(-)
+
+diff --git a/extensions/arc-menu/extension.js b/extensions/arc-menu/extension.js
+index 8903ff6..3736a99 100644
+--- a/extensions/arc-menu/extension.js
++++ b/extensions/arc-menu/extension.js
+@@ -23,30 +23,24 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const {GLib, Gio, St} = imports.gi;
+-const Constants = Me.imports.constants;
+ const Controller = Me.imports.controller;
+ const Convenience = Me.imports.convenience;
+ const Main = imports.ui.main;
+-const Util = imports.misc.util;
+-const Utils = Me.imports.utils;
+-
+ 
+ // Initialize panel button variables
+ let settings;
+ let settingsControllers;
+ let extensionChangedId;
+-let dockToggleID;
+ let dockExtension;
+ 
+ // Initialize menu language translations
+-function init(metadata) {
++function init(/* metadata*/) { // eslint-disable-line no-unused-vars
+     Convenience.initTranslations(Me.metadata['gettext-domain']);
+ }
+ 
+ // Enable the extension
+-function enable() {
+-    if(imports.gi.Meta.is_wayland_compositor())
++function enable() { // eslint-disable-line no-unused-vars
++    if (imports.gi.Meta.is_wayland_compositor())
+         Me.metadata.isWayland = true;
+     else
+         Me.metadata.isWayland = false;
+@@ -59,11 +53,10 @@ function enable() {
+     // dash to panel might get enabled after Arc-Menu
+     extensionChangedId = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+         if (extension.uuid === 'dash-to-panel@jderose9.github.com') {
+-            if (extension.state === 1){
++            if (extension.state === 1) {
+                 _connectDtpSignals();
+                 _enableButtons();
+-            }
+-            else if (extension.state === 2) {
++            } else if (extension.state === 2) {
+                 _disconnectDtpSignals();
+                 for (let i = settingsControllers.length - 1; i >= 0; --i) {
+                     let sc = settingsControllers[i];
+@@ -78,8 +71,8 @@ function enable() {
+ }
+ 
+ // Disable the extension
+-function disable() {
+-    if ( extensionChangedId > 0){
++function disable() { // eslint-disable-line no-unused-vars
++    if (extensionChangedId > 0) {
+         Main.extensionManager.disconnect(extensionChangedId);
+         extensionChangedId = 0;
+     }
+@@ -97,9 +90,9 @@ function disable() {
+ }
+ 
+ function _connectDtpSignals() {
+-    if (global.dashToPanel) {
++    if (global.dashToPanel)
+         global.dashToPanel._amPanelsCreatedId = global.dashToPanel.connect('panels-created', () => _enableButtons());
+-    }
++
+ }
+ 
+ function _disconnectDtpSignals() {
+@@ -109,16 +102,16 @@ function _disconnectDtpSignals() {
+     }
+ }
+ 
+-function _getDockExtensions(){
+-    let dashToDock = Main.extensionManager.lookup("dash-to-dock@micxgx.gmail.com");
+-    let ubuntuDash = Main.extensionManager.lookup("ubuntu-dock@ubuntu.com");
++function _getDockExtensions() {
++    let dashToDock = Main.extensionManager.lookup('dash-to-dock@micxgx.gmail.com');
++    let ubuntuDash = Main.extensionManager.lookup('ubuntu-dock@ubuntu.com');
+     let dock;
+-    if(dashToDock && dashToDock.stateObj && dashToDock.stateObj.dockManager){
++    if (dashToDock && dashToDock.stateObj && dashToDock.stateObj.dockManager)
+         dock = dashToDock;
+-    }
+-    if(ubuntuDash && ubuntuDash.stateObj && ubuntuDash.stateObj.dockManager){
++
++    if (ubuntuDash && ubuntuDash.stateObj && ubuntuDash.stateObj.dockManager)
+         dock = ubuntuDash;
+-    }
++
+     return dock;
+ }
+ 
+@@ -127,15 +120,15 @@ function _enableButtons() {
+     if (!dockExtension) {
+         let panelArray = global.dashToPanel ? global.dashToPanel.panels.map(pw => pw) : [Main.panel];
+         let iterLength = panelArray.length;
+-        for(var index = 0; index < iterLength; index++){
++        for (var index = 0; index < iterLength; index++) {
+             let panel = global.dashToPanel ? panelArray[index].panel : panelArray[index];
+             let panelParent = panelArray[index];
+ 
+-            let isPrimaryStandAlone = global.dashToPanel ? ('isPrimary' in panelParent && panelParent.isPrimary) && panelParent.isStandalone : false;
++            let isPrimaryStandAlone = global.dashToPanel ? 'isPrimary' in panelParent && panelParent.isPrimary && panelParent.isStandalone : false;
+ 
+-            if(isPrimaryStandAlone){
++            if (isPrimaryStandAlone)
+                 panel = Main.panel;
+-            }
++
+ 
+             if (panel.statusArea['ArcMenu'])
+                 continue;
+@@ -145,9 +138,8 @@ function _enableButtons() {
+             let settingsController = new Controller.MenuSettingsController(
+                 settings, settingsControllers, panel, index);
+ 
+-            if (global.dashToPanel) {
+-                panel._amDestroyId = panel.connect('destroy', () => extensionChangedId ? _disableButton(settingsController, 1) : null);
+-            }
++            if (global.dashToPanel)
++                panel._amDestroyId = panel.connect('destroy', () => onPanelDestroyed(settingsController));
+ 
+             settingsController.enableButton();
+             settingsController.bindSettingsChanges();
+@@ -164,7 +156,13 @@ function _disableButton(controller, remove) {
+ 
+     controller.destroy();
+ 
+-    if (remove) {
++    if (remove)
+         settingsControllers.splice(settingsControllers.indexOf(controller), 1);
+-    }
++
++}
++
++function onPanelDestroyed(settingsController) {
++    if (extensionChangedId)
++        _disableButton(settingsController, 1);
++
+ }

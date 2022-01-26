@@ -1,0 +1,93 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 28 Jul 2021 16:54:51 +0900
+Subject: [refactor] osk-hangul : change IIFE to a function that returning a
+ function
+
+ - change IIFE for syncKeyboard to a function that returning a function
+ - remove the global variable _syncKeyboard and make it as function
+   scope variable. If it is not connected with any signal, GC will
+   automatically destroy it.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 50 +++++++++++++++++++-------------------
+ 1 file changed, 25 insertions(+), 25 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 920f9e8..4b50dd5 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -25,8 +25,6 @@ let _originalSetActiveLayer = null;
+ let _originalCreateLayersForGroup = null;
+ let _originalSetAnimationWindow = null;
+ 
+-let _syncKeyboard = null;
+-
+ function _isKoreanCharactor(keyval) {
+     if (!keyval)
+         return false;
+@@ -160,32 +158,36 @@ function _enable() {
+     _resetKeyboardLayout(keyboard);
+ }
+ 
++// Synchronize with this extension and availability of on-screen-keyboard.
++// Encapsulate _isOSKEnabled so that it is not contaminated by external factors.
++function _getSyncKeyboardFunc() {
++    let _isOSKEnabled = false;
++    let keyboardManager = Main.keyboard;
++    function applyKoreanKeyboard() {
++        if (!_isOSKEnabled && keyboardManager._keyboard) {
++            _enable();
++            _isOSKEnabled = true;
++            _keyboardDestroyId = keyboardManager._keyboard.connect('destroy', () => {
++                _keyboardDestroyId = null;
++                _disable();
++                _isOSKEnabled = false;
++            });
++        }
++    }
++
++    return applyKoreanKeyboard;
++}
++
+ function enable() { // eslint-disable-line no-unused-vars
+     let keyboardManager = Main.keyboard;
+ 
+-    // Synchronize with this extension and availability of on-screen-keyboard.
+-    // Encapsulate _isOskEnabled so that it is not contaminated by external factors.
+-    _syncKeyboard = (function () {
+-        let _isOskEnabled = false;
+-        return function () {
+-            if (!_isOskEnabled && keyboardManager._keyboard) {
+-                _enable();
+-                _isOskEnabled = true;
+-                _keyboardDestroyId = keyboardManager._keyboard.connect('destroy', () => {
+-                    _keyboardDestroyId = null;
+-                    _disable();
+-                    _isOskEnabled = false;
+-                });
+-            }
+-        };
+-    })();
++    let syncKeyboard = _getSyncKeyboardFunc();
+ 
+-    _a11ySignalId = keyboardManager._a11yApplicationsSettings.connect_after('changed', _syncKeyboard);
+-    _touchModeNotifyId = keyboardManager._seat.connect_after('notify::touch-mode', _syncKeyboard);
+-    _lastDeviceChangedId = global.backend.connect_after('last-device-changed', _syncKeyboard);
++    _a11ySignalId = keyboardManager._a11yApplicationsSettings.connect_after('changed', syncKeyboard);
++    _touchModeNotifyId = keyboardManager._seat.connect_after('notify::touch-mode', syncKeyboard);
++    _lastDeviceChangedId = global.backend.connect_after('last-device-changed', syncKeyboard);
+ 
+-    keyboardManager._syncEnabled();
+-    _syncKeyboard();
++    syncKeyboard();
+ }
+ 
+ function _disable() {
+@@ -219,6 +221,4 @@ function disable() { // eslint-disable-line no-unused-vars
+     Main.keyboard._a11yApplicationsSettings.disconnect(_a11ySignalId);
+     Main.keyboard._seat.disconnect(_touchModeNotifyId);
+     global.backend.disconnect(_lastDeviceChangedId);
+-
+-    _syncKeyboard = null;
+ }

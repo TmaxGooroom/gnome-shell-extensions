@@ -1,0 +1,619 @@
+From: jungrae kim <jungrae_kim@tmax.co.kr>
+Date: Wed, 31 Mar 2021 16:19:01 +0900
+Subject: [feat] alternate-tab : add extension
+
+ - add alternate-tab
+
+[IMS] N/A
+---
+ extensions/alternate-tab/convenience.js   |  92 +++++++++++
+ extensions/alternate-tab/extension.js     |  65 ++++++++
+ extensions/alternate-tab/meson.build      |  10 ++
+ extensions/alternate-tab/metadata.json.in |  11 ++
+ extensions/alternate-tab/prefs.js         |  81 ++++++++++
+ extensions/alternate-tab/stylesheet.css   |  25 +++
+ extensions/alternate-tab/switcher.js      | 254 ++++++++++++++++++++++++++++++
+ meson.build                               |   3 +-
+ 8 files changed, 540 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/alternate-tab/convenience.js
+ create mode 100644 extensions/alternate-tab/extension.js
+ create mode 100644 extensions/alternate-tab/meson.build
+ create mode 100644 extensions/alternate-tab/metadata.json.in
+ create mode 100644 extensions/alternate-tab/prefs.js
+ create mode 100644 extensions/alternate-tab/stylesheet.css
+ create mode 100644 extensions/alternate-tab/switcher.js
+
+diff --git a/extensions/alternate-tab/convenience.js b/extensions/alternate-tab/convenience.js
+new file mode 100644
+index 0000000..e000f3f
+--- /dev/null
++++ b/extensions/alternate-tab/convenience.js
+@@ -0,0 +1,92 @@
++/* -*- mode: js; js-basic-offset: 4; indent-tabs-mode: nil -*- */
++/*
++  Copyright (c) 2011-2012, Giovanni Campagna <scampa.giovanni@gmail.com>
++
++  Redistribution and use in source and binary forms, with or without
++  modification, are permitted provided that the following conditions are met:
++    * Redistributions of source code must retain the above copyright
++      notice, this list of conditions and the following disclaimer.
++    * Redistributions in binary form must reproduce the above copyright
++      notice, this list of conditions and the following disclaimer in the
++      documentation and/or other materials provided with the distribution.
++    * Neither the name of the GNOME nor the
++      names of its contributors may be used to endorse or promote products
++      derived from this software without specific prior written permission.
++
++  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
++  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
++  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++*/
++
++const Gettext = imports.gettext;
++const Gio = imports.gi.Gio;
++
++const Config = imports.misc.config;
++const ExtensionUtils = imports.misc.extensionUtils;
++
++/**
++ * initTranslations:
++ * @domain: (optional): the gettext domain to use
++ *
++ * Initialize Gettext to load translations from extensionsdir/locale.
++ * If @domain is not provided, it will be taken from metadata['gettext-domain']
++ */
++function initTranslations(domain) {
++    let extension = ExtensionUtils.getCurrentExtension();
++
++    domain = domain || extension.metadata['gettext-domain'];
++
++    // check if this extension was built with "make zip-file", and thus
++    // has the locale files in a subfolder
++    // otherwise assume that extension has been installed in the
++    // same prefix as gnome-shell
++    let localeDir = extension.dir.get_child('locale');
++    if (localeDir.query_exists(null))
++        Gettext.bindtextdomain(domain, localeDir.get_path());
++    else
++        Gettext.bindtextdomain(domain, Config.LOCALEDIR);
++}
++
++/**
++ * getSettings:
++ * @schema: (optional): the GSettings schema id
++ *
++ * Builds and return a GSettings schema for @schema, using schema files
++ * in extensionsdir/schemas. If @schema is not provided, it is taken from
++ * metadata['settings-schema'].
++ */
++function getSettings(schema) {
++    let extension = ExtensionUtils.getCurrentExtension();
++
++    schema = schema || extension.metadata['settings-schema'];
++
++    const GioSSS = Gio.SettingsSchemaSource;
++
++    // check if this extension was built with "make zip-file", and thus
++    // has the schema files in a subfolder
++    // otherwise assume that extension has been installed in the
++    // same prefix as gnome-shell (and therefore schemas are available
++    // in the standard folders)
++    let schemaDir = extension.dir.get_child('schemas');
++    let schemaSource;
++    if (schemaDir.query_exists(null))
++        schemaSource = GioSSS.new_from_directory(schemaDir.get_path(),
++                                                 GioSSS.get_default(),
++                                                 false);
++    else
++        schemaSource = GioSSS.get_default();
++
++    let schemaObj = schemaSource.lookup(schema, true);
++    if (!schemaObj)
++        throw new Error('Schema ' + schema + ' could not be found for extension '
++                        + extension.metadata.uuid + '. Please check your installation.');
++
++    return new Gio.Settings({ settings_schema: schemaObj });
++}
+diff --git a/extensions/alternate-tab/extension.js b/extensions/alternate-tab/extension.js
+new file mode 100644
+index 0000000..3477edc
+--- /dev/null
++++ b/extensions/alternate-tab/extension.js
+@@ -0,0 +1,65 @@
++/* -*- mode: js; js-basic-offset: 4; indent-tabs-mode: nil -*- */
++
++const Clutter = imports.gi.Clutter;
++const Meta = imports.gi.Meta;
++const Shell = imports.gi.Shell;
++
++const ExtensionUtils = imports.misc.extensionUtils;
++const Me = ExtensionUtils.getCurrentExtension();
++const Switcher = Me.imports.switcher;
++
++const Main = imports.ui.main;
++const WindowManager = imports.ui.windowManager;
++
++let injections = {};
++
++function init(metadata) {
++}
++
++function setKeybinding(name, func) {
++    Main.wm.setCustomKeybindingHandler(name, Shell.ActionMode.NORMAL, func);
++}
++
++function enable() {
++    injections['_keyPressHandler'] = Switcher.WindowSwitcherPopup.prototype._keyPressHandler;
++    Switcher.WindowSwitcherPopup.prototype._keyPressHandler = function(keysym, action) {
++        switch(action) {
++            case Meta.KeyBindingAction.SWITCH_APPLICATIONS:
++              action = Meta.KeyBindingAction.SWITCH_WINDOWS;
++              break;
++            case Meta.KeyBindingAction.SWITCH_APPLICATIONS_BACKWARD:
++              action = Meta.KeyBindingAction.SWITCH_WINDOWS_BACKWARD;
++              break;
++        }
++        return injections['_keyPressHandler'].call(this, keysym, action);
++    };
++
++    Main.wm._forcedWindowSwitcher = function(display, window, binding) {
++        /* prevent a corner case where both popups show up at once */
++        if (this._workspaceSwitcherPopup != null)
++            this._workspaceSwitcherPopup.destroy();
++
++        let tabPopup = new Switcher.WindowSwitcherPopup();
++
++        if (!tabPopup.show(binding.is_reversed(), binding.get_name(), binding.get_mask()))
++            tabPopup.destroy();
++    };
++
++    setKeybinding('switch-applications',
++                  Main.wm._forcedWindowSwitcher.bind(Main.wm));
++    setKeybinding('switch-applications-backward',
++                  Main.wm._forcedWindowSwitcher.bind(Main.wm));
++}
++
++function disable() {
++    var prop;
++
++    setKeybinding('switch-applications',
++                  Main.wm._startSwitcher.bind(Main.wm));
++    setKeybinding('switch-applications-backward',
++                  Main.wm._startSwitcher.bind(Main.wm));
++
++    for (prop in injections)
++        Switcher.WindowSwitcherPopup.prototype[prop] = injections[prop];
++    delete Main.wm._forcedWindowSwitcher;
++}
+diff --git a/extensions/alternate-tab/meson.build b/extensions/alternate-tab/meson.build
+new file mode 100644
+index 0000000..3c5b5d7
+--- /dev/null
++++ b/extensions/alternate-tab/meson.build
+@@ -0,0 +1,10 @@
++extension_data += configure_file(
++  input: metadata_name + '.in',
++  output: metadata_name,
++  configuration: metadata_conf
++)
++
++extension_sources += files('prefs.js',
++  'switcher.js',
++  'convenience.js'
++)
+diff --git a/extensions/alternate-tab/metadata.json.in b/extensions/alternate-tab/metadata.json.in
+new file mode 100644
+index 0000000..15663f5
+--- /dev/null
++++ b/extensions/alternate-tab/metadata.json.in
+@@ -0,0 +1,11 @@
++{
++"extension-id": "@extension_id@",
++"uuid": "@uuid@",
++"settings-schema": "@gschemaname@",
++"gettext-domain": "@gettext_domain@",
++"name": "AlternateTab",
++"description": "Substitute Alt-Tab with a window based switcher that does not group by application.\nThis extension is part of Classic Mode and is officially supported by GNOME. Please do not report bugs using the form below, use GNOME's GitLab instance instead.",
++"original-authors": [  "jw@bargsten.org", "thomas.bouffon@gmail.com" ],
++"shell-version": [ "@shell_current@" ],
++"url": "@url@"
++}
+diff --git a/extensions/alternate-tab/prefs.js b/extensions/alternate-tab/prefs.js
+new file mode 100644
+index 0000000..3b9149e
+--- /dev/null
++++ b/extensions/alternate-tab/prefs.js
+@@ -0,0 +1,81 @@
++/* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
++
++const Gio = imports.gi.Gio;
++const Gtk = imports.gi.Gtk;
++const GObject = imports.gi.GObject;
++
++const Gettext = imports.gettext.domain('gnome-shell-extensions');
++const _ = Gettext.gettext;
++const N_ = e => e;
++
++const ExtensionUtils = imports.misc.extensionUtils;
++const Me = ExtensionUtils.getCurrentExtension();
++const Convenience = Me.imports.convenience;
++
++const SETTINGS_APP_ICON_MODE = 'app-icon-mode';
++const SETTINGS_CURRENT_WORKSPACE_ONLY = 'current-workspace-only';
++
++const MODES = {
++    'thumbnail-only': N_("Thumbnail only"),
++    'app-icon-only': N_("Application icon only"),
++    'both': N_("Thumbnail and application icon"),
++};
++
++const AltTabSettingsWidget = GObject.registerClass(
++class AltTabSettingsWidget extends Gtk.Grid {
++    _init(params) {
++        super._init(params);
++        this.margin = 24;
++        this.row_spacing = 6;
++        this.orientation = Gtk.Orientation.VERTICAL;
++
++        this._settings = new Gio.Settings({ schema_id: 'org.gnome.shell.window-switcher' });
++
++        let presentLabel = '<b>' + _("Present windows as") + '</b>';
++        this.add(new Gtk.Label({ label: presentLabel, use_markup: true,
++                                 halign: Gtk.Align.START }));
++
++        let align = new Gtk.Alignment({ left_padding: 12 });
++        this.add(align);
++
++        let grid = new Gtk.Grid({ orientation: Gtk.Orientation.VERTICAL,
++                                  row_spacing: 6,
++                                  column_spacing: 6 });
++        align.add(grid);
++
++        let radio = null;
++        let currentMode = this._settings.get_string(SETTINGS_APP_ICON_MODE);
++        for (let mode in MODES) {
++            // copy the mode variable because it has function scope, not block scope
++            // so cannot be used in a closure
++            let modeCapture = mode;
++            let name = Gettext.gettext(MODES[mode]);
++
++            radio = new Gtk.RadioButton({ group: radio, label: name, valign: Gtk.Align.START });
++            radio.connect('toggled', widget => {
++                if (widget.active)
++                    this._settings.set_string(SETTINGS_APP_ICON_MODE, modeCapture);
++            });
++            grid.add(radio);
++
++            if (mode == currentMode)
++                radio.active = true;
++        }
++
++        let check = new Gtk.CheckButton({ label: _("Show only windows in the current workspace"),
++                                          margin_top: 6 });
++        this._settings.bind(SETTINGS_CURRENT_WORKSPACE_ONLY, check, 'active', Gio.SettingsBindFlags.DEFAULT);
++        this.add(check);
++    }
++});
++
++function init() {
++    Convenience.initTranslations();
++}
++
++function buildPrefsWidget() {
++    let widget = new AltTabSettingsWidget();
++    widget.show_all();
++
++    return widget;
++}
+diff --git a/extensions/alternate-tab/stylesheet.css b/extensions/alternate-tab/stylesheet.css
+new file mode 100644
+index 0000000..7b7eeb7
+--- /dev/null
++++ b/extensions/alternate-tab/stylesheet.css
+@@ -0,0 +1,25 @@
++/* This extensions requires no special styling */
++.tos-item-box{
++	padding: 8px;
++  border-radius: 2px;
++}
++.tos-item-box:selected{
++	padding: 6px;
++
++	border : 2px solid #4689ff;
++}
++
++.tos-item-box:hover{
++	padding: 6px;
++	border : 2px solid rgba(10,64,217,0.7);
++}
++
++.tos-item-box:active{
++	padding : 6px;
++	background-color : rgba(10,64,217,0.3);
++	border: 2px solid #4689ff;
++}
++
++.tos-text-label{
++	padding: 0 0 2px 4px;
++}
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+new file mode 100644
+index 0000000..1cdd9a8
+--- /dev/null
++++ b/extensions/alternate-tab/switcher.js
+@@ -0,0 +1,254 @@
++// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++/* exported AppSwitcherPopup, GroupCyclerPopup, WindowSwitcherPopup,
++            WindowCyclerPopup */
++
++const { Atk, Clutter, Gio, GLib, GObject, Meta, Shell, St } = imports.gi;
++
++const Main = imports.ui.main;
++const SwitcherPopup = imports.ui.switcherPopup;
++
++var APP_ICON_HOVER_TIMEOUT = 200; // milliseconds
++
++var THUMBNAIL_DEFAULT_SIZE = 256;
++var THUMBNAIL_POPUP_TIME = 500; // milliseconds
++var THUMBNAIL_FADE_TIME = 100; // milliseconds
++
++var WINDOW_PREVIEW_SIZE = 128;
++var APP_ICON_SIZE = 96;
++var APP_ICON_SIZE_SMALL = 48;
++
++const baseIconSizes = [96, 64, 48, 32, 22];
++
++var AppIconMode = {
++    THUMBNAIL_ONLY: 1,
++    APP_ICON_ONLY: 2,
++    BOTH: 3,
++};
++
++function _createWindowClone(window, size) {
++    let [width, height] = window.get_size();
++    let scale = Math.min(1.0, size / width, size / height);
++    return new Clutter.Clone({ source: window,
++                               width: width * scale,
++                               height: height * scale,
++                               x_align: Clutter.ActorAlign.CENTER,
++                               y_align: Clutter.ActorAlign.CENTER,
++                               // usual hack for the usual bug in ClutterBinLayout...
++                               x_expand: true,
++                               y_expand: true });
++}
++
++function getWindows(workspace) {
++    // We ignore skip-taskbar windows in switchers, but if they are attached
++    // to their parent, their position in the MRU list may be more appropriate
++    // than the parent; so start with the complete list ...
++    let windows = global.display.get_tab_list(Meta.TabList.NORMAL_ALL,
++                                              workspace);
++    // ... map windows to their parent where appropriate ...
++    return windows.map(w => {
++        return w.is_attached_dialog() ? w.get_transient_for() : w;
++    // ... and filter out skip-taskbar windows and duplicates
++    }).filter((w, i, a) => !w.skip_taskbar && a.indexOf(w) == i);
++}
++
++var WindowSwitcherPopup = GObject.registerClass(
++class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
++    _init() {
++        super._init();
++        this._settings = new Gio.Settings({ schema_id: 'org.gnome.shell.window-switcher' });
++
++        let windows = this._getWindowList();
++
++        let mode = this._settings.get_enum('app-icon-mode');
++        this._switcherList = new WindowSwitcher(windows, mode);
++        this._items = this._switcherList.icons;
++    }
++
++    _getWindowList() {
++        let workspace = null;
++
++        if (this._settings.get_boolean('current-workspace-only')) {
++            let workspaceManager = global.workspace_manager;
++
++            workspace = workspaceManager.get_active_workspace();
++        }
++
++        return getWindows(workspace);
++    }
++
++    _closeWindow(windowIndex) {
++        let windowIcon = this._items[windowIndex];
++        if (!windowIcon)
++            return;
++
++        windowIcon.window.delete(global.get_current_time());
++    }
++
++    _keyPressHandler(keysym, action) {
++        if (action == Meta.KeyBindingAction.SWITCH_WINDOWS)
++            this._select(this._next());
++        else if (action == Meta.KeyBindingAction.SWITCH_WINDOWS_BACKWARD)
++            this._select(this._previous());
++        else if (keysym == Clutter.KEY_Left)
++            this._select(this._previous());
++        else if (keysym == Clutter.KEY_Right)
++            this._select(this._next());
++        else if (keysym === Clutter.KEY_w || keysym === Clutter.KEY_W || keysym === Clutter.KEY_F4)
++            this._closeWindow(this._selectedIndex);
++        else
++            return Clutter.EVENT_PROPAGATE;
++
++        return Clutter.EVENT_STOP;
++    }
++
++    _finish() {
++        Main.activateWindow(this._items[this._selectedIndex].window);
++
++        super._finish();
++    }
++});
++
++var WindowIcon = GObject.registerClass(
++class WindowIcon extends St.BoxLayout {
++    _init(window, mode) {
++        super._init({ style_class: 'alt-tab-app',
++                      vertical: true });
++
++        this.window = window;
++
++        this._icon = new St.Widget({ layout_manager: new Clutter.BinLayout() });
++
++        this.add_child(this._icon);
++        this.label = new St.Label({ text: window.get_title() });
++
++        let tracker = Shell.WindowTracker.get_default();
++        this.app = tracker.get_window_app(window);
++
++        let mutterWindow = this.window.get_compositor_private();
++        let size;
++
++        this._icon.destroy_all_children();
++
++        let scaleFactor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
++
++        switch (mode) {
++        case AppIconMode.THUMBNAIL_ONLY:
++            size = WINDOW_PREVIEW_SIZE;
++            this._icon.add_actor(_createWindowClone(mutterWindow, size * scaleFactor));
++            break;
++
++        case AppIconMode.BOTH:
++            size = WINDOW_PREVIEW_SIZE;
++            this._icon.add_actor(_createWindowClone(mutterWindow, size * scaleFactor));
++
++            if (this.app) {
++                this._icon.add_actor(this._createAppIcon(this.app,
++                                                         APP_ICON_SIZE_SMALL));
++            }
++            break;
++
++        case AppIconMode.APP_ICON_ONLY:
++            size = APP_ICON_SIZE;
++            this._icon.add_actor(this._createAppIcon(this.app, size));
++        }
++
++        this._icon.set_size(size * scaleFactor, size * scaleFactor);
++    }
++
++    _createAppIcon(app, size) {
++        let appIcon = app
++            ? app.create_icon_texture(size)
++            : new St.Icon({ icon_name: 'icon-missing', icon_size: size });
++        appIcon.x_expand = appIcon.y_expand = true;
++        appIcon.x_align = appIcon.y_align = Clutter.ActorAlign.END;
++
++        return appIcon;
++    }
++});
++
++var WindowSwitcher = GObject.registerClass(
++class WindowSwitcher extends SwitcherPopup.SwitcherList {
++    _init(windows, mode) {
++        super._init(true);
++
++        this._label = new St.Label({ x_align: Clutter.ActorAlign.CENTER,
++                                     y_align: Clutter.ActorAlign.CENTER });
++        this.add_actor(this._label);
++
++        this.windows = windows;
++        this.icons = [];
++
++        for (let i = 0; i < windows.length; i++) {
++            let win = windows[i];
++            let icon = new WindowIcon(win, mode);
++
++            this.addItem(icon, icon.label);
++            this.icons.push(icon);
++
++            icon._unmanagedSignalId = icon.window.connect('unmanaged', window => {
++                this._removeWindow(window);
++            });
++        }
++
++        this.connect('destroy', this._onDestroy.bind(this));
++    }
++
++    _onDestroy() {
++        this.icons.forEach(icon => {
++            icon.window.disconnect(icon._unmanagedSignalId);
++        });
++    }
++
++    vfunc_get_preferred_height(forWidth) {
++        let [minHeight, natHeight] = super.vfunc_get_preferred_height(forWidth);
++
++        let spacing = this.get_theme_node().get_padding(St.Side.BOTTOM);
++        let [labelMin, labelNat] = this._label.get_preferred_height(-1);
++
++        minHeight += labelMin + spacing;
++        natHeight += labelNat + spacing;
++
++        return [minHeight, natHeight];
++    }
++
++    vfunc_allocate(box) {
++        let themeNode = this.get_theme_node();
++        let contentBox = themeNode.get_content_box(box);
++        const labelHeight = this._label.height;
++        const totalLabelHeight =
++            labelHeight + themeNode.get_padding(St.Side.BOTTOM);
++
++        box.y2 -= totalLabelHeight;
++        super.vfunc_allocate(box);
++
++        // Hooking up the parent vfunc will call this.set_allocation() with
++        // the height without the label height, so call it again with the
++        // correct size here.
++        box.y2 += totalLabelHeight;
++        this.set_allocation(box);
++
++        const childBox = new Clutter.ActorBox();
++        childBox.x1 = contentBox.x1;
++        childBox.x2 = contentBox.x2;
++        childBox.y2 = contentBox.y2;
++        childBox.y1 = childBox.y2 - labelHeight;
++        this._label.allocate(childBox);
++    }
++
++    highlight(index, justOutline) {
++        super.highlight(index, justOutline);
++
++        this._label.set_text(index == -1 ? '' : this.icons[index].label.text);
++    }
++
++    _removeWindow(window) {
++        let index = this.icons.findIndex(icon => {
++            return icon.window == window;
++        });
++        if (index === -1)
++            return;
++
++        this.icons.splice(index, 1);
++        this.removeItem(index);
++    }
++});
+diff --git a/meson.build b/meson.build
+index e95182b..6033ff3 100644
+--- a/meson.build
++++ b/meson.build
+@@ -46,7 +46,8 @@ tos_extensions = [
+   #  'dash-to-panel',
+   'notification-center',
+   #  'appindicator',
+-  'desktop-icons-ng'
++  'desktop-icons-ng',
++  'alternate-tab'
+ ]
+ 
+ 

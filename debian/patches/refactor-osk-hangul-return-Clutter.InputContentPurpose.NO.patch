@@ -1,0 +1,30 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 8 Oct 2021 12:10:29 +0900
+Subject: [refactor] osk-hangul : return Clutter.InputContentPurpose.NORMAL as
+ default value for util function
+
+ - instead of returning 0, add default return value for
+   `changeIBusPurposeToClutterPurpose` to indicte that the ibus purpose
+   cannot be converted to clutter input purpose.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/utils.js | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/osk-hangul/utils.js b/extensions/osk-hangul/utils.js
+index 1371ddd..3655b92 100644
+--- a/extensions/osk-hangul/utils.js
++++ b/extensions/osk-hangul/utils.js
+@@ -38,7 +38,10 @@ function changeIBusPurposeToClutterPurpose(ibusPurpose) {
+         return Clutter.InputContentPurpose.NAME;
+     case IBus.InputPurpose.PASSWORD:
+         return Clutter.InputContentPurpose.PASSWORD;
++    default: {
++        log("can't change, return default value");
++        return Clutter.InputContentPurpose.NORMAL;
+     }
+ 
+-    return 0;
++    }
+ }

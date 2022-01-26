@@ -1,0 +1,45 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Mon, 1 Nov 2021 12:13:04 +0900
+Subject: [feat] Arcmenu : Apply focus effect on arcmenu Button.
+
+- Follow Tos GUI guideline.
+- Modify menubutton.js, stylesheet.css
+
+[IMS] 273065
+---
+ extensions/arc-menu/menuButton.js  | 2 ++
+ extensions/arc-menu/stylesheet.css | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index 7aa0a47..56504c7 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -450,6 +450,7 @@ var ArcMenu = class ArcMenu extends PopupMenu.PopupMenu {
+             if (this._menuButton.dtpPanel.intellihide)
+                 this._menuButton.dtpPanel.intellihide.revealAndHold(2);
+         }
++        this._menuButton.set_style_pseudo_class('active');
+         this._onOpenEvent();
+         super.open(animation);
+     }
+@@ -459,6 +460,7 @@ var ArcMenu = class ArcMenu extends PopupMenu.PopupMenu {
+             this._menuButton.contextMenuManager.activeMenu.toggle();
+         if (this._menuButton.subMenuManager.activeMenu)
+             this._menuButton.subMenuManager.activeMenu.toggle();
++        this._menuButton.remove_style_pseudo_class('active');
+         super.close(animation);
+     }
+ 
+diff --git a/extensions/arc-menu/stylesheet.css b/extensions/arc-menu/stylesheet.css
+index 8024c54..1884f49 100644
+--- a/extensions/arc-menu/stylesheet.css
++++ b/extensions/arc-menu/stylesheet.css
+@@ -28,6 +28,7 @@ width:11px;
+ }
+ 
+ .arc-menu-panel-menu:active{
++background-color: #3961ca;
+ }
+ 
+ StScrollView .small-vfade{

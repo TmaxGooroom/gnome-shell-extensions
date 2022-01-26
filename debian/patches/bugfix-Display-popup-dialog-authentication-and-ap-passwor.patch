@@ -1,0 +1,96 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 14 Oct 2021 17:00:09 +0900
+Subject: [bugfix] Display popup dialog (authentication and ap password) on
+ the lock screen.
+
+- Create new AuthenticationAgent to display authentication dialog when changing network settings on the lock screen.
+- Add networkAgent to show AP password popup on the lock screen.
+
+[IMS] 267037
+---
+ extensions/greeter/extension.js | 44 +++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 42 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index bc41d41..8a273d7 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -17,13 +17,14 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Shell } = imports.gi;
++const { GObject, Shell } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ const LoginManager = imports.misc.loginManager;
+ const _ = imports.gettext.gettext;
+ 
+ const SessionMode = imports.ui.sessionMode;
++const PolkitAgent = imports.ui.components.polkitAgent;
+ 
+ let windowVisibilityMap = new Map();
+ 
+@@ -144,6 +145,39 @@ function _connectLockedChangedSignal() {
+     });
+ }
+ 
++var TosAuthenticationAgent = GObject.registerClass(
++class TosAuthenticationAgent extends PolkitAgent.AuthenticationAgent {
++    _onInitiate(nativeAgent, actionId, message, iconName, cookie, userNames) {
++        if (Main.sessionMode.currentMode === 'unlock-dialog' &&
++            actionId === 'org.freedesktop.NetworkManager.settings.modify.system') {
++            this._currentDialog = new PolkitAgent.AuthenticationDialog(actionId, message, cookie, userNames);
++            this._currentDialog.connect('done', this._onDialogDone.bind(this));
++            return;
++        }
++
++        super._onInitiate(nativeAgent, actionId, message, iconName, cookie, userNames);
++    }
++});
++
++function _replaceWithTosAuthenticationAgent() {
++    // Remove old AuthenticationAgent
++    let componentManager = Main.componentManager;
++    let component = componentManager._allComponents['polkitAgent'];
++    if (!component)
++        return;
++
++    if (component instanceof TosAuthenticationAgent)
++        return;
++
++    component.disable();
++    delete componentManager._allComponents['polkitAgent'];
++
++    // Create new AuthenticationAgent and replace with it
++    PolkitAgent.Component = TosAuthenticationAgent;
++    componentManager._allComponents['polkitAgent'] = new TosAuthenticationAgent();
++    componentManager._allComponents['polkitAgent'].enable();
++}
++
+ function enable() { // eslint-disable-line no-unused-vars
+     if (!LoginManager.canLock())
+         return;
+@@ -179,6 +213,10 @@ function enable() { // eslint-disable-line no-unused-vars
+         params.allowExtensions = true;
+         params.hasWindows = true;
+         params.enabledExtensions = ['greeter@tmax-shell-extensions', 'osk-hangul@tmax-shell-extensions'];
++        // Add networkAgent to show AP password popup on the lock screen
++        if (!params.components)
++            params.components = [];
++        params.components.push('networkAgent');
+ 
+         Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
+ 
+@@ -187,8 +225,10 @@ function enable() { // eslint-disable-line no-unused-vars
+ 
+         if (Main.sessionMode.currentMode === 'unlock-dialog')
+             _connectLockedChangedSignal();
++
++        // To display authentication dialog when changing network settings on the lock screen.
++        _replaceWithTosAuthenticationAgent();
+     }
+ }
+-
+ function disable() { // eslint-disable-line no-unused-vars
+ }

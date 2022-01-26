@@ -1,0 +1,35 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 26 Jul 2021 17:55:19 +0900
+Subject: [feat] Greeter: Change logic when display is converted to idle state
+
+- There is no need to return to the user selection screen as before.
+- Override so that nothing is handled in the cancel function.
+
+[IMS] N/A
+---
+ extensions/greeter/loginDialog.js | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 938149d..e50d78c 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -143,6 +143,18 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         }
+     }
+ 
++    _loginScreenSessionActivated() {
++        if (!this._user) {
++            this._authPrompt.cancel();
++            return;
++        }
++
++        this._authPrompt.cancel();
++        this._changeUser(this._user);
++    }
++
++    cancel() {}
++
+     open() {
+         Main.ctrlAltTabManager.addGroup(this,
+             _('Login Window'),

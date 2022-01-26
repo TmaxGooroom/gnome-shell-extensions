@@ -1,0 +1,267 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 12 Oct 2021 11:45:31 +0900
+Subject: [feat] Modify to enable network setup on the lock screen.
+
+- Change layer of screen shield group.
+- Enable network section of panel aggregate menu.
+- Add menu item to network section that run 'nm-connection-editor'.
+- On the lock screen, all windows except the network setting window are minimized.
+- When switching to the user session, the minimized windows are shown again.
+
+[IMS] 267037
+---
+ extensions/greeter/extension.js    | 169 +++++++++++++++++++++++++++++--------
+ extensions/greeter/unlockDialog.js |  28 ++++++
+ 2 files changed, 164 insertions(+), 33 deletions(-)
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index c01b854..bc41d41 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -17,36 +17,130 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
++const { Shell } = imports.gi;
++
+ const Main = imports.ui.main;
+ const LoginManager = imports.misc.loginManager;
+ const _ = imports.gettext.gettext;
+ 
+ const SessionMode = imports.ui.sessionMode;
+ 
++let windowVisibilityMap = new Map();
++
++let _startupCompleteSignalId = 0;
++let _lockedChangedSignalId = 0;
++let _sessionModeUpdatedSignalId = 0;
++
+ function init(/* metadata*/) { // eslint-disable-line no-unused-vars
+ }
+ 
++function _getDeviceStatusItem() {
++    let network = Main.panel.statusArea['aggregateMenu']._network;
++
++    let wiredSection = network._devices['wired'];
++    if (!wiredSection.getSensitive())
++        return null;
++
++    let deviceSection = wiredSection.section;
++    let deviceStatusItem = deviceSection.firstMenuItem;
++
++    return deviceStatusItem;
++}
++
+ function _enableNetworkSettings() {
+-    // NOTE(210803, sohee): Receives 'startup-complete' signal
+-    // to customize the panel network menus after completing gnome-shell panel network setup.
+-    Main.layoutManager.connect('startup-complete', () => {
+-        // enable network section of panel
+-        let network = Main.panel.statusArea['aggregateMenu']._network;
+-        network.menu.setSensitive(true);
+-
+-        let wiredSection = network._devices['wired'];
+-        if (!wiredSection.getSensitive())
+-            return;
++    // enable network section of panel
++    let network = Main.panel.statusArea['aggregateMenu']._network;
++    network.menu.setSensitive(true);
+ 
+-        let deviceSection = wiredSection.section;
+-        let deviceStatusItem = deviceSection.firstMenuItem;
+-        if (!deviceStatusItem)
+-            return;
++    let deviceStatusItem = _getDeviceStatusItem();
++    if (!deviceStatusItem)
++        return;
+ 
+-        // add 'network setting' menu item
+-        let networkSettingsItem = deviceStatusItem.menu.addSettingsAction(
++    // add 'network setting' menu item
++    let networkSettingsItem = deviceStatusItem.menu._settingsActions['nm-connection-editor.desktop'];
++    if (!networkSettingsItem) {
++        let item = deviceStatusItem.menu.addSettingsAction(
+             _('Network Settings'), 'nm-connection-editor.desktop');
++        item.visible = true;
++    } else {
+         networkSettingsItem.visible = true;
++    }
++}
++
++function _showNonNetworkWindows(visible) {
++    let tracker = Shell.WindowTracker.get_default();
++    let windows = global.get_window_actors();
++
++    for (let i = 0; i < windows.length; i++) {
++        let metaWindow = windows[i].metaWindow;
++        let app = tracker.get_window_app(metaWindow);
++        if (!app)
++            continue;
++
++        if (app.get_id() === 'nm-connection-editor.desktop')
++            continue;
++
++        if (visible) {
++            let exist = windowVisibilityMap.has(metaWindow);
++            if (!exist)
++                continue;
++
++            let wasVisible = windowVisibilityMap.get(metaWindow);
++            if (wasVisible)
++                metaWindow.unminimize();
++        } else {
++            windowVisibilityMap.set(metaWindow, !metaWindow.minimized);
++            metaWindow.minimize();
++        }
++    }
++}
++
++function _showNetworkWindowsOnly() {
++    _showNonNetworkWindows(false);
++}
++
++function _showAllWindows() {
++    _showNonNetworkWindows(true);
++}
++
++function _connectSessionUpdatedSignal() {
++    if (_sessionModeUpdatedSignalId !== 0)
++        return;
++
++    _sessionModeUpdatedSignalId = Main.sessionMode.connect('updated', () => {
++        let currentMode = Main.sessionMode.currentMode;
++
++        if (currentMode === 'unlock-dialog') {
++            _showNetworkWindowsOnly();
++        } else if (currentMode === 'tos') {
++            // When logging in from the lock screen,
++            // all session mode parameters(including unlockDialog) are initialized.
++            // Therefore, if session mode is tos, the unlockDialog must be reset.
++            Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
++
++            _showAllWindows();
++            windowVisibilityMap.clear();
++        }
++    });
++}
++
++function _connectLockedChangedSignal() {
++    if (_lockedChangedSignalId !== 0)
++        return;
++
++    _lockedChangedSignalId = Main.screenShield.connect('locked-changed', () => {
++        let currentMode = Main.sessionMode.currentMode;
++        if (currentMode === 'unlock-dialog') {
++            _enableNetworkSettings();
++        } else {
++            let deviceStatusItem = _getDeviceStatusItem();
++            if (!deviceStatusItem)
++                return;
++
++            let networkSettingsItem = deviceStatusItem.menu._settingsActions['nm-connection-editor.desktop'];
++            if (networkSettingsItem)
++                networkSettingsItem.visible = false;
++        }
+     });
+ }
+ 
+@@ -54,36 +148,45 @@ function enable() { // eslint-disable-line no-unused-vars
+     if (!LoginManager.canLock())
+         return;
+ 
++    // In order to display the network setting window above the login screen,
++    // change the screen shield group layer.
++    let ssg = Main.screenShield.actor;
++    let uiGroup = Main.layoutManager.uiGroup;
++    if (uiGroup.contains(ssg)) {
++        Main.layoutManager.removeChrome(ssg);
++        Main.layoutManager._backgroundGroup.add_child(ssg);
++    }
++
++    Main.screenShield._becomeModal = () => {
++        return true;
++    };
++
+     if (Main.sessionMode.isGreeter) {
+         Main.sessionMode.unlockDialog = Me.imports.loginDialog.LoginDialog;
+ 
+-        let screenShieldGroup = Main.screenShield.actor;
+-        Main.layoutManager.removeChrome(screenShieldGroup);
+-        Main.layoutManager._backgroundGroup.add_child(screenShieldGroup);
++        // NOTE(210803, sohee): Receives 'startup-complete' signal
++        // to customize the panel network menus after completing gnome-shell panel network setup.
++        if (_startupCompleteSignalId !== 0)
++            return;
+ 
+-        Main.screenShield._becomeModal = () => {
+-            return true;
+-        };
++        _startupCompleteSignalId = Main.layoutManager.connect('startup-complete', () => {
++            _enableNetworkSettings();
++        });
+ 
+-        _enableNetworkSettings();
+     } else {
+         // unlock dialog mode settings
+         let params = SessionMode._modes['unlock-dialog'];
+         params.allowExtensions = true;
++        params.hasWindows = true;
+         params.enabledExtensions = ['greeter@tmax-shell-extensions', 'osk-hangul@tmax-shell-extensions'];
+ 
+-        // When logging in from the lock screen,
+-        // all session mode parameters(including unlockDialog) are initialized.
+-        // Therefore, if session mode is tos, the unlockDialog must be reset.
+-        Main.sessionMode.connect('updated', () => {
+-            let currentMode = Main.sessionMode.currentMode;
+-            if (currentMode !== 'tos')
+-                return;
++        Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
+ 
+-            Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
+-        });
++        if (Main.sessionMode.currentMode === 'tos')
++            _connectSessionUpdatedSignal();
+ 
+-        Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
++        if (Main.sessionMode.currentMode === 'unlock-dialog')
++            _connectLockedChangedSignal();
+     }
+ }
+ 
+diff --git a/extensions/greeter/unlockDialog.js b/extensions/greeter/unlockDialog.js
+index 1437f52..f313022 100644
+--- a/extensions/greeter/unlockDialog.js
++++ b/extensions/greeter/unlockDialog.js
+@@ -24,4 +24,32 @@ var UnlockDialog = GObject.registerClass(class UnlockDialog extends GnomeUnlockD
+         this._authPrompt.reset();
+         this._authPrompt.updateSensitivity(true);
+     }
++
++    open() {
++        this.show();
++
++        if (this._isModal)
++            return true;
++
++        /*  Remove the modal push code in this position to float network setup window.
++        let modalParams = {
++            timestamp,
++            actionMode: Shell.ActionMode.UNLOCK_SCREEN,
++        };
++        if (!Main.pushModal(this, modalParams))
++            return false;
++        */
++
++        this._isModal = true;
++
++        return true;
++    }
++
++    popModal() {
++        if (this._isModal) {
++            // Since the modal push code has been deleted, delete modal pop code as well.
++            // Main.popModal(this, timestamp);
++            this._isModal = false;
++        }
++    }
+ });

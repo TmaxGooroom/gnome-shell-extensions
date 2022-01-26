@@ -1,0 +1,146 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 18 May 2021 16:38:12 +0900
+Subject: [feat] Arc Menu : Remove new label in recently installed app item
+
+- Remove new label
+- Delete recently-installed-apps gsetting value in schema
+
+[IMS] N/A
+---
+ extensions/arc-menu/controller.js                  |  1 -
+ extensions/arc-menu/menuButton.js                  | 15 +----------
+ extensions/arc-menu/menuLayout.js                  |  1 -
+ extensions/arc-menu/menuWidgets.js                 | 31 ----------------------
+ .../org.gnome.shell.extensions.arcmenu.gschema.xml |  5 ----
+ 5 files changed, 1 insertion(+), 52 deletions(-)
+
+diff --git a/extensions/arc-menu/controller.js b/extensions/arc-menu/controller.js
+index 4b1c364..a0f3cb4 100644
+--- a/extensions/arc-menu/controller.js
++++ b/extensions/arc-menu/controller.js
+@@ -69,7 +69,6 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+     bindSettingsChanges() {
+         this.settingsChangeIds = [
+             this._settings.connect('changed::hot-corners', this._updateHotCornerManager.bind(this)),
+-            this._settings.connect('changed::recently-installed-apps', this._reload.bind(this)),
+             this._settings.connect('changed::pinned-app-list', this._updateFavorites.bind(this)),
+             this._settings.connect('changed::position-in-panel', this._setButtonPosition.bind(this)),
+         ];
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index bc5f427..8471270 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -107,20 +107,7 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+         this._appList = this.listAllApps();
+         // Update Categories on 'installed-changed' event-------------------------------------
+         this._installedChangedId = appSys.connect('installed-changed', () => {
+-            this._newAppList = this.listAllApps();
+-
+-            // Filter to find if a new application has been installed
+-            let newApps = this._newAppList.filter(app => !this._appList.includes(app));
+-
+-            // A New Application has been installed
+-            // Save it in settings
+-            if (newApps.length) {
+-                let recentApps = this._settings.get_strv('recently-installed-apps');
+-                let newRecentApps = [...new Set(recentApps.concat(newApps))];
+-                this._settings.set_strv('recently-installed-apps', newRecentApps);
+-            }
+-
+-            this._appList = this._newAppList;
++            this._appList = this.listAllApps();
+         });
+         this._setMenuPositionAlignment();
+ 
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index 46e9e70..39ef2ee 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -144,7 +144,6 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+             vertical: true,
+             y_align: Clutter.ActorAlign.START,
+         });
+-        this.recentAppsBox.style = 'width: 100px; margin-bottom: 20px;';
+         this.applicationsBox.add_actor(this.recentAppsBox);
+ 
+         this.allAppsBox = new St.BoxLayout({
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index 086d0d1..f13c39b 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -1692,8 +1692,6 @@ var ApplicationMenuItem = GObject.registerClass(class ArcMenuApplicationMenuItem
+         this._settings = this._menuLayout._settings;
+         this._isIconGrid = isIconGrid;
+         this.hasContextMenu = true;
+-        let recentApps = this._settings.get_strv('recently-installed-apps');
+-        this.isRecentlyInstalled = recentApps.some(element => element === this._app.get_id());
+ 
+         this._iconBin = new St.Bin();
+         this.box.add_child(this._iconBin);
+@@ -1709,18 +1707,6 @@ var ApplicationMenuItem = GObject.registerClass(class ArcMenuApplicationMenuItem
+ 
+         this.box.label_actor = this.label;
+ 
+-        if (this.isRecentlyInstalled) {
+-            this._indicator = new St.Label({
+-                text: _('New'),
+-                style_class: 'arc-menu-menu-item-text-indicator',
+-                style: 'border-radius: 15px; margin: 0px; padding: 0px 10px;',
+-                x_expand: true,
+-                x_align: Clutter.ActorAlign.END,
+-                y_align: Clutter.ActorAlign.CENTER,
+-            });
+-            this.box.add_child(this._indicator);
+-        }
+-
+         if (this._isIconGrid) {
+             this._iconBin.x_align = Clutter.ActorAlign.CENTER;
+             this._iconBin.y_align = Clutter.ActorAlign.CENTER;
+@@ -1745,23 +1731,7 @@ var ApplicationMenuItem = GObject.registerClass(class ArcMenuApplicationMenuItem
+         this._updateIcon();
+     }
+ 
+-    removeIndicator() {
+-        if (this.isRecentlyInstalled) {
+-            this.isRecentlyInstalled = false;
+-            let recentApps = this._settings.get_strv('recently-installed-apps');
+-            let index = recentApps.indexOf(this._app.get_id());
+-            if (index > -1)
+-                recentApps.splice(index, 1);
+-
+-            this._settings.set_strv('recently-installed-apps', recentApps);
+-
+-            this._indicator.hide();
+-            this._menuLayout.setRecentlyInstalledIndicator();
+-        }
+-    }
+-
+     popupContextMenu() {
+-        this.removeIndicator();
+         if (this.contextMenu === undefined) {
+             this.contextMenu = new ApplicationContextMenu(this.actor, this._app, this._menuLayout);
+             if (this._isIconGrid)
+@@ -1783,7 +1753,6 @@ var ApplicationMenuItem = GObject.registerClass(class ArcMenuApplicationMenuItem
+     }
+ 
+     activate(event) {
+-        this.removeIndicator();
+         this._app.open_new_window(-1);
+         this._menuLayout.arcMenu.toggle();
+         super.activate(event);
+diff --git a/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml b/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
+index 2e55394..a0edb0d 100644
+--- a/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
++++ b/extensions/arc-menu/schemas/org.gnome.shell.extensions.arcmenu.gschema.xml
+@@ -28,11 +28,6 @@
+       <summary>The menu hotkey to open the ArcMenu.</summary>
+       <description>The menu hotkey to open the ArcMenu.</description>
+     </key>
+-    <key name="recently-installed-apps" type="as">
+-      <default>[]</default>
+-      <summary>List of recently installed apps</summary>
+-      <description>List of recently installed apps</description>
+-    </key>
+     <key name="pinned-app-list" type="as">
+       <default>["ArcMenu_WebBrowser","WebBrowser", "WebBrowser","Terminal", "", "org.gnome.Terminal.desktop"]</default>
+       <summary>List of Apps Pinned to Menu</summary>

@@ -1,0 +1,83 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 10 Aug 2021 10:32:48 +0900
+Subject: [bugfix] Arcmenu : Fix FavoritesApp callback via touchscreen
+
+- Bugfix Arcmenu FavoritesApp touchscreen callback
+- Wrapped icon image(St.icon) with St.Bin and apply stylesheet to St.Bin
+
+[IMS] 266296
+---
+ extensions/arc-menu/menuWidgets.js | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index 6cf4363..10df9db 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -1417,14 +1417,17 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+         this.actor.style_class = null;
+         this.box.style = 'width: 80px; padding: 0px; margin: 0px; spacing: 5px; font-size: 14px;';
+ 
+-        this._icon = new St.Icon({
+-            style_class: 'favorites-menu-item',
++        this._iconBin = new St.Bin({
+             track_hover: true,
++            style_class: 'favorites-menu-item',
+             reactive: true,
++        });
++        this._icon = new St.Icon({
+             gicon: Gio.icon_new_for_string(this.iconString),
+             icon_size: 55,
+         });
+-        this.box.add_child(this._icon);
++        this.box.add_child(this._iconBin);
++        this._iconBin.set_child(this._icon);
+ 
+         this.label = new St.Label({
+             text: this.name,
+@@ -1568,19 +1571,19 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+ 
+         this._menuLayout.arcMenu.toggle();
+         super.activate(event);
+-        this._icon.remove_style_pseudo_class('active');
++        this._iconBin.remove_style_pseudo_class('active');
+     }
+ 
+     vfunc_key_focus_in() {
+-        this._icon.add_style_pseudo_class('focus');
++        this._iconBin.add_style_pseudo_class('focus');
+     }
+ 
+     vfunc_key_focus_out() {
+-        this._icon.remove_style_pseudo_class('focus');
++        this._iconBin.remove_style_pseudo_class('focus');
+     }
+ 
+     vfunc_button_press_event() {
+-        this._icon.add_style_pseudo_class('active');
++        this._iconBin.add_style_pseudo_class('active');
+ 
+         let event = Clutter.get_current_event();
+         this.pressed = true;
+@@ -1592,18 +1595,18 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+     }
+ 
+     vfunc_button_release_event() {
+-        this._icon.remove_style_pseudo_class('active');
++        this._iconBin.remove_style_pseudo_class('active');
+         return super.vfunc_button_release_event();
+     }
+ 
+     vfunc_leave_event(crossingEvent) {
+-        this._icon.remove_style_pseudo_class('active');
++        this._iconBin.remove_style_pseudo_class('active');
+         return super.vfunc_leave_event(crossingEvent);
+     }
+ 
+     _onHover() {
+         super._onHover();
+-        this._icon.remove_style_pseudo_class('focus');
++        this._iconBin.remove_style_pseudo_class('focus');
+     }
+ });
+ 

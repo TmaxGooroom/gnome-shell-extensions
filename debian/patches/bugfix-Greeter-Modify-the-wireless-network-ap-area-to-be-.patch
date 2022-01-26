@@ -1,0 +1,48 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 6 Oct 2021 10:04:41 +0900
+Subject: [bugfix] Greeter: Modify the wireless network ap area to be
+ activated
+
+- This is because device item of the wired network menu does not exist during wireless connection.
+- Add null check of the device item.
+
+[IMS] 269987
+---
+ extensions/greeter/extension.js | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index 0d16cee..c01b854 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -30,16 +30,23 @@ function _enableNetworkSettings() {
+     // NOTE(210803, sohee): Receives 'startup-complete' signal
+     // to customize the panel network menus after completing gnome-shell panel network setup.
+     Main.layoutManager.connect('startup-complete', () => {
+-        // add 'network setting' menu item
++        // enable network section of panel
+         let network = Main.panel.statusArea['aggregateMenu']._network;
+-        let deviceSection = network.menu.firstMenuItem.section;
+-        let statusItem = deviceSection.firstMenuItem;
+-        let networkSettingsItem = statusItem.menu.addSettingsAction(
++        network.menu.setSensitive(true);
++
++        let wiredSection = network._devices['wired'];
++        if (!wiredSection.getSensitive())
++            return;
++
++        let deviceSection = wiredSection.section;
++        let deviceStatusItem = deviceSection.firstMenuItem;
++        if (!deviceStatusItem)
++            return;
++
++        // add 'network setting' menu item
++        let networkSettingsItem = deviceStatusItem.menu.addSettingsAction(
+             _('Network Settings'), 'nm-connection-editor.desktop');
+         networkSettingsItem.visible = true;
+-
+-        // enable network section of panel
+-        network.menu.setSensitive(true);
+     });
+ }
+ 

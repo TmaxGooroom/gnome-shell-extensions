@@ -1,0 +1,43 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 28 Sep 2021 13:46:11 +0900
+Subject: [refactor] delete config file with function
+
+- delete existing config file with function
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index 21176b3..0a65f05 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -25,14 +25,15 @@ function disable() { // eslint-disable-line no-unused-vars
+ 
+ function savePrimary() {
+     if (Main.layoutManager.monitors.length < 2) {
+-        if (confFile.query_exists(null))
+-            confFile.delete(null);
++        // only single monitor, no need to save settings
++        deletePrimary();
+         return;
+     }
+     let success, stdout, status;
+     try {
+         [success, stdout,, status] = GLib.spawn_command_line_sync('xrandr');
+     } catch (e) {
++        log('xrandr is not available');
+         return;
+     }
+ 
+@@ -62,3 +63,9 @@ function xrandrGetPrimary(stdout) {
+     });
+     return ret;
+ }
++
++function deletePrimary() {
++    if (!confFile.query_exists(null))
++        return;
++    confFile.delete(null);
++}

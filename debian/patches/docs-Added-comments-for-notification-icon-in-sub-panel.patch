@@ -1,0 +1,39 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 26 May 2021 16:56:25 +0900
+Subject: [docs] Added comments for notification icon in sub panel
+
+- added specific reason for adding empty boxlayout in sub panel instead of notification center
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/panel.js        | 4 +++-
+ extensions/dash-to-panel/panelManager.js | 1 -
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index b07f17f..6b55d47 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -147,7 +147,9 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             this.panel.add_child(this._centerBox);
+             this.panel.add_child(this._rightBox);
+ 
+-            // add empty St.BoxLayout for sub monitor
++            // Add empty St.BoxLayout instead of notification icon for sub monitor
++            // There is no notification icon in sub monitor panel, therefore allocation try to notification icon become targetless
++            // To prevent this, added empty box to sub panel and set allocation target to this empty box in setAllocationMap()
+             this._dummynoti = this.panel._dummynoti = new St.BoxLayout({ name: 'dummy' });
+             this.panel.add_child(this._dummynoti);
+         } else {
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index ff38d3a..cf23973 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -645,7 +645,6 @@ function newViewSelectorAnimateOut(page) {
+             vs.appDisplay.animate(IconGrid.AnimationDirection.OUT, () => {
+                 vs._animateIn(oldPage);
+             });
+-        // vs.appDisplay.animate(IconGrid.AnimationDirection.OUT, Lang.bind(this, () => { vs._animateIn(oldPage); }) );
+         } else {
+             vs._animateIn(oldPage);
+         }

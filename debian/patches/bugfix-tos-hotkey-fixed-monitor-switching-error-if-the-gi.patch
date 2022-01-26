@@ -1,0 +1,100 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 18 May 2021 15:36:50 +0900
+Subject: [bugfix] tos-hotkey : fixed monitor switching error if the given
+ mode index doesn't actually have that mode
+
+ - fixed monitor switching error if the given mode index doesn't
+   actually have that mode (e.g. in mirror mode, two monitor shares same
+       mode index, so there are mismatch of mode index)
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 69 ++++++++++++++++++----------------
+ 1 file changed, 37 insertions(+), 32 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 880d433..c58ca4a 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -40,44 +40,49 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+         let resources = await this._proxy.call('GetResources');
+         let currentState = await this._proxy.call('GetCurrentState');
+ 
+-        let crtcId = resources[2][index][2];
+-        let transform, scale, currentMode;
+-        if (crtcId !== -1) {
+-            transform = resources[1][crtcId][7];
+-            currentMode = resources[1][crtcId][6];
+-
+-            // use preferred scale for given mode
+-            scale = currentState[1][index][1][currentMode][4];
+-        } else {
+-            // if there is no crtc for given index, use default transform(0), preferred mode
+-            transform = 0;
+-            let possibleModes = currentState[1][index][1];
+-
+-            for (let idx in possibleModes) {
+-                if (possibleModes[idx][6]['is-preferred'] && possibleModes[idx][6]['is-preferred'].get_boolean()) {
+-                    currentMode = idx;
+-                    scale = possibleModes[idx][4];
+-                }
+-            }
+-            if (!currentMode) {
+-                currentMode = 0;
+-                scale = 1.0;
++        try {
++            let crtcId = resources[2][index] ? resources[2][index][2] : -1;
++            let transform, scale, currentMode;
++            if (crtcId !== -1) {
++                transform = resources[1][crtcId][7];
++                currentMode = resources[1][crtcId][6];
++
++                // check whether that the given mode actually exist. If not, set `currentMode` to null
++                if (currentState[1][index][1][currentMode] && currentState[1][index][1][currentMode][6]['is-current'])
++                    // use preferred scale for given mode
++                    scale = currentState[1][index][1][currentMode][4];
++                else
++                    currentMode = null;
+             }
+-        }
+ 
+-        let properties = {};
+-        if (!currentState[1][index][2]['is-underscanning'])
+-            properties['underscanning'] = new GLib.Variant('b', false);
+-        else
+-            properties['underscanning'] = new GLib.Variant('b', true);
++            // if there is no crtc for given index, use default transform(0), preferred mode
++            if (!transform)
++                transform = 0;
+ 
+-        let logicalMonitor = [currentState[1][index][0][0], currentState[1][index][1][currentMode][0], properties]; // connector id, mode id(e.g. 1920x1080@60)
++            if (!currentMode) {
++                let possibleModes = currentState[1][index][1];
+ 
++                for (let idx in possibleModes) {
++                    if (possibleModes[idx][6]['is-preferred'] && possibleModes[idx][6]['is-preferred'].get_boolean()) {
++                        currentMode = idx;
++                        scale = possibleModes[idx][4];
++                    }
++                }
++                if (!currentMode) {
++                    currentMode = 0;
++                    scale = 1.0;
++                }
++            }
+ 
+-        let logicalMonitors = [0, 0, scale, transform, true]; // x, y, scale, transform, is primary
+-        logicalMonitors.push([logicalMonitor]);
++            let properties = {};
++            if (!currentState[1][index][2]['is-underscanning'])
++                properties['underscanning'] = new GLib.Variant('b', false);
++            else
++                properties['underscanning'] = new GLib.Variant('b', true);
+ 
+-        try {
++            let logicalMonitor = [currentState[1][index][0][0], currentState[1][index][1][currentMode][0], properties]; // connector id, mode id(e.g. 1920x1080@60)
++            let logicalMonitors = [0, 0, scale, transform, true]; // x, y, scale, transform, is primary
++            logicalMonitors.push([logicalMonitor]);
+             await this._proxy.call('ApplyMonitorsConfig', [currentState[0], 2, [logicalMonitors], [new GLib.Variant('a{sv}', {})]]);
+         } catch (e) {
+             log(e);

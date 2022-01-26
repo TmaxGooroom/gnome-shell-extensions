@@ -1,0 +1,52 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Thu, 1 Apr 2021 13:40:19 +0900
+Subject: [feat] desktop-icons-ng : Remove Desktop Grid Drop Highlight Effect
+
+- Remove desktop grid drop highlight effect
+- Add .schema.override file to set ding [show-drop-option] default value to false
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopGrid.js                          | 2 +-
+ .../desktop-icons-ng/schemas/10_desktop-icons-ng.gschema.override   | 3 +++
+ extensions/desktop-icons-ng/schemas/meson.build                     | 6 ++++++
+ 3 files changed, 10 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/desktop-icons-ng/schemas/10_desktop-icons-ng.gschema.override
+
+diff --git a/extensions/desktop-icons-ng/desktopGrid.js b/extensions/desktop-icons-ng/desktopGrid.js
+index 4786d5d..91357fd 100644
+--- a/extensions/desktop-icons-ng/desktopGrid.js
++++ b/extensions/desktop-icons-ng/desktopGrid.js
+@@ -156,7 +156,7 @@ var DesktopGrid = class {
+     }
+ 
+     setDropDestination(dropDestination) {
+-        dropDestination.drag_dest_set(Gtk.DestDefaults.ALL, null, Gdk.DragAction.MOVE);
++        dropDestination.drag_dest_set(Gtk.DestDefaults.DROP | Gtk.DestDefaults.MOTION, null, Gdk.DragAction.MOVE);
+         let targets = new Gtk.TargetList(null);
+         targets.add(Gdk.atom_intern('x-special/ding-icon-list', false), Gtk.TargetFlags.SAME_APP, 0);
+         targets.add(Gdk.atom_intern('x-special/gnome-icon-list', false), 0, 1);
+diff --git a/extensions/desktop-icons-ng/schemas/10_desktop-icons-ng.gschema.override b/extensions/desktop-icons-ng/schemas/10_desktop-icons-ng.gschema.override
+new file mode 100644
+index 0000000..719bcba
+--- /dev/null
++++ b/extensions/desktop-icons-ng/schemas/10_desktop-icons-ng.gschema.override
+@@ -0,0 +1,3 @@
++#Desktop Icons NG Drop Place
++[org.gnome.shell.extensions.ding]
++show-drop-place=false
+diff --git a/extensions/desktop-icons-ng/schemas/meson.build b/extensions/desktop-icons-ng/schemas/meson.build
+index 5d6ed28..b101750 100644
+--- a/extensions/desktop-icons-ng/schemas/meson.build
++++ b/extensions/desktop-icons-ng/schemas/meson.build
+@@ -11,4 +11,10 @@ install_data([
+   install_dir : join_paths(extensiondir, uuid, schema_data_dir)
+ )
+ 
++install_data([
++    '10_desktop-icons-ng.gschema.override'
++  ],
++  install_dir : schemadir
++)
++
+ extension_schemas += files(schema_name)

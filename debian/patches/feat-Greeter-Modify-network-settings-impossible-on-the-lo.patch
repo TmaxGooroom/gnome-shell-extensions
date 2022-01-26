@@ -1,0 +1,236 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 15 Nov 2021 17:10:55 +0900
+Subject: [feat] Greeter: Modify network settings impossible on the lock
+ screen.
+
+- Remove all the codes added for network settings on the lock screen.
+
+[IMS] N/A
+---
+ extensions/greeter/extension.js | 154 +++++-----------------------------------
+ 1 file changed, 18 insertions(+), 136 deletions(-)
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index 8a273d7..c688138 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -17,43 +17,29 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { GObject, Shell } = imports.gi;
+-
+ const Main = imports.ui.main;
+ const LoginManager = imports.misc.loginManager;
+ const _ = imports.gettext.gettext;
+ 
+ const SessionMode = imports.ui.sessionMode;
+-const PolkitAgent = imports.ui.components.polkitAgent;
+-
+-let windowVisibilityMap = new Map();
+ 
+ let _startupCompleteSignalId = 0;
+-let _lockedChangedSignalId = 0;
+ let _sessionModeUpdatedSignalId = 0;
+ 
+ function init(/* metadata*/) { // eslint-disable-line no-unused-vars
+ }
+ 
+-function _getDeviceStatusItem() {
++function _enableNetworkSettings() {
++    // enable network section of panel
+     let network = Main.panel.statusArea['aggregateMenu']._network;
++    network.menu.setSensitive(true);
+ 
+     let wiredSection = network._devices['wired'];
+     if (!wiredSection.getSensitive())
+-        return null;
++        return;
+ 
+     let deviceSection = wiredSection.section;
+     let deviceStatusItem = deviceSection.firstMenuItem;
+-
+-    return deviceStatusItem;
+-}
+-
+-function _enableNetworkSettings() {
+-    // enable network section of panel
+-    let network = Main.panel.statusArea['aggregateMenu']._network;
+-    network.menu.setSensitive(true);
+-
+-    let deviceStatusItem = _getDeviceStatusItem();
+     if (!deviceStatusItem)
+         return;
+ 
+@@ -68,134 +54,39 @@ function _enableNetworkSettings() {
+     }
+ }
+ 
+-function _showNonNetworkWindows(visible) {
+-    let tracker = Shell.WindowTracker.get_default();
+-    let windows = global.get_window_actors();
+-
+-    for (let i = 0; i < windows.length; i++) {
+-        let metaWindow = windows[i].metaWindow;
+-        let app = tracker.get_window_app(metaWindow);
+-        if (!app)
+-            continue;
+-
+-        if (app.get_id() === 'nm-connection-editor.desktop')
+-            continue;
+-
+-        if (visible) {
+-            let exist = windowVisibilityMap.has(metaWindow);
+-            if (!exist)
+-                continue;
+-
+-            let wasVisible = windowVisibilityMap.get(metaWindow);
+-            if (wasVisible)
+-                metaWindow.unminimize();
+-        } else {
+-            windowVisibilityMap.set(metaWindow, !metaWindow.minimized);
+-            metaWindow.minimize();
+-        }
+-    }
+-}
+-
+-function _showNetworkWindowsOnly() {
+-    _showNonNetworkWindows(false);
+-}
+-
+-function _showAllWindows() {
+-    _showNonNetworkWindows(true);
+-}
+-
+ function _connectSessionUpdatedSignal() {
+     if (_sessionModeUpdatedSignalId !== 0)
+         return;
+ 
+     _sessionModeUpdatedSignalId = Main.sessionMode.connect('updated', () => {
+         let currentMode = Main.sessionMode.currentMode;
+-
+-        if (currentMode === 'unlock-dialog') {
+-            _showNetworkWindowsOnly();
+-        } else if (currentMode === 'tos') {
++        if (currentMode === 'tos') {
+             // When logging in from the lock screen,
+             // all session mode parameters(including unlockDialog) are initialized.
+             // Therefore, if session mode is tos, the unlockDialog must be reset.
+             Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
+-
+-            _showAllWindows();
+-            windowVisibilityMap.clear();
+         }
+     });
+ }
+ 
+-function _connectLockedChangedSignal() {
+-    if (_lockedChangedSignalId !== 0)
+-        return;
+-
+-    _lockedChangedSignalId = Main.screenShield.connect('locked-changed', () => {
+-        let currentMode = Main.sessionMode.currentMode;
+-        if (currentMode === 'unlock-dialog') {
+-            _enableNetworkSettings();
+-        } else {
+-            let deviceStatusItem = _getDeviceStatusItem();
+-            if (!deviceStatusItem)
+-                return;
+-
+-            let networkSettingsItem = deviceStatusItem.menu._settingsActions['nm-connection-editor.desktop'];
+-            if (networkSettingsItem)
+-                networkSettingsItem.visible = false;
+-        }
+-    });
+-}
+-
+-var TosAuthenticationAgent = GObject.registerClass(
+-class TosAuthenticationAgent extends PolkitAgent.AuthenticationAgent {
+-    _onInitiate(nativeAgent, actionId, message, iconName, cookie, userNames) {
+-        if (Main.sessionMode.currentMode === 'unlock-dialog' &&
+-            actionId === 'org.freedesktop.NetworkManager.settings.modify.system') {
+-            this._currentDialog = new PolkitAgent.AuthenticationDialog(actionId, message, cookie, userNames);
+-            this._currentDialog.connect('done', this._onDialogDone.bind(this));
+-            return;
+-        }
+-
+-        super._onInitiate(nativeAgent, actionId, message, iconName, cookie, userNames);
+-    }
+-});
+-
+-function _replaceWithTosAuthenticationAgent() {
+-    // Remove old AuthenticationAgent
+-    let componentManager = Main.componentManager;
+-    let component = componentManager._allComponents['polkitAgent'];
+-    if (!component)
+-        return;
+-
+-    if (component instanceof TosAuthenticationAgent)
+-        return;
+-
+-    component.disable();
+-    delete componentManager._allComponents['polkitAgent'];
+-
+-    // Create new AuthenticationAgent and replace with it
+-    PolkitAgent.Component = TosAuthenticationAgent;
+-    componentManager._allComponents['polkitAgent'] = new TosAuthenticationAgent();
+-    componentManager._allComponents['polkitAgent'].enable();
+-}
+-
+ function enable() { // eslint-disable-line no-unused-vars
+     if (!LoginManager.canLock())
+         return;
+ 
+-    // In order to display the network setting window above the login screen,
+-    // change the screen shield group layer.
+-    let ssg = Main.screenShield.actor;
+-    let uiGroup = Main.layoutManager.uiGroup;
+-    if (uiGroup.contains(ssg)) {
+-        Main.layoutManager.removeChrome(ssg);
+-        Main.layoutManager._backgroundGroup.add_child(ssg);
+-    }
++    if (Main.sessionMode.isGreeter) {
++        // In order to display the network setting window above the login screen,
++        // change the screen shield group layer.
++        let ssg = Main.screenShield.actor;
++        let uiGroup = Main.layoutManager.uiGroup;
++        if (uiGroup.contains(ssg)) {
++            Main.layoutManager.removeChrome(ssg);
++            Main.layoutManager._backgroundGroup.add_child(ssg);
++        }
+ 
+-    Main.screenShield._becomeModal = () => {
+-        return true;
+-    };
++        Main.screenShield._becomeModal = () => {
++            return true;
++        };
+ 
+-    if (Main.sessionMode.isGreeter) {
+         Main.sessionMode.unlockDialog = Me.imports.loginDialog.LoginDialog;
+ 
+         // NOTE(210803, sohee): Receives 'startup-complete' signal
+@@ -213,22 +104,13 @@ function enable() { // eslint-disable-line no-unused-vars
+         params.allowExtensions = true;
+         params.hasWindows = true;
+         params.enabledExtensions = ['greeter@tmax-shell-extensions', 'osk-hangul@tmax-shell-extensions'];
+-        // Add networkAgent to show AP password popup on the lock screen
+-        if (!params.components)
+-            params.components = [];
+-        params.components.push('networkAgent');
+ 
+         Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
+ 
+         if (Main.sessionMode.currentMode === 'tos')
+             _connectSessionUpdatedSignal();
+-
+-        if (Main.sessionMode.currentMode === 'unlock-dialog')
+-            _connectLockedChangedSignal();
+-
+-        // To display authentication dialog when changing network settings on the lock screen.
+-        _replaceWithTosAuthenticationAgent();
+     }
+ }
++
+ function disable() { // eslint-disable-line no-unused-vars
+ }

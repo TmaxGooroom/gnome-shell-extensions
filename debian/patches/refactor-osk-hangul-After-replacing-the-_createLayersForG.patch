@@ -1,0 +1,172 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 13 Oct 2021 17:54:51 +0900
+Subject: [refactor] osk-hangul : After replacing the
+ _createLayersForGroups(), call _onKeyboardGroupsChanged()
+
+ - One of the UI/UX requirements of TOS21 is to replace the existing
+ GNOME Shell layout-key with Korean/English label. In earlier versions
+ of the code, the _createLayersForGroups function was replaced with a
+ newly created function to accomplish this task. The reason for not
+ replacing the icon key with a label is that when the key
+ 'input-sources' in gsetting is modified, the keyboard group is reset so
+ the key goes back to original key. So, after calling
+ _createLayersForGroup, calling _resetKeyboardLayout() enabled modifying
+ keyboard layout suitable for TOS21. However, in this way, if
+ _resetKeyboardLayout() is called more frequently, resource usage also
+ increases. Therefore, the code was changed so that the replaced
+ keyboard layout can be applied by calling _onKeyboardGroupsChanged()
+  only when wrapAll() of the wrapper is called.
+ - cleaned up KeyboardWraper
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js       | 13 ----------
+ extensions/osk-hangul/keyboardWrapper.js | 41 ++++++++++++++++++++++----------
+ 2 files changed, 28 insertions(+), 26 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index ce890a2..f30d4da 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -22,15 +22,6 @@ let _keyboardDestroyId = null;
+ 
+ let wrapper = null;
+ 
+-// remove previous kr and us keyboard groups and create them again.
+-function _resetKeyboardLayout(keyboard) {
+-    keyboard._groups['kr'] = null;
+-    keyboard._groups['us'] = null;
+-    keyboard._ensureKeysForGroup('kr');
+-    keyboard._ensureKeysForGroup('us');
+-    keyboard._setActiveLayer(0);
+-}
+-
+ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+@@ -49,8 +40,6 @@ function _enable() {
+     let keyboard = Main.keyboard._keyboard;
+     let controller = keyboard._keyboardController;
+     wrapper.wrapAll(keyboard, controller);
+-
+-    _resetKeyboardLayout(keyboard);
+ }
+ 
+ // Synchronize with this extension and availability of on-screen-keyboard.
+@@ -115,8 +104,6 @@ function _resetKeyboard() {
+             keyboard.disconnect(_keyboardDestroyId);
+             _keyboardDestroyId = null;
+         }
+-
+-        _resetKeyboardLayout(keyboard);
+     }
+ }
+ 
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index e6d18e0..19521a1 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -2,6 +2,7 @@
+ const { Clutter, IBus } = imports.gi;
+ 
+ const Main = imports.ui.main;
++const KeyboardManager = Main.keyboard;
+ 
+ const IBusManager = imports.misc.ibusManager;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+@@ -52,9 +53,7 @@ function _switchInputMethod() {
+ }
+ 
+ class BaseKeyboardWrapper {
+-    constructor(keyboard, controller) {
+-        this._keyboard = keyboard;
+-        this._controller = controller;
++    constructor() {
+         this._originalFunctions = [];
+     }
+ 
+@@ -71,7 +70,8 @@ class BaseKeyboardWrapper {
+         };
+     }
+ 
+-    wrapAll(keyboard) {
++    wrapAll() {
++        let keyboard = KeyboardManager._keyboard;
+         this.wrap(keyboard, '_setAnimationWindow', () => {});
+     }
+ 
+@@ -83,8 +83,11 @@ class BaseKeyboardWrapper {
+     }
+ }
+ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper {
+-    wrapAll(keyboard, controller) {
+-        super.wrapAll(keyboard, controller);
++    wrapAll() {
++        super.wrapAll();
++        let keyboard = KeyboardManager._keyboard;
++        let controller = keyboard._keyboardController;
++
+         this.wrap(controller, 'keyvalPress', (originalKeyvalPress, keyval) => {
+             keyval = _krToUsKeysym(keyval);
+             return originalKeyvalPress.call(controller, keyval);
+@@ -112,6 +115,8 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+ 
+             return layers;
+         });
++
++        keyboard._onKeyboardGroupsChanged();
+         // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+         // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+         // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+@@ -119,7 +124,7 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+             // make us keyboard layout if not exist
+             keyboard._ensureKeysForGroup('us');
+ 
+-            let oldGroupName = keyboard._keyboardController.getCurrentGroup();
++            let oldGroupName = controller.getCurrentGroup();
+             let newGroupname = _getCurrentGroup();
+             if (!newGroupname)
+                 newGroupname = oldGroupName;
+@@ -128,26 +133,36 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+             if (Main.inputMethod._purpose === Clutter.InputContentPurpose.PASSWORD)
+                 newGroupname = 'us';
+ 
+-            keyboard._keyboardController._currentSource.xkbId = newGroupname;
++            controller._currentSource.xkbId = newGroupname;
+ 
+             originalSetActiveLayer.call(keyboard, activeLevel);
+ 
+-            keyboard._keyboardController._currentSource.xkbId = oldGroupName;
++            controller._currentSource.xkbId = oldGroupName;
+         });
+     }
++
++    restoreAll() {
++        super.restoreAll();
++
++        let keyboard = KeyboardManager._keyboard;
++        keyboard._onKeyboardGroupsChanged();
++    }
+ };
+ 
+ var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper {
+-    wrapAll(keyboard) {
+-        super.wrapAll(keyboard);
++    wrapAll() {
++        super.wrapAll();
++
++        let keyboard = KeyboardManager._keyboard;
++        let controller = keyboard._keyboardController;
+         this.wrap(keyboard, '_setActiveLayer', (originalSetActiveLayer, activeLevel) => {
+             // make us keyboard layout if not exist
+             keyboard._ensureKeysForGroup('us');
+-            keyboard._keyboardController._currentSource.xkbId = 'us';
++            controller._currentSource.xkbId = 'us';
+ 
+             originalSetActiveLayer.call(keyboard, activeLevel);
+ 
+-            keyboard._keyboardController._currentSource.xkbId = 'kr';
++            controller._currentSource.xkbId = 'kr';
+         });
+     }
+ };

@@ -1,0 +1,67 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 31 Mar 2021 15:14:15 +0900
+Subject: [feat] desktop-icons-ng : Pass Locale Directory As An Argument When
+ Launching ding.js
+
+- When ding.js is launched, pass locale directory of gnome-shell-extensions to find mo files for the
+translation.
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/ding.js      | 7 ++++++-
+ extensions/desktop-icons-ng/extension.js | 3 +++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/desktop-icons-ng/ding.js b/extensions/desktop-icons-ng/ding.js
+index fb00a8d..f05ab73 100755
+--- a/extensions/desktop-icons-ng/ding.js
++++ b/extensions/desktop-icons-ng/ding.js
+@@ -29,6 +29,7 @@ let codePath = '.';
+ let errorFound = false;
+ let asDesktop = false;
+ let primaryIndex = 0;
++let localeDirectory = '.';
+ 
+ for(let arg of ARGV) {
+     if (lastCommand == null) {
+@@ -40,6 +41,7 @@ for(let arg of ARGV) {
+         case '-P':
+         case '-D':
+         case '-M':
++        case '-L':
+             lastCommand = arg;
+             break;
+         default:
+@@ -63,6 +65,9 @@ for(let arg of ARGV) {
+     case '-M':
+         primaryIndex = parseInt(arg);
+         break;
++    case '-L':
++        localeDirectory = arg;
++        break;
+     }
+     lastCommand = null;
+ }
+@@ -81,7 +86,7 @@ imports.searchPath.unshift(codePath);
+ const Prefs = imports.preferences;
+ const Gettext = imports.gettext;
+ 
+-Gettext.bindtextdomain("ding", GLib.build_filenamev([codePath, "locale"]));
++Gettext.bindtextdomain("ding", localeDirectory);
+ 
+ const DesktopManager = imports.desktopManager;
+ 
+diff --git a/extensions/desktop-icons-ng/extension.js b/extensions/desktop-icons-ng/extension.js
+index 625c103..a7688b4 100644
+--- a/extensions/desktop-icons-ng/extension.js
++++ b/extensions/desktop-icons-ng/extension.js
+@@ -263,6 +263,9 @@ function launchDesktop() {
+         first = false;
+     }
+ 
++    argv.push('-L');
++    argv.push(Config.LOCALEDIR);
++
+     data.currentProcess = new LaunchSubprocess(0, "DING", "-U");
+     data.currentProcess.set_cwd(GLib.get_home_dir());
+     data.currentProcess.spawnv(argv);

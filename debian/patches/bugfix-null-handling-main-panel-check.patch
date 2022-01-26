@@ -1,0 +1,52 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 26 May 2021 14:38:12 +0900
+Subject: [bugfix] null handling, main panel check
+
+- undefined handling in newdashitemcontainerallocate
+- main panel check in setallocationmap
+
+[IMS] 261706
+---
+ extensions/dash-to-panel/panel.js        | 8 +++++---
+ extensions/dash-to-panel/panelManager.js | 2 +-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index 5c03373..b07f17f 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -905,16 +905,18 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         // Check whether notificationcenter extension is enabled
+         if (!this.isStandalone && this.statusArea.NotificationCenter)
+             setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
+-        else
+         // NotificationCenter is not displayed on additional monitor
++        if (this.isStandalone && this.statusArea.NotificationCenter)
+             setMap(Pos.NOTI_CENTER, this._dummynoti);
+ 
+         // setmap when notificationcenter loaded after dtpPanel
+-
+         this.setmap_notificationcenter = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+             if (extension.uuid !== 'notification-center@tmax-shell-extensions')
+                 return;
+-            setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
++            if (!this.isStandalone)
++                setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
++            else
++                setMap(Pos.NOTI_CENTER, this._dummynoti);
+             // apply updated allocationMap to panel
+             this.updateElementPositions();
+         });
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index ad7380d..ff38d3a 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -589,7 +589,7 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+     },
+ 
+     _newDashItemContainerAllocate(box, flags) {
+-        if (this.child === null)
++        if (!this.child)
+             return;
+ 
+         Utils.setAllocation(this, box, flags);

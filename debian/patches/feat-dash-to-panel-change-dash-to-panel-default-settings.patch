@@ -1,0 +1,35 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 22 Dec 2021 16:11:15 +0900
+Subject: [feat] dash-to-panel : change dash-to-panel default settings
+
+ - Same as above
+
+[IMS] 274731
+---
+ .../dash-to-panel/schemas/10_dash-to-panel.gschema.override       | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index 08fdee9..5651b55 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -1,5 +1,7 @@
+ [org.gnome.shell.extensions.dash-to-panel]
+-panel-size = 44
++panel-size = 42
++focus-highlight-color = '#5F9EED'
++focus-highlight-opacity = 30
+ dot-style-focused = 'ROUNDED_RECTANGLE'
+ dot-style-unfocused = 'ROUNDED_RECTANGLE'
+ dot-color-override = true
+@@ -7,8 +9,8 @@ dot-color-1 = '#80a7ff'
+ dot-color-2 = '#80a7ff'
+ dot-color-3 = '#80a7ff'
+ dot-color-4 = '#80a7ff'
+-dot-size = 4
+-appicon-padding = 9
++dot-size = 3
++appicon-padding = 8
+ appicon-margin = 3
+ trans-use-custom-bg = true
+ trans-use-custom-opacity = true

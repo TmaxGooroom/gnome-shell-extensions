@@ -1,0 +1,35 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 8 Oct 2021 11:53:23 +0900
+Subject: [refactor] osk-hangul : add constants variable BASIC_KEYBOARD_LAYOUT
+
+ - gnome-shell keyboard indicates the number 0 as the basic layout for
+   each keyboard. Instead of giving parameter 0 to call _setActiveLayer,
+   use constants variable to enhance the readability of code.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 82da07d..ce890a2 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -11,6 +11,8 @@ const getIBusHangul = Me.imports.utils.getIBusHangul;
+ 
+ const { changeIBusPurposeToClutterPurpose } = Me.imports.utils;
+ 
++const BASIC_KEYBOARD_LAYOUT = 0;
++
+ let _ibusReadyId = null;
+ 
+ let _a11ySignalId = null;
+@@ -98,7 +100,7 @@ function enable() { // eslint-disable-line no-unused-vars
+             Main.inputMethod._purpose = changeIBusPurposeToClutterPurpose(purpose);
+ 
+             // To show the keyboard according to the purpose on the screen, call the method.
+-            Main.keyboard._keyboard._setActiveLayer(0);
++            Main.keyboard._keyboard._setActiveLayer(BASIC_KEYBOARD_LAYOUT);
+         }
+     });
+ }

@@ -1,0 +1,118 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 27 Dec 2021 18:48:25 +0900
+Subject: [feat] Greeter: Apply the blur effect to the login screen wallpaper
+
+- Apply the blur effect to the background image in the same way as the lock screen.
+
+[IMS] 274731
+---
+ extensions/greeter/loginDialog.js | 64 +++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 61 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index ae297a1..51eb2ca 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -15,13 +15,14 @@
+  */
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Gio, GLib, GObject, Clutter, St } = imports.gi;
++const { Gio, GLib, GObject, Clutter, St, Shell } = imports.gi;
+ const Main = imports.ui.main;
+ const GnomeLoginDialog = imports.gdm.loginDialog;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
+ const GdmUtil = imports.gdm.util;
+ const Batch = imports.gdm.batch;
+ const CtrlAltTab = imports.ui.ctrlAltTab;
++const Background = imports.ui.background;
+ 
+ const AuthPrompt = Me.imports.authPrompt;
+ const Constants = Me.imports.constants;
+@@ -31,6 +32,9 @@ const _ = Gettext.gettext;
+ 
+ const SOM_ACCOUNT_FIRST_UID = 50001;
+ 
++const BLUR_BRIGHTNESS = 0.55;
++const BLUR_SIGMA = 60;
++
+ function _sortItems(items) {
+     let sorted = {};
+     let arr = [];
+@@ -170,6 +174,26 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this._customizeNotListedButton();
+         this._authPrompt.add_child(this._notListedButton);
+         this._notListedButton.hide();
++
++        // Background
++        this._backgroundGroup = new Clutter.Actor();
++        this.add_child(this._backgroundGroup);
++        this.set_child_below_sibling(this._backgroundGroup, null);
++        this._bgManagers = [];
++        this._updateBackgrounds();
++        this._monitorsChangedId =
++            Main.layoutManager.connect('monitors-changed', this._updateBackgrounds.bind(this));
++    }
++
++    vfunc_allocate(dialogBox) {
++        super.vfunc_allocate(dialogBox);
++
++        let backgroundAllocation = null;
++        if (this._backgroundGroup.visible)
++            backgroundAllocation = this._getCenterActorAllocation(dialogBox, this._backgroundGroup);
++
++        if (backgroundAllocation)
++            this._backgroundGroup.allocate(backgroundAllocation);
+     }
+ 
+     _replaceWithCustomizedAuthPrompt() {
+@@ -392,8 +416,6 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+             { sortGroup: CtrlAltTab.SortGroup.MIDDLE });
+         this.activate();
+ 
+-        this.opacity = 0;
+-
+         // NOTE(210803, sohee): Remove the modal push code in this position
+         // to float network setup window.
+ 
+@@ -412,4 +434,40 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+ 
+         Main.ctrlAltTabManager.removeGroup(this);
+     }
++
++    _createBackground(monitorIndex) {
++        let monitor = Main.layoutManager.monitors[monitorIndex];
++        let widget = new St.Widget({
++            style_class: 'screen-shield-background',
++            x: monitor.x,
++            y: monitor.y,
++            width: monitor.width,
++            height: monitor.height,
++            effect: new Shell.BlurEffect({
++                brightness: BLUR_BRIGHTNESS,
++                sigma: BLUR_SIGMA,
++            }),
++        });
++
++        let bgManager = new Background.BackgroundManager({
++            container: widget,
++            monitorIndex,
++            controlPosition: false,
++        });
++
++        this._bgManagers.push(bgManager);
++
++        this._backgroundGroup.add_child(widget);
++    }
++
++    _updateBackgrounds() {
++        for (let i = 0; i < this._bgManagers.length; i++)
++            this._bgManagers[i].destroy();
++
++        this._bgManagers = [];
++        this._backgroundGroup.destroy_all_children();
++
++        for (let i = 0; i < Main.layoutManager.monitors.length; i++)
++            this._createBackground(i);
++    }
+ });

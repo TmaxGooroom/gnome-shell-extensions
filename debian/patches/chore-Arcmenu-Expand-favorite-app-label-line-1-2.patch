@@ -1,0 +1,23 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 29 Oct 2021 10:46:41 +0900
+Subject: [chore] Arcmenu : Expand favorite app label line ( 1 -> 2 )
+
+- Add label's style ( FavoritemenuItem )
+
+[IMS] 273070
+---
+ extensions/arc-menu/menuWidgets.js | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index 10df9db..7d7360e 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -1437,6 +1437,7 @@ var FavoritesMenuItem = GObject.registerClass({ // eslint-disable-line no-unused
+         this.box.add_child(this.label);
+ 
+         this.tooltipLocation = Constants.TooltipLocation.BOTTOM_CENTERED;
++        this.label.style = 'height: 31px;';
+         this.label.x_align = Clutter.ActorAlign.CENTER;
+         this.label.y_align = Clutter.ActorAlign.CENTER;
+         this.label.y_expand = true;

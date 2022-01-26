@@ -1,0 +1,26 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 12 Apr 2021 15:30:37 +0900
+Subject: [bugfix] Search : Resolve right-click errors in result item
+
+- modify context menu to appear normally
+- add missing variables (menuButton, contextMenuManager)
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 9996ad7..43115bc 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -32,7 +32,9 @@ const Utils =  Me.imports.utils;
+ // Each menu layout extends this class.
+ var BaseLayout = class { // eslint-disable-line no-unused-vars
+     constructor(menuButton) {
++        this.menuButton = menuButton;
+         this.mainBox = menuButton.mainBox;
++        this.contextMenuManager = menuButton.contextMenuManager;
+         this.searchMenu = menuButton.searchMenu;
+         this.isRunning = true;
+         this._focusChild = null;

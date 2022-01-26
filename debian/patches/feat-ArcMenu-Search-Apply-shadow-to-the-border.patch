@@ -1,0 +1,64 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 25 Jan 2022 17:10:55 +0900
+Subject: [feat] ArcMenu, Search: Apply shadow to the border
+
+- same as above
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuButton.js | 8 +++-----
+ extensions/search/menuButton.js   | 8 +++-----
+ 2 files changed, 6 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index 56504c7..5ce9748 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -177,7 +177,7 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+             height = monitorWorkArea.height * 8 / 10;
+ 
+ 
+-        this.mainBox.style = `height: ${height}px; background-color:rgb(29, 29, 29); border-radius:14px 20px 20px 14px`;
++        this.mainBox.style = `height: ${height}px; background-color:rgb(29, 29, 29); border-radius:14px 20px 20px 14px; box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.5); margin-top:10px;`;
+         this.section.actor.add_actor(this.mainBox);
+         this.MenuLayout = new MenuLayout.createMenu(this);
+         this._setMenuPositionAlignment();
+@@ -214,10 +214,8 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+     }
+ 
+     updateStyle() {
+-        this.arcMenu.actor.style_class = 'popup-menu-boxpointer';
+-        this.arcMenu.actor.add_style_class_name('popup-menu');
+-
+-        this.arcMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px; -arrow-border-color: black; -arrow-border-width: 2px;';
++        this.arcMenu.actor.remove_style_class_name('popup-menu-boxpointer');
++        this.arcMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px;';
+         this.arcMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index 1af3078..201de26 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -132,7 +132,7 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+             height = monitorWorkArea.height * 8 / 10;
+ 
+ 
+-        this.mainBox.style = `height: ${height}px`;
++        this.mainBox.style = `height: ${height}px; background-color:rgb(29, 29, 29); border-radius:14px 20px 20px 14px; box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.5); margin-top: 10px;`;
+         this.section.actor.add_actor(this.mainBox);
+         this.MenuLayout = new SearchMenuLayout.createMenu(this);
+         this.add_actor(this.MenuLayout.searchBox.actor);
+@@ -140,10 +140,8 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+     }
+ 
+     updateStyle() {
+-        this.searchMenu.actor.style_class = 'popup-menu-boxpointer';
+-        this.searchMenu.actor.add_style_class_name('popup-menu');
+-
+-        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px; -arrow-border-color: black; -arrow-border-width: 2px;';
++        this.searchMenu.actor.remove_style_class_name('popup-menu-boxpointer');
++        this.searchMenu.actor.style = '-arrow-base:0px; -arrow-rise:0px; -boxpointer-gap: 0px; -arrow-border-radius: 14px;';
+         this.searchMenu.box.style = 'margin:0px; padding: 0px;';
+ 
+         if (this.MenuLayout)

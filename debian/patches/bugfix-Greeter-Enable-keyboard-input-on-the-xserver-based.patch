@@ -1,0 +1,38 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 31 Dec 2021 11:15:37 +0900
+Subject: [bugfix] Greeter: Enable keyboard input on the xserver-based login
+ screen
+
+- Push modal and pop modal to receive keyboard and mouse events in any window.
+
+[IMS] 274445
+---
+ extensions/greeter/loginDialog.js | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 51eb2ca..ca3dbf4 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -416,8 +416,9 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+             { sortGroup: CtrlAltTab.SortGroup.MIDDLE });
+         this.activate();
+ 
+-        // NOTE(210803, sohee): Remove the modal push code in this position
+-        // to float network setup window.
++        // NOTE(210803, sohee): This code is intended to receive keyboard and mouse events in any window.
++        Main.pushModal(this, { actionMode: Shell.ActionMode.LOGIN_SCREEN });
++        Main.popModal(this);
+ 
+         this.ease({
+             opacity: 255,
+@@ -429,8 +430,7 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     close() {
+-        // NOTE(210803, sohee): Since the modal push code has been deleted,
+-        // delete modal pop code as well.
++        // NOTE(210803, sohee): Delete modal pop code
+ 
+         Main.ctrlAltTabManager.removeGroup(this);
+     }

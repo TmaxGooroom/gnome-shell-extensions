@@ -1,0 +1,24 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 20 May 2021 16:34:08 +0900
+Subject: [bugfix] arcmenu actionsbox color fix
+
+- Applied color and border radius to arcmenu mainBox(same with actionsBox)
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuButton.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index 8471270..d0fee87 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -196,7 +196,7 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+             height = monitorWorkArea.height * 8 / 10;
+ 
+ 
+-        this.mainBox.style = `height: ${height}px`;
++        this.mainBox.style = `height: ${height}px; background-color:rgb(41, 41, 41); border-radius:14px 20px 20px 14px`;
+         this.section.actor.add_actor(this.mainBox);
+         this.MenuLayout = new MenuLayout.createMenu(this);
+         this._setMenuPositionAlignment();

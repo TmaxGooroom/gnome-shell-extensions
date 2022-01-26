@@ -1,0 +1,103 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 26 Jul 2021 15:12:30 +0900
+Subject: [feat] Greeter: Show last login user
+
+- Delete user selection widget.
+- Implement it to show password widget(AuthPrompt) of the last login user.
+
+[IMS] N/A
+---
+ extensions/greeter/loginDialog.js | 65 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 65 insertions(+)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 7c6342f..82a4292 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -22,6 +22,7 @@ const { GObject, Clutter } = imports.gi;
+ const Main = imports.ui.main;
+ const GnomeLoginDialog = imports.gdm.loginDialog;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
++const Batch = imports.gdm.batch;
+ const CtrlAltTab = imports.ui.ctrlAltTab;
+ 
+ const AuthPrompt = Me.imports.authPrompt;
+@@ -33,7 +34,14 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     _init(parentActor) {
+         super._init(parentActor);
+ 
++        // Hide userSelectionBox
++        this._userSelectionBox.remove_child(this._userList);
++        this._userSelectionBox.remove_child(this._notListedButton);
++        this._userSelectionBox.visible = false;
++
+         this._addCustomizedAuthPrompt();
++
++        this._user = null;
+     }
+ 
+     _addCustomizedAuthPrompt() {
+@@ -46,6 +54,63 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this.add_child(this._authPrompt);
+     }
+ 
++    _loadUserList() {
++        if (!this._userListLoaded)
++            this._showLastLoginUser();
++
++        return super._loadUserList();
++    }
++
++    _showUserList() {
++        this._ensureUserListLoaded();
++        this._hideBannerView();
++        this._sessionMenuButton.close();
++        this._sessionMenuButton.hide();
++    }
++
++    _showLastLoginUser() {
++        let users = this._userManager.list_users();
++        users.sort((a, b) => {
++            return a.get_login_time() < b.get_login_time();
++        });
++
++        let lastLoginUser;
++        for (let i = 0; i < users.length; i++) {
++            let user = users[i];
++
++            if (!user.get_user_name())
++                continue;
++            if (!user.is_loaded)
++                continue;
++            if (user.is_system_account())
++                continue;
++            if (user.locked)
++                continue;
++
++            lastLoginUser = user;
++            break;
++        }
++
++        this._user = lastLoginUser;
++        this._changeUser(lastLoginUser);
++    }
++
++    _changeUser(newUser) {
++        this._authPrompt.setUser(newUser);
++
++        let batch = new Batch.ConcurrentBatch(this,
++            [this._beginVerificationForUser(newUser)]);
++        batch.run();
++    }
++
++    _beginVerificationForUser(user) {
++        let userName = user.get_user_name();
++        let hold = new Batch.Hold();
++
++        this._authPrompt.begin({ userName, hold });
++        return hold;
++    }
++
+     open() {
+         Main.ctrlAltTabManager.addGroup(this,
+             _('Login Window'),

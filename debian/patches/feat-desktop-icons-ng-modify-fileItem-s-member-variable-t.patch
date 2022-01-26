@@ -1,0 +1,54 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Thu, 15 Apr 2021 15:35:16 +0900
+Subject: [feat] desktop-icons-ng : modify fileItem's member variable to
+ desktopManager
+
+- move variable '_trusted' of fileItem class to desktopManager
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 2 ++
+ extensions/desktop-icons-ng/fileItem.js       | 3 +--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 47b8b83..98ca8ba 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -85,6 +85,7 @@ var DesktopManager = class {
+                 this._createGrids();
+             }
+             this.showDropPlace = Prefs.desktopSettings.get_boolean('show-drop-place');
++            this.desktopFileTrusted = Prefs.desktopSettings.get_boolean('allow-desktop-file-launching');
+             this._updateDesktop();
+         });
+         Prefs.gtkSettings.connect('changed', (obj, key) => {
+@@ -112,6 +113,7 @@ var DesktopManager = class {
+ 
+         this.rubberBand = false;
+ 
++        this.desktopFileTrusted = Prefs.desktopSettings.get_boolean('allow-desktop-file-launching');
+         let cssProvider = new Gtk.CssProvider();
+         cssProvider.load_from_file(Gio.File.new_for_path(GLib.build_filenamev([codePath, 'stylesheet.css'])));
+         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), cssProvider, 600);
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 3a79678..ccf98dd 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -369,7 +369,6 @@ var FileItem = class {
+         this._writableByOthers = (this._unixmode & Enums.S_IWOTH) !== 0;
+         this._attributeContentType = fileInfo.get_content_type();
+         this._isDesktopFile = this._attributeContentType === 'application/x-desktop';
+-        this._trusted = Prefs.desktopSettings.get_boolean('allow-desktop-file-launching');
+ 
+         if (this._isDesktopFile && this._writableByOthers)
+             log(`desktop-icons: File ${this._displayName} is writable by others - will not allow launching`);
+@@ -1091,7 +1090,7 @@ var FileItem = class {
+     get trustedDesktopFile() {
+         return this._isValidDesktopFile &&
+                this._attributeCanExecute &&
+-               this._trusted &&
++               this._desktopManager.desktopFileTrusted &&
+                !this._desktopManager.writableByOthers &&
+                !this._writableByOthers;
+     }

@@ -1,0 +1,98 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Thu, 13 May 2021 16:09:56 +0900
+Subject: [bugfix] AlternateTab : Fix allocation function of SwitcherList that
+ works abnormally
+
+  - Fix SwitcherList allocation function
+  - Fix SwitcherList get_preferred_height function
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 36 +++++++++++++++++++++++++-----------
+ 1 file changed, 25 insertions(+), 11 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 7753e64..aff40f3 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -312,14 +312,13 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this._list.remove_style_class_name('switcher-list-item-container');
+         this._list.set_style_class_name('tos-switcher-list-item-container');
+-
++        this._list.set_y_expand(false);
+ 
+         this.visibleRows = -1;
+ 
+         this._rootList = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
+             vertical: true,
+-            x_expand: true,
+-            y_expand: true });
++            x_expand: true });
+ 
+         this.add_child(this._rootList);
+ 
+@@ -344,8 +343,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this._rowList = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
+             vertical: true,
+-            x_expand: true,
+-            y_expand: true });
++            x_expand: true });
+ 
+         this._scrollView.remove_actor(this._list);
+         this._scrollView.add_actor(this._rowList);
+@@ -374,8 +372,7 @@ var WindowSwitcher = GObject.registerClass({
+                 this._rows++;
+                 let newRow = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
+                     vertical: false,
+-                    x_expand: true,
+-                    y_expand: true });
++                    x_expand: true });
+                 this._rowList.add_child(newRow);
+                 this._lists.push(newRow);
+             }
+@@ -419,22 +416,39 @@ var WindowSwitcher = GObject.registerClass({
+         return themeNode.adjust_preferred_width(maxChildMin, minListWidth);
+     }
+ 
+-    vfunc_get_preferred_height(forWidth) {
+-        let [minHeight, natHeight] = super.vfunc_get_preferred_height(forWidth);
++    vfunc_get_preferred_height(forWidth) { // eslint-disable-line no-unused-vars
++        let switcherListThemeNode = this.get_theme_node();
++        let rowListThemeNode = this._rowList.get_theme_node();
++        let verticalSpacing = rowListThemeNode.get_length('spacing');
++
++        let maxItemMinHeight = 0;
++        let maxItemNatHeight = 0;
++
++        for (let i = 0; i < this._items.length; i++) {
++            let [ItemMinHeight, ItemNatHeight] = this._items[i].get_preferred_height(-1);
++            maxItemMinHeight = Math.max(ItemMinHeight, maxItemMinHeight);
++            maxItemNatHeight = Math.max(ItemNatHeight, maxItemNatHeight);
++        }
++
++        let listMinHeight = (maxItemMinHeight + verticalSpacing) * Math.min(this._rows + 1, this.visibleRows) - verticalSpacing;
++        let listNatHeight = (maxItemNatHeight + verticalSpacing) * Math.min(this._rows + 1, this.visibleRows) - verticalSpacing;
+ 
+-        return [minHeight, (this._rows + 1) * natHeight];
++        return switcherListThemeNode.adjust_preferred_height(listMinHeight, listNatHeight);
+     }
+ 
++
+     vfunc_allocate(box) {
+         this.set_allocation(box);
+ 
+         let contentBox = this.get_theme_node().get_content_box(box);
++        let rowListThemeNode = this._rowList.get_theme_node();
++        let verticalSpacing = rowListThemeNode.get_length('spacing');
+ 
+         this._rootList.allocate(contentBox);
+ 
+         let verticalScrollable = this._rows >= this.visibleRows;
+ 
+-        this._scrollView.set_height(Math.min(this._rows, this.visibleRows) * this._list.get_height());
++        this._scrollView.set_height(Math.min(this._rows + 1, this.visibleRows) * (this._list.get_height() + verticalSpacing) - verticalSpacing);
+ 
+         if (verticalScrollable) {
+             this._topArrow.show();

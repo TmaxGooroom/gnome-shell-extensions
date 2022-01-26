@@ -1,0 +1,44 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 11 May 2021 17:58:18 +0900
+Subject: [bugfix] AlternateTab : prevent broken Preview thumbnail
+
+  - If Broken preview image can happend, then apply Height first scaling at a fixed rate
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index b9d66fd..1db1dcb 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -34,7 +34,6 @@ var BUTTON_PADDING = 8;
+ var ROW_SPACING = 20;
+ 
+ var WINDOW_PREVIEW_SIZE = 180;
+-var WINDOW_PREVIEW_MAX_WIDTH = 450;
+ var APP_ICON_SIZE = 128;
+ var APP_ICON_SIZE_SMALL = 16;
+ 
+@@ -46,9 +45,9 @@ var AppIconMode = {
+ 
+ function _createWindowClone(window, size) {
+     let [width, height] = window.get_size();
+-    let scale = size / height;
++    let scale = Math.min(size * 2 / width, size / height);
+     return new Clutter.Clone({ source: window,
+-        width: Math.min(WINDOW_PREVIEW_MAX_WIDTH, width * scale),
++        width: width * scale,
+         height: height * scale,
+         x_align: Clutter.ActorAlign.CENTER,
+         y_align: Clutter.ActorAlign.CENTER,
+@@ -282,6 +281,8 @@ class WindowIcon extends St.BoxLayout {
+         this._title.add_child(this.label);
+         this._title.add_child(this.closeButton);
+ 
++        this.preview.set_height(WINDOW_PREVIEW_SIZE);
++
+     }
+ 
+     _createAppIcon(app, size) {

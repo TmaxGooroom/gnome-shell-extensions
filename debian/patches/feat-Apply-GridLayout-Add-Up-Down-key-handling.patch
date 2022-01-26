@@ -1,0 +1,321 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Mon, 19 Apr 2021 17:21:36 +0900
+Subject: [feat]Apply GridLayout,
+ Add Up & Down key handling Add vertical St.BoxLayout Add create horzion
+ BoxLayout code Modify SwitcherPopup allocate function Modify SwitcherPopup
+ keypress handler Modify SwitcherList get_preferred_size function Add
+ vertical Scroll function [IMS] N/A
+
+---
+ extensions/alternate-tab/switcher.js | 203 ++++++++++++++++++++++++++++++-----
+ 1 file changed, 178 insertions(+), 25 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 7e4c38e..a4addb1 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -9,6 +9,13 @@ const { Clutter, Gio, GObject, Meta, Shell, St } = imports.gi;
+ const Main = imports.ui.main;
+ const SwitcherPopup = imports.ui.switcherPopup;
+ 
++var HORIZON_PADDING_RATIO = 0.19;
++var VERTICAL_PADDING_RATIO = 0.13;
++
++var POPUP_SCROLL_TIME = 100;
++
++var APPS_PER_ROW = 5;
++
+ var WINDOW_PREVIEW_SIZE = 256;
+ var APP_ICON_SIZE = 128;
+ var APP_ICON_SIZE_SMALL = 16;
+@@ -19,6 +26,10 @@ var AppIconMode = {
+     BOTH: 3,
+ };
+ 
++function mod(a, b) {
++    return (a + b) % b;
++}
++
+ function _createWindowClone(window, size) {
+     let [width, height] = window.get_size();
+     let scale = Math.min(1.0, size / width, size / height);
+@@ -60,6 +71,35 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         this._switcherList.connect('item-pressed', this._itemPressed.bind(this));
+     }
+ 
++    vfunc_allocate(box) {
++        this.set_allocation(box);
++
++        let childBox = new Clutter.ActorBox();
++        let primary = Main.layoutManager.primaryMonitor;
++
++        let hPadding = Math.ceil(primary.width * HORIZON_PADDING_RATIO);
++        let leftPadding = Math.ceil(hPadding / 2);
++        let rightPadding = leftPadding;
++
++        let vPadding = primary.height * VERTICAL_PADDING_RATIO;
++        let topPadding = Math.ceil(vPadding / 2);
++        let bottomPadding = Math.ceil(vPadding / 2);
++
++        // Allocate the switcherList
++        // We select a size based on an icon size that does not overflow the screen
++        let [, childNaturalHeight] = this._switcherList.get_preferred_height(primary.width - hPadding);
++        let [, childNaturalWidth] = this._switcherList.get_preferred_width(childNaturalHeight);
++
++        childBox.x1 = Math.max(primary.x + leftPadding, primary.x + Math.floor((primary.width - childNaturalWidth) / 2));
++        childBox.x2 = Math.min(primary.x + primary.width - rightPadding, childBox.x1 + childNaturalWidth);
++
++        childBox.y1 = Math.max(primary.y + topPadding, primary.y + Math.floor((primary.height - childNaturalHeight) / 2));
++        childBox.y2 = Math.min(primary.y + primary.height - bottomPadding, childBox.y1 + childNaturalHeight);
++
++        this._switcherList.allocate(childBox);
++    }
++
++
+     _itemPressed(switcher, n) {
+         this._itemPressedHandler(n);
+     }
+@@ -97,6 +137,10 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+             this._select(this._previous());
+         else if (keysym === Clutter.KEY_Right)
+             this._select(this._next());
++        else if (keysym === Clutter.KEY_Down)
++            this._select(this._nextLine());
++        else if (keysym === Clutter.KEY_Up)
++            this._select(this._previousLine());
+         else if (keysym === Clutter.KEY_w || keysym === Clutter.KEY_W || keysym === Clutter.KEY_F4)
+             this._closeWindow(this._selectedIndex);
+         else
+@@ -110,6 +154,26 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+ 
+         super._finish();
+     }
++
++    _nextLine() {
++        if (this._selectedIndex + APPS_PER_ROW  >= this._items.length)
++            return this._selectedIndex % APPS_PER_ROW;
++
++        else
++            return mod(this._selectedIndex + APPS_PER_ROW, this._items.length);
++
++    }
++
++    _previousLine() {
++        if (this._selectedIndex - APPS_PER_ROW  < 0) {
++            if (this._selectedIndex + 1 <= this._items.length % APPS_PER_ROW)
++                return parseInt(this._items.length / APPS_PER_ROW) * APPS_PER_ROW  + this._selectedIndex;
++            else
++                return (parseInt(this._items.length / APPS_PER_ROW) - 1) * APPS_PER_ROW  + this._selectedIndex;
++        } else {
++            return mod(this._selectedIndex - APPS_PER_ROW, this._items.length);
++        }
++    }
+ });
+ 
+ var WindowIcon = GObject.registerClass(
+@@ -121,7 +185,7 @@ class WindowIcon extends St.BoxLayout {
+         this.window = window;
+ 
+         this.child_actor =  new St.BoxLayout();
+-        this.actor.add_actor(this.child_actor);
++        this.actor.add_child(this.child_actor);
+ 
+         this._icon = new St.Widget({ layout_manager: new Clutter.BinLayout() });
+ 
+@@ -141,24 +205,24 @@ class WindowIcon extends St.BoxLayout {
+         switch (mode) {
+         case AppIconMode.THUMBNAIL_ONLY:
+             size = WINDOW_PREVIEW_SIZE;
+-            this._icon.add_actor(_createWindowClone(mutterWindow, size * scaleFactor));
++            this._icon.add_child(_createWindowClone(mutterWindow, size * scaleFactor));
+             break;
+ 
+         case AppIconMode.BOTH:
+             size = WINDOW_PREVIEW_SIZE;
+-            this._icon.add_actor(_createWindowClone(mutterWindow, size * scaleFactor));
++            this._icon.add_child(_createWindowClone(mutterWindow, size * scaleFactor));
+ 
+             if (this.app) {
+-                this.child_actor.add_actor(this._createAppIcon(this.app,
++                this.child_actor.add_child(this._createAppIcon(this.app,
+                     APP_ICON_SIZE_SMALL));
+             }
+             break;
+ 
+         case AppIconMode.APP_ICON_ONLY:
+             size = APP_ICON_SIZE;
+-            this._icon.add_actor(this._createAppIcon(this.app, size));
++            this._icon.add_child(this._createAppIcon(this.app, size));
+         }
+-        this.child_actor.add_actor(this.label);
++        this.child_actor.add_child(this.label);
+ 
+         this._icon.set_size(size * scaleFactor, size * scaleFactor);
+     }
+@@ -181,6 +245,19 @@ var WindowSwitcher = GObject.registerClass({
+     _init(windows, mode) {
+         super._init(true);
+ 
++        this._rows = 0;
++
++        this._parentList = new St.BoxLayout({ style_class: 'switcher-list-item-container',
++            vertical: true,
++            x_expand: true,
++            y_expand: true });
++        this._scrollView.remove_actor(this._list);
++        this._scrollView.add_actor(this._parentList);
++        this._parentList.add_child(this._list);
++
++        this._lists = [];
++        this._lists.push(this._list);
++
+         this.windows = windows;
+         this.icons = [];
+ 
+@@ -188,7 +265,19 @@ var WindowSwitcher = GObject.registerClass({
+             let win = windows[i];
+             let icon = new WindowIcon(win, mode);
+ 
++
++            if (i > 0 && i % APPS_PER_ROW === 0) { // new Row add Algorithm, need to modify because of variable width WindowIcon push
++                this._rows++;
++                let newRow = new St.BoxLayout({ style_class: 'switcher-list-item-container',
++                    vertical: false,
++                    x_expand: true,
++                    y_expand: true });
++                this._parentList.add_actor(newRow);
++                this._lists.push(newRow);
++            }
++
+             this.addItem(icon, icon.label);
++
+             this.icons.push(icon);
+ 
+             icon._unmanagedSignalId = icon.window.connect('unmanaged', window => {
+@@ -213,28 +302,11 @@ var WindowSwitcher = GObject.registerClass({
+         minHeight += spacing;
+         natHeight += spacing;
+ 
+-        return [minHeight, natHeight];
++        return [minHeight, (this._rows + 1) * natHeight];
+     }
+ 
+     vfunc_allocate(box) {
+-        let themeNode = this.get_theme_node();
+-        let contentBox = themeNode.get_content_box(box);
+-        const totalLabelHeight =
+-            themeNode.get_padding(St.Side.BOTTOM);
+-
+-        box.y2 -= totalLabelHeight;
+         super.vfunc_allocate(box);
+-
+-        // Hooking up the parent vfunc will call this.set_allocation() with
+-        // the height without the label height, so call it again with the
+-        // correct size here.
+-        box.y2 += totalLabelHeight;
+-        this.set_allocation(box);
+-        const childBox = new Clutter.ActorBox();
+-        childBox.x1 = contentBox.x1;
+-        childBox.x2 = contentBox.x2;
+-        childBox.y2 = contentBox.y2;
+-        childBox.y1 = childBox.y2;
+     }
+ 
+     addItem(item, label) {
+@@ -242,7 +314,8 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         bbox.set_style_class_name('tos-item-box');
+         bbox.set_child(item);
+-        this._list.add_actor(bbox);
++
++        this._lists[this._rows].add_actor(bbox);
+ 
+         bbox.connect('clicked', () => this._onItemClicked(bbox));
+         bbox.connect('button-press-event', () => this._onItemPress(bbox));
+@@ -253,6 +326,86 @@ var WindowSwitcher = GObject.registerClass({
+         return bbox;
+     }
+ 
++    highlight(index, justOutline) {
++        if (this._items[this._highlighted]) {
++            this._items[this._highlighted].remove_style_pseudo_class('outlined');
++            this._items[this._highlighted].remove_style_pseudo_class('selected');
++        }
++
++        if (this._items[index]) {
++            if (justOutline)
++                this._items[index].add_style_pseudo_class('outlined');
++            else
++                this._items[index].add_style_pseudo_class('selected');
++        }
++
++        this._highlighted = index;
++
++        let adjustment = this._scrollView.vscroll.adjustment;
++        let [value] = adjustment.get_values();
++        let listRow = Math.ceil((index + 1) / APPS_PER_ROW) - 1;// find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
++        let [absItemX_, absItemY] = this._items[index].get_transformed_position();
++        let [result_, posX_, posY] = this.transform_stage_point(absItemX_, absItemY);
++        let [containerWidth_, containerHeight] = this.get_transformed_size();
++
++        if (posY + this._items[index].get_height() > containerHeight)
++            this._scrollToDown(index);
++        else if (this._lists[listRow].allocation.y1 - value < 0)
++            this._scrollToUp(index);
++
++    }
++
++    _scrollToUp(index) {
++        let adjustment = this._scrollView.vscroll.adjustment;
++        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++
++        let indexRow = Math.ceil((index + 1) / APPS_PER_ROW) - 1;// find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
++        let list = this._lists[indexRow];
++
++        if (list.allocation.y1 < value)
++            value = Math.max(0, list.allocation.y1);
++        else if (list.allocation.y2 > value + pageSize)
++            value = Math.min(upper, list.allocation.y2 - pageSize);
++
++        this._scrollableRight = true;
++        adjustment.ease(value, {
++            progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
++            duration: POPUP_SCROLL_TIME,
++            onComplete: () => {
++                if (index === 0)
++                    this._scrollableLeft = false;
++                this.queue_relayout();
++            },
++        });
++    }
++
++    _scrollToDown(index) {
++        let adjustment = this._scrollView.vscroll.adjustment;
++        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++
++        let indexRow = Math.ceil((index + 1) / APPS_PER_ROW) - 1;
++        let list = this._lists[indexRow];
++
++        if (list.allocation.y1 < value)
++            value = Math.max(0, list.allocation.y1);
++        else if (list.allocation.y2 > value + pageSize)
++            value = Math.min(upper, list.allocation.y1);
++
++        this._scrollableLeft = true;
++
++        adjustment.ease(value, {
++            progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
++            duration: POPUP_SCROLL_TIME,
++            onComplete: () => {
++                if (list.allocation.y1 + pageSize > upper)
++                    this._scrollableRight = false;
++                this.queue_relayout();
++            },
++        });
++
++    }
++
++
+     _onItemPress(item) {
+         if (item !== this._items[this._highlighted])
+             this._itemPressed(this._items.indexOf(item));

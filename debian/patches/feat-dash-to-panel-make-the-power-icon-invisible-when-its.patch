@@ -1,0 +1,63 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 11 Jun 2021 15:05:37 +0900
+Subject: [feat] dash-to-panel : make the power icon invisible when its menu
+ item is not visible
+
+ - make the power icon invisible when its menu item is not visible
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 10357b9..53a6170 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -1,3 +1,4 @@
++/* exported Tray */
+ const { Clutter } = imports.gi;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+@@ -21,21 +22,40 @@ class Tray {
+         let indicators = this._indicators.get_children();
+         indicators.forEach(indicator => {
+             let id = indicator.connect('event', this._onTrayClicked.bind(this));
+-            this.connect('disabled', indicator.disconnect.bind(indicator, id));
+             indicator.track_hover = true;
++
++            this.connect('disabled', () => {
++                indicator.disconnect.bind(indicator, id);
++                indicator.track_hover = false;
++            });
+         });
++
++        // make synchronize the visibility of menu item with icon
++        let power = this._originalTray._power;
++        power._oldSync = power._sync;
++        power._sync = () => {
++            power.visible = power._item.visible;
++            power._oldSync();
++        };
++
++        power._sync();
+     }
+ 
+     disable() {
+         Utils.hookVfunc(Object.getPrototypeOf(this._originalTray), 'event', this._originalEventFunc);
+         this._restoreOriginalMenu();
+ 
++        let power = this._originalTray._power;
++        power._sync = power._oldSync;
++        power.visible = true;
++
+         this._originalTray = null;
+         this._menu = null;
+         this._indicators = null;
+         this._originalMenuItems = null;
+         this._originalEventFunc = null;
+ 
++
+         this.emit('disabled');
+     }
+ 

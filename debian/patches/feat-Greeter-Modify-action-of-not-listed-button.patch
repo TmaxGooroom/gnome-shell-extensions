@@ -1,0 +1,135 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 27 Jul 2021 15:27:46 +0900
+Subject: [feat] Greeter: Modify action of not listed button
+
+- Change visible state of not listed button and cancel button.
+- Customize action of not listed button.
+
+[IMS] N/A
+---
+ extensions/greeter/authPrompt.js  |  4 +++
+ extensions/greeter/loginDialog.js | 59 +++++++++++++++++++++++++++++++++++----
+ 2 files changed, 58 insertions(+), 5 deletions(-)
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index 2517df8..711cf55 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -28,6 +28,8 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+     _init(gdmClient, mode) {
+         super._init(gdmClient, mode);
+ 
++        this.cancelButton.hide();
++
+         this._userWidget = new UserWidget.UserWidget(null);
+         this._userWell.set_child(this._userWidget);
+ 
+@@ -51,6 +53,8 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+ 
+     setUser(user) {
+         this._userWidget.changeUser(user);
++        if (!user)
++            this._updateEntry(false);
+     }
+ 
+     setUserList(userList) {
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index e50d78c..385fd70 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -42,6 +42,9 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this._addCustomizedAuthPrompt();
+ 
+         this._user = null;
++
++        this._notListedButton.hide();
++        this._authPrompt.add_child(this._notListedButton);
+     }
+ 
+     _addCustomizedAuthPrompt() {
+@@ -55,10 +58,8 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+     }
+ 
+     _loadUserList() {
+-        if (!this._userListLoaded) {
+-            this._showLastLoginUser();
++        if (!this._userListLoaded)
+             this._authPrompt.setUserList(this._userList);
+-        }
+ 
+         return super._loadUserList();
+     }
+@@ -68,6 +69,7 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this._hideBannerView();
+         this._sessionMenuButton.close();
+         this._sessionMenuButton.hide();
++        this._notListedButton.show();
+     }
+ 
+     _showLastLoginUser() {
+@@ -133,16 +135,63 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+             this._nextSignalId = 0;
+         }
+ 
++        this._updateCancelButton(false);
++
+         if (beginRequest === GnomeAuthPrompt.BeginRequestType.PROVIDE_USERNAME) {
+-            if (!this._disableUserList)
++            if (!this._disableUserList) {
+                 this._showUserList();
+-            else
++
++                if (!this._user)
++                    this._showLastLoginUser();
++            } else {
+                 this._hideUserListAskForUsernameAndBeginVerification();
++            }
+         } else {
+             this._hideUserListAndBeginVerification();
+         }
+     }
+ 
++    _updateCancelButton(visible) {
++        this._authPrompt.cancelButton.visible = visible;
++    }
++
++    _hideUserListAskForUsernameAndBeginVerification() {
++        if (this._authPrompt.verificationStatus === GnomeAuthPrompt.AuthPromptStatus.VERIFYING ||
++            this._authPrompt.verificationStatus === GnomeAuthPrompt.AuthPromptStatus.VERIFICATION_FAILED)
++            this._authPrompt.cancel();
++
++        this._notListedButton.hide();
++        let visible = !this._disableUserList;
++        this._updateCancelButton(visible);
++
++        this._askForUsernameAndBeginVerification();
++    }
++
++    _askForUsernameAndBeginVerification() {
++        this._user = null;
++        this._authPrompt.setUser(null);
++        this._authPrompt.setQuestion(_('Username'));
++
++        this._showRealmLoginHint(this._realmManager.loginFormat);
++
++        if (this._nextSignalId)
++            this._authPrompt.disconnect(this._nextSignalId);
++        this._nextSignalId = this._authPrompt.connect('next',
++            () => {
++                this._authPrompt.disconnect(this._nextSignalId);
++                this._nextSignalId = 0;
++                this._authPrompt.updateSensitivity(false);
++                let answer = this._authPrompt.getAnswer();
++                this._authPrompt._userWidget.setOnlyUserName(answer);
++                this._authPrompt.clear();
++                this._authPrompt.begin({ userName: answer });
++                this._updateCancelButton(true);
++            });
++        this._sessionMenuButton.updateSensitivity(false);
++        this._authPrompt.updateSensitivity(true);
++        this._showPrompt();
++    }
++
+     _loginScreenSessionActivated() {
+         if (!this._user) {
+             this._authPrompt.cancel();

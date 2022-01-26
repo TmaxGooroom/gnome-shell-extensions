@@ -1,0 +1,120 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 28 Jul 2021 15:53:35 +0900
+Subject: [feat] Greeter: Customize notListedButton
+
+- Add icon to notListedButton
+- Add image resource
+
+[IMS] N/A
+---
+ extensions/greeter/constants.js                   |  3 +++
+ extensions/greeter/loginDialog.js                 | 28 +++++++++++++++++++++--
+ extensions/greeter/media/tos_login_ic_user_01.svg | 11 +++++++++
+ extensions/greeter/meson.build                    |  6 ++++-
+ 4 files changed, 45 insertions(+), 3 deletions(-)
+ create mode 100644 extensions/greeter/constants.js
+ create mode 100644 extensions/greeter/media/tos_login_ic_user_01.svg
+
+diff --git a/extensions/greeter/constants.js b/extensions/greeter/constants.js
+new file mode 100644
+index 0000000..26bc3a3
+--- /dev/null
++++ b/extensions/greeter/constants.js
+@@ -0,0 +1,3 @@
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const USER_DEFAULT_ICON = `${Me.path}/media/tos_login_ic_user_01.svg`; // eslint-disable-line no-unused-vars
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index 22139f4..eef300f 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -18,7 +18,7 @@
+  */
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { GObject, Clutter } = imports.gi;
++const { Gio, GObject, Clutter, St } = imports.gi;
+ const Main = imports.ui.main;
+ const GnomeLoginDialog = imports.gdm.loginDialog;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
+@@ -26,6 +26,7 @@ const Batch = imports.gdm.batch;
+ const CtrlAltTab = imports.ui.ctrlAltTab;
+ 
+ const AuthPrompt = Me.imports.authPrompt;
++const Constants = Me.imports.constants;
+ 
+ const Gettext = imports.gettext;
+ const _ = Gettext.gettext;
+@@ -43,8 +44,10 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+ 
+         this._user = null;
+ 
+-        this._notListedButton.hide();
++        // notListedButton
++        this._customizeNotListedButton();
+         this._authPrompt.add_child(this._notListedButton);
++        this._notListedButton.hide();
+     }
+ 
+     _addCustomizedAuthPrompt() {
+@@ -57,6 +60,27 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         this.add_child(this._authPrompt);
+     }
+ 
++    _customizeNotListedButton() {
++        this._notListedButton.remove_all_children();
++
++        let notListedButtonBox = new St.BoxLayout();
++        notListedButtonBox.style = 'spacing: 10px;';
++
++        let icon = new St.Icon({
++            gicon: Gio.icon_new_for_string(Constants.USER_DEFAULT_ICON),
++            icon_size: 30,
++        });
++        let label = new St.Label({
++            text: _('다른 계정으로 로그인'),
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++        notListedButtonBox.add_actor(icon);
++        notListedButtonBox.add_actor(label);
++
++        this._notListedButton.x_align = Clutter.ActorAlign.CENTER;
++        this._notListedButton.set_child(notListedButtonBox);
++    }
++
+     _loadUserList() {
+         if (!this._userListLoaded)
+             this._authPrompt.setUserList(this._userList);
+diff --git a/extensions/greeter/media/tos_login_ic_user_01.svg b/extensions/greeter/media/tos_login_ic_user_01.svg
+new file mode 100644
+index 0000000..6dcf519
+--- /dev/null
++++ b/extensions/greeter/media/tos_login_ic_user_01.svg
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="190px" height="190px" viewBox="0 0 190 190" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_login_ic_user_01</title>
++    <g id="tos_login_ic_user_01" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <path d="M95,189.998551 C42.4960327,189.998551 2.4158453e-13,147.450333 2.4158453e-13,95 C2.4158453e-13,42.4945832 42.4887849,1.42108547e-14 95,1.42108547e-14 C147.505417,1.42108547e-14 189.998551,42.4887849 189.998551,95 C189.998551,147.501068 147.445984,189.998551 95,189.998551 Z" id="Path" fill="#FFFFFF" fill-rule="nonzero"></path>
++        <g id="Group-3">
++            <path d="M95,2.84217094e-14 C147.505417,2.84217094e-14 189.998551,42.4887849 189.998551,95 C189.998551,147.501068 147.445984,189.998551 95,189.998551 C42.4960327,189.998551 4.8316906e-13,147.450333 4.8316906e-13,95 C4.8316906e-13,42.4945832 42.4887849,2.84217094e-14 95,2.84217094e-14 Z M94.692836,106.472991 C74.9567444,106.472991 56.5957636,116.271641 45.5787851,132.68267 C44.5298034,134.244466 44.9461186,136.36066 46.5084248,137.409011 C47.0112154,137.74785 47.5877988,137.941556 48.1810739,137.980418 L48.1810739,137.980418 L48.404223,137.987715 L48.6147274,137.981256 C49.6626554,137.916854 50.6350704,137.373676 51.2348767,136.478854 C60.9848632,121.955507 77.229928,113.285635 94.692836,113.285635 C112.155831,113.285635 128.400843,121.955578 138.150477,136.479408 C139.200114,138.042179 141.315863,138.459009 142.878068,137.408459 C144.439553,136.36066 144.855869,134.244466 143.806759,132.68248 C132.790754,116.271854 114.429182,106.472991 94.692836,106.472991 Z M94.6926979,50 L94.2930667,50.0032377 C81.1307979,50.2166511 70.5261912,60.953389 70.5261912,74.1665067 C70.5261912,87.5130903 81.3461144,98.3330135 94.6926979,98.3330135 C108.039738,98.3330135 118.859205,87.5133241 118.859205,74.1665067 C118.859205,60.9531575 108.255045,50.2166465 95.0923426,50.0032376 L95.0923426,50.0032376 L94.6926979,50 Z M94.6926979,56.8126433 L95.0181866,56.8156507 C104.436822,56.9898208 112.046561,64.7070543 112.046561,74.1665067 C112.046561,83.7346885 104.26088,91.5203701 94.6926979,91.5203701 C85.1245161,91.5203701 77.3388345,83.7346885 77.3388345,74.1665067 C77.3388345,64.7070543 84.9485742,56.9898208 94.3672092,56.8156507 L94.3672092,56.8156507 L94.6926979,56.8126433 Z" id="Combined-Shape" fill="#3961CA" fill-rule="nonzero"></path>
++            <g id="Group-2" transform="translate(45.000000, 50.000000)"></g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+index 5064058..546504b 100644
+--- a/extensions/greeter/meson.build
++++ b/extensions/greeter/meson.build
+@@ -8,5 +8,9 @@ extension_sources += files(
+     'loginDialog.js',
+     'authPrompt.js',
+     'userWidget.js',
+-    'userVerifier.js'
++    'userVerifier.js',
++    'constants.js'
+ )
++
++extension_dir = join_paths(extensiondir, uuid)
++install_subdir('media', install_dir : extension_dir)

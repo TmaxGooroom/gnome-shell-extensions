@@ -1,0 +1,236 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 29 Apr 2021 16:14:57 +0900
+Subject: [refactor] Search : Modify 'open folder location' action
+
+- Change to use FreeDesktopFileManager DBus when opening folder location.
+- Add dbus util file and dbus-related logic is changed to be managed in this file.
+
+[IMS] N/A
+---
+ extensions/search/dbusUtils.js   | 80 ++++++++++++++++++++++++++++++++++++++++
+ extensions/search/menuButton.js  |  3 ++
+ extensions/search/menuWidgets.js | 55 +++++++--------------------
+ extensions/search/meson.build    |  1 +
+ 4 files changed, 98 insertions(+), 41 deletions(-)
+ create mode 100644 extensions/search/dbusUtils.js
+
+diff --git a/extensions/search/dbusUtils.js b/extensions/search/dbusUtils.js
+new file mode 100644
+index 0000000..98686fd
+--- /dev/null
++++ b/extensions/search/dbusUtils.js
+@@ -0,0 +1,80 @@
++/* Search: Search Bar for GNOME Shell
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, version 3 of the License.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++const Gio = imports.gi.Gio;
++
++var FreeDesktopFileManagerProxy; // eslint-disable-line no-unused-vars
++var SwitcherooControlProxyClass;
++var SwitcherooControlProxy;
++var discreteGpuAvailable; // eslint-disable-line no-unused-vars
++
++const FreeDesktopFileManagerInterface = `<node>
++<interface name='org.freedesktop.FileManager1'>
++    <method name='ShowFolders'>
++        <arg name='URIs' type='as' direction='in'/>
++        <arg name='StartupId' type='s' direction='in'/>
++    </method>
++</interface>
++</node>`;
++
++const FreeDesktopFileManagerProxyInterface = Gio.DBusProxy.makeProxyWrapper(FreeDesktopFileManagerInterface);
++
++const SwitcherooControlInterface = `<node>
++<interface name="net.hadess.SwitcherooControl">
++    <property name="HasDualGpu" type="b" access="read"/>
++    <property name="NumGPUs" type="u" access="read"/>
++    <property name="GPUs" type="aa{sv}" access="read"/>
++</interface>
++</node>`;
++
++const SWITCHEROO_CONTROL_BUS_NAME = 'net.hadess.SwitcherooControl';
++const SWITCHEROO_CONTROL_OBJECT_PATH = '/net/hadess/SwitcherooControl';
++
++function _switcherooProxyAppeared() {
++    SwitcherooControlProxyClass = Gio.DBusProxy.makeProxyWrapper(SwitcherooControlInterface);
++    SwitcherooControlProxy = new SwitcherooControlProxyClass(Gio.DBus.system,
++        SWITCHEROO_CONTROL_BUS_NAME, SWITCHEROO_CONTROL_OBJECT_PATH,
++        (proxy, error) => {
++            if (error) {
++                discreteGpuAvailable = false;
++                log(error.message);
++                return;
++            }
++            discreteGpuAvailable = SwitcherooControlProxy.HasDualGpu;
++        });
++}
++
++function init() { // eslint-disable-line no-unused-vars
++    FreeDesktopFileManagerProxy = new FreeDesktopFileManagerProxyInterface(
++        Gio.DBus.session,
++        'org.freedesktop.FileManager1',
++        '/org/freedesktop/FileManager1',
++        (proxy, error) => {
++            if (error)
++                log('Error connecting to Nautilus');
++
++        }
++    );
++
++    SwitcherooControlProxy = null;
++    discreteGpuAvailable = false;
++    Gio.DBus.system.watch_name(SWITCHEROO_CONTROL_BUS_NAME,
++        Gio.BusNameWatcherFlags.NONE,
++        _switcherooProxyAppeared,
++        () => {
++            SwitcherooControlProxy = null;
++            discreteGpuAvailable = false;
++        });
++}
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index e381fd7..0cc06fc 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -24,6 +24,7 @@
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const { Clutter, GLib, GObject, St } = imports.gi;
++const DBusUtils = Me.imports.dbusUtils;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+ const PanelMenu = imports.ui.panelMenu;
+@@ -313,6 +314,8 @@ var SearchMenu = class SearchMenu extends PopupMenu.PopupMenu {
+         this.actor.hide();
+         this._menuCloseID = this.connect('menu-closed', () => this._onCloseEvent());
+         this.connect('destroy', () => this._onDestroy());
++
++        DBusUtils.init();
+     }
+ 
+     open(animation) {
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index fabc6ae..a65ba19 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -28,6 +28,7 @@ const AppFavorites = imports.ui.appFavorites;
+ const appSys = Shell.AppSystem.get_default();
+ const Constants = Me.imports.constants;
+ const Dash = imports.ui.dash;
++const DBusUtils = Me.imports.dbusUtils;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+ const PopupMenu = imports.ui.popupMenu;
+@@ -37,19 +38,6 @@ const Util = imports.misc.util;
+ const Utils =  Me.imports.utils;
+ const _ = Gettext.gettext;
+ 
+-const SWITCHEROO_BUS_NAME = 'net.hadess.SwitcherooControl';
+-const SWITCHEROO_OBJECT_PATH = '/net/hadess/SwitcherooControl';
+-
+-const SwitcherooProxyInterface = '<node> \
+-<interface name="net.hadess.SwitcherooControl"> \
+-  <property name="HasDualGpu" type="b" access="read"/> \
+-  <property name="NumGPUs" type="u" access="read"/> \
+-  <property name="GPUs" type="aa{sv}" access="read"/> \
+-</interface> \
+-</node>';
+-
+-const SwitcherooProxy = Gio.DBusProxy.makeProxyWrapper(SwitcherooProxyInterface);
+-
+ var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMenu.PopupMenu {
+     constructor(actor, app, menuLayout) {
+         super(actor, 0.0, St.Side.TOP);
+@@ -60,14 +48,6 @@ var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMe
+         this._boxPointer.setSourceAlignment(.20);
+         this._boxPointer._border.queue_repaint();
+         this.blockSourceEvents = true;
+-        this.discreteGpuAvailable = false;
+-        Gio.DBus.system.watch_name(SWITCHEROO_BUS_NAME,
+-            Gio.BusNameWatcherFlags.NONE,
+-            this._switcherooProxyAppeared.bind(this),
+-            () => {
+-                this._switcherooProxy = null;
+-                this._updateDiscreteGpuAvailable();
+-            });
+         Main.uiGroup.add_actor(this.actor);
+         this._menuLayout.contextMenuManager.addMenu(this);
+     }
+@@ -95,24 +75,6 @@ var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMe
+         this._path = path;
+     }
+ 
+-    _updateDiscreteGpuAvailable() {
+-        if (!this._switcherooProxy)
+-            this.discreteGpuAvailable = false;
+-        else
+-            this.discreteGpuAvailable = this._switcherooProxy.HasDualGpu;
+-    }
+-
+-    _switcherooProxyAppeared() {
+-        this._switcherooProxy = new SwitcherooProxy(Gio.DBus.system, SWITCHEROO_BUS_NAME, SWITCHEROO_OBJECT_PATH,
+-            (proxy, error) => {
+-                if (error) {
+-                    log(error.message);
+-                    return;
+-                }
+-                this._updateDiscreteGpuAvailable();
+-            });
+-    }
+-
+     closeMenus() {
+         this.close();
+         this._menuLayout.searchMenu.toggle();
+@@ -186,7 +148,7 @@ var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMe
+                             this.emit('activate-window', null);
+                         });
+                     }
+-                    if (this.discreteGpuAvailable &&
++                    if (DBusUtils.discreteGpuAvailable &&
+                         this._app.state === Shell.AppState.STOPPED &&
+                         !actions.includes('activate-discrete-gpu')) {
+                         this._onDiscreteGpuMenuItem = this._appendMenuItem(_('Launch using Dedicated Graphics Card'));
+@@ -1316,7 +1278,18 @@ var ActionItem = GObject.registerClass(class SearchActionItem extends SearchMenu
+         }
+         case Constants.Action.FOLDER_OPEN: {
+             let filePath = this.detailView.metaInfo['description'];
+-            Util.spawnCommandLine(`nautilus "${filePath}"`);
++            let file = Gio.File.new_for_path(filePath);
++
++            let folderList = [];
++            folderList.push(file.get_uri());
++
++            DBusUtils.FreeDesktopFileManagerProxy.ShowFoldersRemote(folderList, '',
++                (result, error) => {
++                    if (error)
++                        log(`Error showing folders on search: ${error.message}`);
++                }
++            );
++
+             this.detailView._menuLayout.searchMenu.toggle();
+             break;
+         }
+diff --git a/extensions/search/meson.build b/extensions/search/meson.build
+index c639094..4a793aa 100644
+--- a/extensions/search/meson.build
++++ b/extensions/search/meson.build
+@@ -12,6 +12,7 @@ extension_sources += files(
+     'controller.js',
+     'convenience.js',
+     'utils.js',
++    'dbusUtils.js',
+     'search.js',
+     'searchMenuLayout.js'
+ )

@@ -1,0 +1,28 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 5 Oct 2021 16:27:00 +0900
+Subject: [refactor] Greeter: change network disconnected message
+
+- Change to the message specified in the guide.
+
+[IMS] 265992
+---
+ extensions/greeter/authPrompt.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index 7d445f5..78ec2f3 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -133,10 +133,10 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+                 message = '아이디 또는 비밀번호를 확인해주세요';
+                 break;
+             case UserVerifier.ErrorType.EXCEED_MAX_LOGIN_COUNT:
+-                message = '계정이 비활성화되었습니다. WAPL에서 비밀번호 찾기를 통해 계정을 활성화해주세요.';
++                message = '계정이 비활성화되었습니다.\n WAPL에서 비밀번호 찾기를 통해 계정을 활성화해주세요.';
+                 break;
+             case UserVerifier.ErrorType.NETWORK_DISCONNECTED:
+-                message = '네트워크를 연결해주세요.';
++                message = '네트워크 연결 상태를 확인해주세요.';
+                 break;
+             default:
+                 message = '아이디 또는 비밀번호를 확인해주세요';

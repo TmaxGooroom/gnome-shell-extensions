@@ -1,0 +1,79 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 24 Aug 2021 18:21:46 +0900
+Subject: [feat] ArcMenu : modify the logic creating desktop shortcut
+
+ - only check if desktop-icons-ng exists and add item to context menu
+ - use Gio.File to copy .desktop file
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuWidgets.js | 55 +++++++++++++++++++++++---------------
+ 1 file changed, 33 insertions(+), 22 deletions(-)
+
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index cf38df9..6cf4363 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -229,29 +229,40 @@ var ApplicationContextMenu = class ArcMenuApplicationContextMenu extends PopupMe
+                     if (this.appInfo.get_string('Id') === 'ArcMenu_Trash')
+                         return false;
+ 
+-                    let desktopIcons = Main.extensionManager.lookup('desktop-icons@csoriano');
+-                    let desktopIconsNG = Main.extensionManager.lookup('ding@rastersoft.com');
+-                    if (desktopIcons && desktopIcons.stateObj || desktopIconsNG && desktopIconsNG.stateObj) {
++                    let desktopIcons = Main.extensionManager.lookup('desktop-icons-ng@tmax-shell-extensions');
++                    if (desktopIcons && desktopIcons.stateObj) {
+                         this._appendSeparator();
+-                        let fileSource = this.appInfo.get_filename();
+-                        let fileDestination = GLib.get_user_special_dir(imports.gi.GLib.UserDirectory.DIRECTORY_DESKTOP);
+-                        let file = Gio.File.new_for_path(`${fileDestination}/${this._app.get_id()}`);
+-                        let exists = file.query_exists(null);
+-                        if (exists) {
+-                            let item = this._appendMenuItem(_('Delete Desktop Shortcut'));
+-                            item.connect('activate', () => {
+-                                if (fileSource && fileDestination)
+-                                    Util.spawnCommandLine(`rm ${fileDestination}/${this._app.get_id()}`);
+-                                this.close();
+-                            });
+-                        } else {
+-                            let item = this._appendMenuItem(_('Create Desktop Shortcut'));
+-                            item.connect('activate', () => {
+-                                if (fileSource && fileDestination)
+-                                    Util.spawnCommandLine(`cp ${fileSource} ${fileDestination}`);
+-                                this.close();
+-                            });
+-                        }
++                        let appInfo = this._app.get_app_info();
++                        if (!appInfo)
++                            return;
++
++                        let callback = () => {
++                            let name = appInfo.get_display_name();
++
++                            // NOTE : gvfs change the desktop file's mime type from application/x-destkop to text/plain
++                            // if the file name does not contain .desktop at the end of its name.
++                            let desktopDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
++                            let shortcutFile = Gio.File.new_for_path(`${desktopDir}/${name}.desktop`);
++                            let originalDesktopFile = Gio.File.new_for_path(`${this._app.app_info.get_filename()}`);
++
++                            let copyFlag = Gio.FileCopyFlags.OVERWRITE;
++                            if (!originalDesktopFile.copy(shortcutFile, copyFlag, null, null))
++                                return;
++
++                            // Change the file's permission to make the file executable in ding(desktop-icons-ng)
++                            // See FileItem._doOpenContext() for more detail.
++                            let fileInfo = shortcutFile.query_info('unix::mode', Gio.FileQueryInfoFlags.NONE, null);
++                            let mode = fileInfo.get_attribute_uint32('unix::mode');
++                            const S_IXUSR = 0o00100;
++                            const S_IWOTH = 0o00002;
++                            mode |= S_IXUSR;
++                            mode &= ~S_IWOTH;
++                            fileInfo.set_attribute_uint32('unix::mode', mode);
++                            shortcutFile.set_attributes_from_info(fileInfo, Gio.FileQueryInfoFlags.NONE, null);
++                        };
++
++                        let item = this._appendMenuItem(_('Create Desktop Shortcut'));
++                        item.connect('activate', callback);
+                     }
+ 
+                     let canFavorite = global.settings.is_writable('favorite-apps');

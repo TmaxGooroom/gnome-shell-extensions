@@ -1,0 +1,80 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 18 Oct 2021 17:22:16 +0900
+Subject: [feat] notification-center: customize sub panels also
+
+- removes notification menu in datemenu in sub panel, only one notification center needed
+- remove dots and indicator next to datemenu in sub panel
+- also applied same visibility options to sub panel
+
+[IMS] 272072
+---
+ extensions/notification-center/extension.js | 52 +++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 2d4c79d..756b029 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -941,10 +941,62 @@ const NotificationCenter = new LangClass({
+         Main.panel.statusArea.dateMenu._date.visible =  !this.prefs.get_boolean('hide-date-section') && this.defaultDateVisibility;
+ 
+         this.notificationSection._messages.forEach(message => this._setMessageLayout(message));
++
++        // apply UI changes also to sub panels
++        if (global.dashToPanel.panels) {
++            if (global.dashToPanel.panels.length < 2)
++                return;
++            this.subDtActors = [];
++            this.subMessageLists = [];
++            global.dashToPanel.panels.forEach(panel => {
++                if (panel !== Main.panel.get_parent())
++                    this.changeSubPanelUI(panel);
++            });
++        }
++    },
++
++    changeSubPanelUI(panel) {
++        // remove dots and borders from sub panel datemenu
++        panel.statusArea.dateMenu.get_children()[0].remove_actor(panel.statusArea.dateMenu._indicator);
++        this.subDtActors.push(panel.statusArea.dateMenu.get_children()[0].get_children()[0]);
++        panel.statusArea.dateMenu.get_children()[0].remove_actor(this.subDtActors[this.subDtActors.length - 1]);
++
++        // remove messagelist from datemenu in sub panel
++        this.subMessageLists.push(panel.statusArea.dateMenu._messageList);
++        panel.statusArea.dateMenu._messageList.get_parent().remove_actor(this.subMessageLists[this.subMessageLists.length - 1]);
++
++        // use same default visitility value of main panel
++        panel.statusArea.dateMenu._weatherItem.visible = !this.prefs.get_boolean('hide-weather-section') && this.defaultWeatherItemVisibility;
++        panel.statusArea.dateMenu._clocksItem.visible =  !this.prefs.get_boolean('hide-clock-section') && this.defaultClocksItemVisibility;
++        panel.statusArea.dateMenu._date.visible =  !this.prefs.get_boolean('hide-date-section') && this.defaultDateVisibility;
++    },
++
++    revertSubPanelUI(panel) {
++    // revert dots and borders from sub panel datemenu
++        panel.statusArea.dateMenu.get_children()[0].insert_child_at_index(this.subDtActors.shift(), 0);
++        panel.statusArea.dateMenu.get_children()[0].add_actor(panel.statusArea.dateMenu._indicator);
++
++        // revert messagelist of datemenu in sub panel
++        panel.statusArea.dateMenu._messageList.get_parent().insert_child_at_index(this.subMessageLists.shift(), 0);
++
++        // revert visibility of items
++        panel.statusArea.dateMenu._weatherItem.visible = this.defaultWeatherItemVisibility;
++        panel.statusArea.dateMenu._clocksItem.visible = this.defaultClocksItemVisibility;
++        panel.statusArea.dateMenu._date.visible = this.defaultDateVisibility;
+     },
+ 
+     undoChanges() {
+ 
++        // revert UI changes in sub panel
++        if (global.dashToPanel.panels) {
++            if (global.dashToPanel.panels.length < 2)
++                return;
++            global.dashToPanel.panels.forEach(panel => {
++                if (panel !== Main.panel.get_parent())
++                    this.revertSubPanelUI(panel);
++            });
++        }
++
+         this.blinkIconStopIfBlinking();
+ 
+         if (this.messageListRemoved) {

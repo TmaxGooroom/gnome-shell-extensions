@@ -1,0 +1,50 @@
+Source: gnome-shell-extensions
+Section: gnome
+Priority: optional
+Maintainer: os1_3 <os1_3@tmax.co.kr>
+Uploaders: os1_3 <os1_3@tmax.co.kr>
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-gnome,
+               git,
+               libglib2.0-dev,
+               meson (>= 0.44.0),
+               sassc
+Rules-Requires-Root: no
+Standards-Version: 4.5.1
+Vcs-Browser: https://salsa.debian.org/gnome-team/gnome-shell-extensions
+Vcs-Git: https://salsa.debian.org/gnome-team/gnome-shell-extensions.git
+Homepage: https://wiki.gnome.org/Projects/GnomeShell/Extensions
+
+Package: gnome-shell-extensions
+Architecture: all
+Depends: gir1.2-atk-1.0,
+         gir1.2-gdkpixbuf-2.0,
+         gir1.2-glib-2.0,
+         gir1.2-gmenu-3.0,
+         gir1.2-gtk-3.0,
+         gir1.2-pango-1.0,
+         gnome-session-bin (>= 3.8),
+         gnome-settings-daemon (>= 3.24),
+         gnome-shell (<< ${gnome:NextVersion}),
+         gnome-shell (>= ${gnome:Version}),
+         gvfs (>= 1.16.0),
+         nimf,
+         libnimf1,
+         nimf-libhangul,
+         xinput-calibrator,
+         ${misc:Depends}
+Recommends: gnome-shell-extension-prefs
+Replaces: gnome-shell-common (<< 3.18)
+Breaks: gnome-shell-common (<< 3.18)
+Description: Extensions to extend functionality of GNOME Shell
+ The GNOME Shell redefines user interactions with the GNOME desktop. In
+ particular, it offers new paradigms for launching applications,
+ accessing documents, and organizing open windows in GNOME. Later, it
+ will introduce a new applets eco-system and offer new solutions for
+ other desktop features, such as notifications and contacts management.
+ The GNOME Shell is intended to replace functions handled by the GNOME
+ Panel and by the window manager in previous versions of GNOME. The GNOME
+ Shell has rich visual effects enabled by new graphical technologies.
+ .
+ GNOME Shell is extensible using extensions. This package contains
+ official GNOME Shell extensions.

@@ -1,0 +1,199 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 6 Oct 2021 21:14:59 +0900
+Subject: [feat] monitor-settings-saver: read monitor config
+
+- read monitor configs from EDID
+- getting monitor rate is WIP
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 145 ++++++++++++++++---------
+ 1 file changed, 96 insertions(+), 49 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index 834c702..e4e920c 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -5,22 +5,17 @@ const { Gio, GLib, Meta } = imports.gi;
+ const Main = imports.ui.main;
+ 
+ var monitorManager = Meta.MonitorManager.get();
+-var customConfFile = `${GLib.get_home_dir()}/.config/monitorsettings`;
+-var xmlConfFile = `${GLib.get_home_dir()}/.config/monitors.xml`;
+-var customConf = Gio.File.new_for_path(customConfFile);
+-var xmlConf = Gio.File.new_for_path(xmlConfFile);
++var monitorsXml = `${GLib.get_home_dir()}/.config/monitors.xml`;
++var xmlFile = Gio.File.new_for_path(monitorsXml);
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+-    applySettings();
+-    saveSettings();
+ 
++    saveSettings();
+     this._monitorChangeId = monitorManager.connect('monitors-changed', () => {
+-        // if primaryindex change
+-        // applySettings();
+-        // else
++        // TODO check whether new monitor attached
+         saveSettings();
+     });
+ }
+@@ -29,23 +24,95 @@ function disable() { // eslint-disable-line no-unused-vars
+     monitorManager.disconnect(this._monitorChangeId);
+ }
+ 
+-function applySettings() {
+-    let ok, cmdLine;
++function saveSettings() {
++    // only single monitor, no need to select primary monitor
++    if (Main.layoutManager.monitors.length < 2)
++        return;
++
++    let monitorInfo = xrandrParse();
++    if (monitorInfo)
++        writeXml(monitorInfo);
++}
++
++let monitorInfo = class {
++};
+ 
+-    // check settings saved before
+-    if (!customConf.query_exists(null) || xmlConf.query_exists(null))
++function xrandrParse() {
++    let monitorProps = runXrandr();
++    if (!monitorProps)
+         return;
+-    [ok, cmdLine] = customConf.load_contents(null);
+ 
+-    // if settings are loaded and with multi-monitor environment, apply primary monitor setting
+-    if (Main.layoutManager.monitors.length >= 2 && ok)
+-        runXrandr(ByteArray.toString(cmdLine));
++    let monitors = [];
++    let lines = ByteArray.toString(monitorProps).split('\n');
++    for (let i = 0; i < lines.length; i++) {
++        if (lines[i].includes(' connected')) {
++            let monitor = new monitorInfo();
++
++            // monitor info parsing
++            let tok = lines[i].split(' ');
++            monitor.connector = `${tok[0]}`;
++            if (tok[2] === 'primary') {
++                monitor.isPrimary = true;
++                tok.splice(2, 1);
++            } else {
++                monitor.isPrimary = false;
++            }
++            let pos = tok[2].split('+');
++            monitor.x = `${pos[1]}`;
++            monitor.y = `${pos[2]}`;
++            let res = pos[0].split('x');
++            monitor.width = `${res[0]}`;
++            monitor.height = `${res[1]}`;
++            if (tok[3] !== '(normal')
++                monitor.transform = `${tok[4]} `;
++
++            // EDID parsing
++            for (let j = i + 1; j < lines.length; j++) {
++                if (lines[j].includes('EDID:')) {
++                    let edid = '';
++                    for (let k = 1; k <= 8; k++)
++                        edid += lines[j + k].replace('\n', '').replace('\t\t', '');
++
++                    // vendor
++                    let vendor = '';
++                    let bin = parseInt(edid.substr(16, 4), 16).toString(2).padStart(16, '0');
++                    vendor += String.fromCharCode(64 + parseInt(bin.substr(1, 5), 2));
++                    vendor += String.fromCharCode(64 + parseInt(bin.substr(6, 5), 2));
++                    vendor += String.fromCharCode(64 + parseInt(bin.substr(11, 5), 2));
++                    monitor.vendor = vendor;
++                    // serial, product
++                    for (let k = 0; k < 4; k++) {
++                        let descriptor = edid.substr(108 + 36 * k, 36);
++                        if (descriptor.substr(0, 10) === '000000ff00') {
++                            let serial = '';
++                            for (let l = 10; l < descriptor.length; l += 2)
++                                serial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
++                            monitor.serial = serial;
++                        }
++                        if (descriptor.substr(0, 10) === '000000fc00') {
++                            let product = '';
++                            for (let l = 10; l < descriptor.length; l += 2)
++                                product += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
++                            monitor.product = product;
++                        }
++                    }
++                    break;
++                }
++            }
++
++            // rate parsing
++
++
++            monitors.push(monitor);
++        }
++    }
++    return monitors;
+ }
+ 
+-function runXrandr(cmdLine) {
++function runXrandr() {
+     let success, stdout, status;
+     try {
+-        [success, stdout,, status] = GLib.spawn_command_line_sync(`xrandr ${cmdLine}`);
++        [success, stdout,, status] = GLib.spawn_command_line_sync('xrandr --props');
+     } catch (e) {
+         log('xrandr is not available');
+         return;
+@@ -57,39 +124,19 @@ function runXrandr(cmdLine) {
+     return stdout;
+ }
+ 
+-function saveSettings() {
+-    // only single monitor, no need to select primary monitor
+-    if (Main.layoutManager.monitors.length < 2)
++function writeXml(monitors) {
++    if (xmlFile.query_exists(null)) {
++        readXml();
++        // add compare monitorspec
+         return;
++    }
+ 
+-    let monitorInfo = xrandrParse(runXrandr(''));
+-
+-    let outputStream = customConf.replace('', false, 0, null);
+-    outputStream.write(monitorInfo, null);
++    // write configuration
++    let outputStream = xmlFile.replace('', false, 0, null);
++    outputStream.write(monitors, null);
+     outputStream.close(null);
+ }
+ 
+-function xrandrParse(stdout) {
+-    if (!stdout)
+-        return;
+-
+-    let ret = '';
+-    ByteArray.toString(stdout).split('\n').forEach(line => {
+-        if (line.includes(' connected')) {
+-            let tok = line.split(' ');
+-            ret += `--output ${tok[0]} `;
+-            if (tok[2] === 'primary') {
+-                ret += '--primary ';
+-                tok.splice(2, 1);
+-            }
+-            let temp = tok[2].split('+');
+-            ret += `--mode ${temp[0]} `;
+-            ret += `--pos ${temp[1]}x${temp[2]} `;
+-            if (tok[3] !== '(normal')
+-                ret += `--rotate ${tok[4]} `;
+-            else
+-                ret += '--rotate normal ';
+-        }
+-    });
+-    return ret;
++function readXml() {
++    // read xml
+ }

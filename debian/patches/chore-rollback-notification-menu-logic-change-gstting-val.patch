@@ -1,0 +1,77 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 24 Aug 2021 14:34:53 +0900
+Subject: [chore] rollback notification menu logic, change gstting values
+
+- rollbacked notification menu removing logic next to datemenu
+- modified gsetting values show-events, show-media
+- events and medias do not affect in making notification menu next to datemenu
+
+[IMS] 268482
+---
+ extensions/notification-center/extension.js        | 35 ++++++++++++++--------
+ .../10_notification-center.gschema.override        |  2 --
+ 2 files changed, 23 insertions(+), 14 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 4014f04..2d4c79d 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -893,24 +893,35 @@ const NotificationCenter = new LangClass({
+ 
+ 
+         this.dmSig = Main.panel.statusArea.dateMenu.menu.connect('open-state-changed', () => {
+-            if (Main.panel.statusArea.dateMenu.menu.isOpen && !this.hideEmptySpace) {
+-                this.manageEvents(1);
+-                if (this.showLabel === false)
+-                    this.eventsCount = 0;
+-
+-                this.resetIndicator();
++            if (Main.panel.statusArea.dateMenu.menu.isOpen) {
++                switch (this.hideEmptySpace) {
++                case 0:
++                    this.manageEvents(1);
++                    if (this.showLabel === false)
++                        this.eventsCount = 0;
++
++                    this.resetIndicator();
++                    break;
++
++                case 2:
++                    if (!this.mediaSectionToBeShown && this.mediaSection._shouldShow() || !this.notificationSectionToBeShown && this.notificationSection._list.get_children().length || !this.eventsSectionToBeShown &&  this.shouldShowEventsSection()) {
++                        if (this.messageListRemoved) {
++                            this._messageListParent.insert_child_at_index(this._messageList, this.messageListPos);
++                            this.messageListRemoved = false;
++                        }
++                    } else if (!this.messageListRemoved) {
++                        this._messageListParent.remove_actor(this._messageList);
++                        this.messageListRemoved = true;
++                    }
++                    break;
++                }
+             } else {
+                 Main.panel.statusArea.dateMenu._calendar.setDate(new Date());
+                 this.eventsCount = this.seenEvents ? 0 : this.eventsCount;
+                 this.resetIndicator();
+             }
+-        });
+ 
+-        // remove notification menu next to datemenu popup
+-        if (this.hideEmptySpace === 2 && !this.messageListRemoved) {
+-            this._messageListParent.remove_actor(this._messageList);
+-            this.messageListRemoved = true;
+-        }
++        });
+ 
+         if (this.menuAutoclose) {
+             this.cmsig = global.display.connect('notify::focus-window', () => {
+diff --git a/extensions/notification-center/schemas/10_notification-center.gschema.override b/extensions/notification-center/schemas/10_notification-center.gschema.override
+index 1c2b7df..9b3111a 100644
+--- a/extensions/notification-center/schemas/10_notification-center.gschema.override
++++ b/extensions/notification-center/schemas/10_notification-center.gschema.override
+@@ -6,6 +6,4 @@ indicator-index = 20
+ autohide = 0
+ new-notification = 'count'
+ show-label = true
+-show-media = 0
+-show-events = 0
+ sections-order = ['notification']

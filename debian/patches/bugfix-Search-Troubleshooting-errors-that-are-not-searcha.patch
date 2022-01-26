@@ -1,0 +1,87 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 12 Apr 2021 11:30:25 +0900
+Subject: [bugfix] Search : Troubleshooting errors that are not searchable
+ when installing or deleting apps
+
+- Because the search box was accidentally created during the reload process.
+- Modify search box to not create new when reloading.
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js   | 13 ++++++-------
+ extensions/search/searchMenuLayout.js | 12 +++---------
+ 2 files changed, 9 insertions(+), 16 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 343c31d..9996ad7 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -41,6 +41,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         this._mainBoxKeyPressId = this.mainBox.connect('key-press-event', this._onMainBoxKeyPress.bind(this));
+ 
+         this.mainBox.vertical = false;
++        this.createSearchBox();
+         this.createLayout();
+         this.updateStyle();
+     }
+@@ -231,7 +232,11 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+     }
+ 
+     destroy(isReload) {
+-        if (this.searchBox) {
++        if (this.newSearch)
++            this.newSearch.destroy();
++
++
++        if (!isReload) {
+             if (this._searchBoxChangedId > 0) {
+                 this.searchBox.disconnect(this._searchBoxChangedId);
+                 this._searchBoxChangedId = 0;
+@@ -244,13 +249,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+                 this.searchBox.disconnect(this._searchBoxKeyFocusInId);
+                 this._searchBoxKeyFocusInId = 0;
+             }
+-        }
+ 
+-        if (this.newSearch)
+-            this.newSearch.destroy();
+-
+-
+-        if (!isReload) {
+             if (this._mainBoxKeyPressId > 0) {
+                 this.mainBox.disconnect(this._mainBoxKeyPressId);
+                 this._mainBoxKeyPressId = 0;
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index 8792fb8..08b70ee 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -36,13 +36,15 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         this.searchMenu = mainButton.searchMenu;
+     }
+ 
+-    createLayout() {
++    createSearchBox() {
+         // Search Box
+         this.searchBox = new MW.SearchBox(this);
+         this._searchBoxChangedId = this.searchBox.connect('changed', this._onSearchBoxChanged.bind(this));
+         this._searchBoxKeyPressId = this.searchBox.connect('key-press-event', this._onSearchBoxKeyPress.bind(this));
+         this._searchBoxKeyFocusInId = this.searchBox.connect('key-focus-in', this._onSearchBoxKeyFocusIn.bind(this));
++    }
+ 
++    createLayout() {
+         // Search Result Box
+         this.applicationsBox = new St.BoxLayout({
+             vertical: true,
+@@ -66,12 +68,4 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         defaultLabel.label.style = 'font-weight: bold; font-size: 16px;';
+         this.applicationsBox.add_actor(defaultLabel.actor);
+     }
+-
+-    setDefaultMenuView() {
+-        super.setDefaultMenuView();
+-    }
+-
+-    _reload() {
+-        super.reload();
+-    }
+ };

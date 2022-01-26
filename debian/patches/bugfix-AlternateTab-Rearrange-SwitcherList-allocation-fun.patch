@@ -1,0 +1,46 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 7 May 2021 13:33:52 +0900
+Subject: [bugfix] AlternateTab: Rearrange SwitcherList allocation function
+
+  - Amend SwitcherList vertical padding calculation.
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index d5afcae..2b0fab5 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -88,12 +88,10 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+     vfunc_allocate(box) {
+         this.set_allocation(box);
+ 
+-        let popupThemeNode = this.get_theme_node();
+         let switcherThemeNode = this._switcherList.get_theme_node();
+         let switcherVerticalLayoutThemeNode = this._switcherList._rowList.get_theme_node();
+ 
+-        let popupVerticalPadding = popupThemeNode.get_vertical_padding();
+-        let switcherPadding = switcherThemeNode.get_padding(St.Side.BOTTOM);
++        let switcherVerticalPadding = switcherThemeNode.get_vertical_padding();
+         let switcherVerticalSpacing = switcherVerticalLayoutThemeNode.get_length('spacing');
+ 
+         let childBox = new Clutter.ActorBox();
+@@ -109,7 +107,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         // verticalPadding is vertical padding (top padding + bottom padding) in monitor screen (px);
+         let visibleRows =  Math.floor(primary.height * (1 - MONITOR_VERTICAL_PADDING_RATIO) / this._rowHeight);
+         let verticalPadding = primary.height - (visibleRows * this._rowHeight +
+-                                            (popupVerticalPadding + switcherPadding) +
++                                            switcherVerticalPadding +
+                                             (visibleRows - 1) * switcherVerticalSpacing
+         );
+ 
+@@ -615,6 +613,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+     }
+ 
++
+     _onItemClickedClose(icon) {
+         this._itemClosed(this.icons.indexOf(icon));
+     }

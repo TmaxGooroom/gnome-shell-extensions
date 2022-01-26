@@ -1,0 +1,175 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 20 Apr 2021 16:06:36 +0900
+Subject: [feat] tos-hotkey : new extension to support tos hotkey
+ specification
+
+ - create tos-hotkey extensions
+ - support open terminal and file manager(nautilus)
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/extension.js                 | 51 ++++++++++++++++++++++
+ extensions/tos-hotkey/meson.build                  | 14 ++++++
+ extensions/tos-hotkey/metadata.json.in             |  7 +++
+ extensions/tos-hotkey/schemas/meson.build          | 14 ++++++
+ ...g.gnome.shell.extensions.tos-hotkey.gschema.xml | 19 ++++++++
+ extensions/tos-hotkey/stylesheet.css               |  0
+ meson.build                                        |  1 +
+ 7 files changed, 106 insertions(+)
+ create mode 100644 extensions/tos-hotkey/extension.js
+ create mode 100644 extensions/tos-hotkey/meson.build
+ create mode 100644 extensions/tos-hotkey/metadata.json.in
+ create mode 100644 extensions/tos-hotkey/schemas/meson.build
+ create mode 100644 extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+ create mode 100644 extensions/tos-hotkey/stylesheet.css
+
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+new file mode 100644
+index 0000000..bf90d3b
+--- /dev/null
++++ b/extensions/tos-hotkey/extension.js
+@@ -0,0 +1,51 @@
++const { Gio, Meta, Shell } = imports.gi;
++
++const Main = imports.ui.main;
++
++// var SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
++// var WM_KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
++var SHELL_EXTENSIONS_TOS_HOTKEY = 'org.gnome.shell.extensions.tos-hotkey';
++
++function _addKeybinding(key, action, schema, handler) {
++    if (Main.wm._allowedKeybindings[key])
++        Main.wm.removeKeybinding(key);
++    if (!Main.wm._allowedKeybindings[key]) {
++        let settings = new Gio.Settings({ schema_id: schema });
++
++        Main.wm.addKeybinding(
++            key,
++            settings,
++            Meta.KeyBindingFlags.NONE,
++            action,
++            handler
++        );
++    }
++}
++
++function _launchApp(desktopAppId) {
++    let app = Shell.AppSystem.get_default().lookup_app(desktopAppId);
++    let gpuPref = app.get_app_info().get_boolean('PrefersNonDefaultGPU')
++        ? Shell.AppLaunchGpu.DEFAULT
++        : Shell.AppLaunchGpu.DISCRETE;
++
++    app.launch(0, -1, gpuPref);
++}
++
++function init() { // eslint-disable-line no-unused-vars
++}
++
++function enable() { // eslint-disable-line no-unused-vars
++    _addKeybinding('open-file-manager',
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
++        SHELL_EXTENSIONS_TOS_HOTKEY,
++        _launchApp.bind(null, 'org.gnome.Nautilus.desktop'));
++    _addKeybinding('open-terminal',
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
++        SHELL_EXTENSIONS_TOS_HOTKEY,
++        _launchApp.bind(null, 'org.gnome.Terminal.desktop'));
++}
++
++function disable() { // eslint-disable-line no-unused-vars
++    Main.wm.removeKeybinding('open-file-manager');
++    Main.wm.removeKeybinding('open-terminal');
++}
+diff --git a/extensions/tos-hotkey/meson.build b/extensions/tos-hotkey/meson.build
+new file mode 100644
+index 0000000..b8b58e3
+--- /dev/null
++++ b/extensions/tos-hotkey/meson.build
+@@ -0,0 +1,14 @@
++extension_data += configure_file(
++  input: metadata_name + '.in',
++  output: metadata_name,
++  configuration: metadata_conf
++)
++
++extension_sources += files(
++  'extension.js'
++)
++
++extension_dir = join_paths(extensiondir, uuid)
++
++schema_data_dir = 'schemas'
++subdir(schema_data_dir)
+diff --git a/extensions/tos-hotkey/metadata.json.in b/extensions/tos-hotkey/metadata.json.in
+new file mode 100644
+index 0000000..3fc4a40
+--- /dev/null
++++ b/extensions/tos-hotkey/metadata.json.in
+@@ -0,0 +1,7 @@
++{
++    "uuid": "tos-hotkey@tmax-shell-extensions",
++    "name": "tos hotkey",
++    "description": "To support TOS specific hotkeys",
++    "version": 1,
++    "shell-version": [ "3.38" ]
++}
+diff --git a/extensions/tos-hotkey/schemas/meson.build b/extensions/tos-hotkey/schemas/meson.build
+new file mode 100644
+index 0000000..fa8ea25
+--- /dev/null
++++ b/extensions/tos-hotkey/schemas/meson.build
+@@ -0,0 +1,14 @@
++run_command('glib-compile-schemas', meson.current_source_dir())
++
++install_data([
++    'gschemas.compiled',
++    'org.gnome.shell.extensions.tos-hotkey.gschema.xml',
++  ],
++  install_dir : join_paths(extension_dir, schema_data_dir)
++)
++
++install_data([
++    'org.gnome.shell.extensions.tos-hotkey.gschema.xml',
++  ],
++  install_dir : schemadir
++)
+diff --git a/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml b/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+new file mode 100644
+index 0000000..1d161f8
+--- /dev/null
++++ b/extensions/tos-hotkey/schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<schemalist gettext-domain="gnome-shell-extensions">
++  <schema path="/org/gnome/shell/extensions/tos-hotkey/" id="org.gnome.shell.extensions.tos-hotkey">
++    <key name="open-file-manager" type="as">
++      <default>["&lt;Super&gt;e"]</default>
++      <summary>Keybinding to open default file manager.</summary>
++      <description>
++        Keybinding to open the application menu.
++      </description>
++    </key>
++    <key name="open-terminal" type="as">
++      <default>["&lt;Super&gt;r"]</default>
++      <summary>Keybinding to open default file manager.</summary>
++      <description>
++        Keybinding to open the application menu.
++      </description>
++    </key>
++  </schema>
++</schemalist>
+diff --git a/extensions/tos-hotkey/stylesheet.css b/extensions/tos-hotkey/stylesheet.css
+new file mode 100644
+index 0000000..e69de29
+diff --git a/meson.build b/meson.build
+index bc03dc9..bc01d4d 100644
+--- a/meson.build
++++ b/meson.build
+@@ -49,6 +49,7 @@ tos_extensions = [
+   'desktop-icons-ng',
+   'alternate-tab',
+   'search',
++  'tos-hotkey',
+ ]
+ 
+ 

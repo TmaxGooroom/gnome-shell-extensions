@@ -1,0 +1,309 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Fri, 24 Sep 2021 17:15:54 +0900
+Subject: [feat] desktop-icons-ng : Add Menu to Sort by Content Type, Size,
+ Modified Date
+
+- Add Menu to Sort by Content Type, Size, Modified Date
+- Add Menu to Sort by Ascending and Descending
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 116 +++++++++++++++++++++-----
+ extensions/desktop-icons-ng/enums.js          |  41 ++++++++-
+ extensions/desktop-icons-ng/fileItem.js       |  13 +++
+ extensions/desktop-icons-ng/po/ko.po          |  32 ++++++-
+ 4 files changed, 175 insertions(+), 27 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 025685c..f471f66 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -683,56 +683,128 @@ var DesktopManager = class {
+     }
+ 
+     _createSortingMenu() {
++        let fileInfo = this._desktopDir.query_info(Enums.DEFAULT_ATTRIBUTES, Gio.FileQueryInfoFlags.NONE, null);
++        let sortCriteria = fileInfo.get_attribute_string('metadata::sortCriteria');
++        let sortOrder = fileInfo.get_attribute_string('metadata::sortOrder');
++
++        this._orderAscending = sortOrder === '1';
++        this._currentSorting = Enums.StringToSortingCriteria(sortCriteria);
++
+         this._sortingSubMenu = new Gtk.Menu();
+-        this._sortingMenuItem = new Gtk.MenuItem({ label: _('Sorting') });
++        this._sortingMenuItem = new Gtk.MenuItem({ label: _('Sorting Criteria') });
+         this._sortingMenuItem.set_submenu(this._sortingSubMenu);
+         this._menu.add(this._sortingMenuItem);
+ 
+-        this._sortMenuByName = new Gtk.MenuItem({ label: _('Name') });
++        this._sortMenuByName = new Gtk.RadioMenuItem({ label: _('Name') });
+         this._sortingSubMenu.add(this._sortMenuByName);
+         this._sortMenuByName.connect('activate', () =>
+             this._sortingByCriteria(Enums.SortingCriteria.Name));
+ 
+-        this._sortMenuBySize = new Gtk.MenuItem({ label: _('Size') });
++        this._sortMenuBySize = new Gtk.RadioMenuItem({ label: _('Size') });
+         this._sortingSubMenu.add(this._sortMenuBySize);
+         this._sortMenuBySize.connect('activate', () =>
+             this._sortingByCriteria(Enums.SortingCriteria.Size));
+ 
+-        this._sortMenuByType = new Gtk.MenuItem({ label: _('Type') });
++        this._sortMenuByType = new Gtk.RadioMenuItem({ label: _('Content Type') });
+         this._sortingSubMenu.add(this._sortMenuByType);
+         this._sortMenuByType.connect('activate', () =>
+             this._sortingByCriteria(Enums.SortingCriteria.Type));
++
++        this._sortMenuByTime = new Gtk.RadioMenuItem({ label: _('Modified Time') });
++        this._sortingSubMenu.add(this._sortMenuByTime);
++        this._sortMenuByTime.connect('activate', () =>
++            this._sortingByCriteria(Enums.SortingCriteria.Time));
++
++        this._sortingSubMenu.add(new Gtk.SeparatorMenuItem());
++
++        this._sortMenuAscending = new Gtk.RadioMenuItem({ label: _('Ascending') });
++        this._sortingSubMenu.add(this._sortMenuAscending);
++        this._sortMenuAscending.connect('activate', () =>
++            this._sortingByOrder(true));
++
++        this._sortMenuDescending = new Gtk.RadioMenuItem({ label: _('Descending') });
++        this._sortingSubMenu.add(this._sortMenuDescending);
++        this._sortMenuDescending.connect('activate', () =>
++            this._sortingByOrder(false));
++
++        this._sortMenuByName.join_group(null);
++        this._sortMenuBySize.join_group(this._sortMenuByName);
++        this._sortMenuByType.join_group(this._sortMenuBySize);
++        this._sortMenuByTime.join_group(this._sortMenuByType);
++        this._sortMenuDescending.join_group(this._sortMenuAscending);
++
++        if (this._currentSorting === Enums.SortingCriteria.Name)
++            this._sortMenuByName.set_active(true);
++        else if (this._currentSorting === Enums.SortingCriteria.Size)
++            this._sortMenuBySize.set_active(true);
++        else
++            this._sortMenuByType.set_active(true);
++
++
++        if (this._orderAscending)
++            this._sortMenuAscending.set_active(true);
++        else
++            this._sortMenuDescending.set_active(true);
++
+     }
+ 
++    _sortingByOrder(order) {
++        this._doSort(this._currentSorting, order);
++    }
+ 
+     _sortingByCriteria(criteria) {
++        this._doSort(criteria, this._orderAscending);
++    }
++
++    _doSort(criteria, order) {
+         for (let fileItem of this._fileList) {
+             fileItem.removeFromGrid();
+             fileItem.savedCoordinates = null;
+         }
+ 
+-        this._fileList.sort((a, b) => {
+-            switch (criteria) {
+-            case Enums.SortingCriteria.Name:
+-                if (a.displayName > b.displayName)
+-                    return true;
++        switch (criteria) {
++        case Enums.SortingCriteria.Name:
++            this._fileList.sort((a, b) => {
++                let compVal;
++                compVal = a.displayName > b.displayName;
++                return order === compVal ? 1 : -1;
++            });
++            break;
++        case Enums.SortingCriteria.Size:
++            this._fileList.sort((a, b) => {
++                let compVal;
++                compVal = a.fileSize > b.fileSize;
++                return order === compVal ? 1 : -1;
++            });
++            break;
++        case Enums.SortingCriteria.Type:
++            this._fileList.sort((a, b) => {
++                let compVal;
++                compVal = a.contentType > b.contentType;
++                return order === compVal ? 1 : -1;
++            });
++            break;
++        case Enums.SortingCriteria.Time:
++            this._fileList.sort((a, b) => {
++                let compVal;
++                compVal = a.modifiedTime > b.modifiedTime;
++                return order === compVal ? 1 : -1;
++            });
++            break;
++        }
+ 
+-                break;
+-            case Enums.SortingCriteria.Size:
+-                if (a.fileSize > b.fileSize)
+-                    return true;
++        this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.PRESERVE);
+ 
+-                break;
+-            case Enums.SortingCriteria.Type:
+-                if (a.contentType > b.contentType)
+-                    return true;
++        this._orderAscending = order;
++        this._currentSorting = criteria;
+ 
+-                break;
+-            }
+-            return false;
+-        });
++        let sortCriteria = Enums.SortingCriteriaToString(criteria);
++        let sortOrder = order ? '1' : '0';
+ 
+-        this._addFilesToDesktop(this._fileList, Enums.StoredCoordinates.PRESERVE);
++        let info = new Gio.FileInfo();
++        info.set_attribute_string('metadata::sortCriteria', sortCriteria);
++        info.set_attribute_string('metadata::sortOrder', sortOrder);
++        this._desktopDir.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+     }
+ 
+     _onOpenDesktopInFilesClicked() {
+diff --git a/extensions/desktop-icons-ng/enums.js b/extensions/desktop-icons-ng/enums.js
+index 8f00b7e..cb1e21f 100644
+--- a/extensions/desktop-icons-ng/enums.js
++++ b/extensions/desktop-icons-ng/enums.js
+@@ -1,4 +1,4 @@
+-/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH */
++/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria StringToSortingCriteria SortingCriteriaToString DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -73,8 +73,47 @@ var SortingCriteria = {
+     Name: 0,
+     Size: 1,
+     Type: 2,
++    Time: 3,
+ };
+ 
++function StringToSortingCriteria(criteria) {
++    let sortCriteria = SortingCriteria.Name;
++    switch (criteria) {
++    case 'name':
++        sortCriteria = SortingCriteria.Name;
++        break;
++    case 'type':
++        sortCriteria = SortingCriteria.Type;
++        break;
++    case 'size':
++        sortCriteria = SortingCriteria.Size;
++        break;
++    case 'time':
++        sortCriteria = SortingCriteria.Time;
++        break;
++    }
++    return sortCriteria;
++}
++
++function SortingCriteriaToString(criteria) {
++    let sortCriteria = 'name';
++    switch (criteria) {
++    case SortingCriteria.Name:
++        sortCriteria = 'name';
++        break;
++    case SortingCriteria.Type:
++        sortCriteria = 'type';
++        break;
++    case SortingCriteria.Size:
++        sortCriteria = 'size';
++        break;
++    case SortingCriteria.Time:
++        sortCriteria = 'time';
++        break;
++    }
++    return sortCriteria;
++}
++
+ var DEFAULT_ATTRIBUTES = 'metadata::*,standard::*,access::*,time::modified,unix::mode';
+ var TERMINAL_SCHEMA = 'org.gnome.desktop.default-applications.terminal';
+ var SCHEMA_GTK = 'org.gtk.Settings.FileChooser';
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 8a1c5dd..d1b92d3 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -52,6 +52,8 @@ var FileItem = class {
+         this._grid = null;
+ 
+         this._file = file;
++        this._fileSize = fileInfo.get_size();
++        this._modificationDateTime = fileInfo.get_modification_date_time();
+ 
+         this._savedCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.ICON_POSITION_METADATA);
+         this._dropCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.DND_POSITION_METADATA);
+@@ -1121,5 +1123,16 @@ var FileItem = class {
+         return this._displayName || null;
+     }
+ 
++    get fileSize() {
++        return this._fileSize;
++    }
++
++    get contentType() {
++        return this._attributeContentType;
++    }
++
++    get modifiedTime() {
++        return this._modifiedTime;
++    }
+ };
+ Signals.addSignalMethods(FileItem.prototype);
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index b421609..2a21b5c 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -97,10 +97,6 @@ msgstr "다시 실행"
+ msgid "Select all"
+ msgstr "전체 선택"
+ 
+-#: ../desktopManager.js:568
+-msgid "Sorting"
+-msgstr "정렬"
+-
+ #: ../desktopManager.js:572
+ msgid "Show Desktop in Files"
+ msgstr "파일 관리자로 바탕화면 보기"
+@@ -125,6 +121,34 @@ msgstr "바탕화면 아이콘 설정"
+ msgid "Scripts"
+ msgstr "스크립트"
+ 
++#: desktopManager.js:694
++msgid "Sorting Criteria"
++msgstr "정렬 기준"
++
++#: desktopManager.js:698
++msgid "Name"
++msgstr "이름"
++
++#: desktopManager.js:703
++msgid "Size"
++msgstr "크기"
++
++#: desktopManager.js:708
++msgid "Content Type"
++msgstr "항목 유형"
++
++#: desktopManager.js:713
++msgid "Modified Time"
++msgstr "수정한 날짜"
++
++#: desktopManager.js:720
++msgid "Ascending"
++msgstr "오름차순"
++
++#: desktopManager.js:725
++msgid "Descending"
++msgstr "내림차순"
++
+ #: ../desktopManager.js:1127 ../desktopManager.js:1175
+ msgid "Error while deleting files"
+ msgstr "파일 삭제 중 오류가 발생하였습니다."

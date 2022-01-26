@@ -1,0 +1,44 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Mon, 10 May 2021 16:46:23 +0900
+Subject: [feat] AlternateTab : implment limiting the maximum width of the
+ preview
+
+   - Limit to no more than the maximum width for extreme situations
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 7cf79ee..8535048 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -34,6 +34,7 @@ var BUTTON_PADDING = 8;
+ var ROW_SPACING = 20;
+ 
+ var WINDOW_PREVIEW_SIZE = 180;
++var WINDOW_PREVIEW_MAX_WIDTH = 450;
+ var APP_ICON_SIZE = 128;
+ var APP_ICON_SIZE_SMALL = 16;
+ 
+@@ -47,7 +48,7 @@ function _createWindowClone(window, size) {
+     let [width, height] = window.get_size();
+     let scale = size / height;
+     return new Clutter.Clone({ source: window,
+-        width: width * scale,
++        width: Math.min(WINDOW_PREVIEW_MAX_WIDTH, width * scale),
+         height: height * scale,
+         x_align: Clutter.ActorAlign.CENTER,
+         y_align: Clutter.ActorAlign.CENTER,
+@@ -281,10 +282,6 @@ class WindowIcon extends St.BoxLayout {
+         this._title.add_child(this.label);
+         this._title.add_child(this.closeButton);
+ 
+-        let [width, height] = mutterWindow.get_size();
+-        let ratio = width / height;
+-
+-        this.preview.set_size(size * ratio * scaleFactor, size * scaleFactor);
+     }
+ 
+     _createAppIcon(app, size) {

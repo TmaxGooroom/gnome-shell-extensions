@@ -1,0 +1,108 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 13 Jul 2021 10:28:35 +0900
+Subject: [feat] osk-hangul : change flag icon to label
+
+ - replace flag icon(which means language change feature) with label
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 37 ++++++++++++++++++++++++++++++++++---
+ 1 file changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 2056a8a..cc0b355 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -19,6 +19,7 @@ let _originalPopupLanguageMenu = null;
+ let _originalSetActiveLayer = null;
+ let _originalSyncEnabled = null;
+ let _keyboardDestroyId;
++let _originalCreateLayersForGroup = null;
+ 
+ function _isKoreanCharactor(keyval) {
+     if (!keyval)
+@@ -72,6 +73,15 @@ function _nextInputMethod() {
+     ibusManager.activateProperty('InputMode', IBus.PropState.CHECKED);
+ }
+ 
++// remove previous kr and us keyboard groups and create them again.
++function _resetKeyboardLayout(keyboard) {
++    keyboard._groups['kr'] = null;
++    keyboard._groups['us'] = null;
++    keyboard._ensureKeysForGroup('kr');
++    keyboard._ensureKeysForGroup('us');
++    keyboard._setActiveLayer(0);
++}
++
+ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+@@ -97,6 +107,23 @@ function _enable() {
+         _nextInputMethod();
+     };
+ 
++    _originalCreateLayersForGroup = keyboard._createLayersForGroup;
++    keyboard._createLayersForGroup = groupname => {
++        let layers = _originalCreateLayersForGroup.call(keyboard, groupname);
++
++        for (let l of Object.keys(layers)) {
++            for (let container of layers[l]) {
++                let key = container.get_children()[0];
++                if (key.get_style_class_name().includes('layout-key'))
++                    key.set_label('한/영');
++
++            }
++        }
++
++        return layers;
++    };
++
++
+     // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+     // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+     // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+@@ -116,7 +143,7 @@ function _enable() {
+         controller._currentSource.xkbId = oldGroupName;
+     };
+ 
+-    keyboard._setActiveLayer(0);
++    _resetKeyboardLayout(keyboard);
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+@@ -133,29 +160,33 @@ function enable() { // eslint-disable-line no-unused-vars
+             });
+         }
+     };
++
+     Main.keyboard._syncEnabled();
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+     let keyboard = Main.keyboard._keyboard;
+-    let controller = keyboard._keyboardController;
++    let controller = keyboard ? keyboard._keyboardController : null;
+ 
+     if (controller) {
+         controller.keyvalPress = _originalKeyvalPress;
+         controller.keyvalRelease = _originalKeyvalRelease;
+     }
+     if (keyboard) {
++        keyboard._createLayersForGroup = _originalCreateLayersForGroup;
+         keyboard._setActiveLayer = _originalSetActiveLayer;
+         keyboard._popupLanguageMenu = _originalPopupLanguageMenu;
+         if (_keyboardDestroyId)
+             keyboard.disconnect(_keyboardDestroyId);
+-        keyboard._setActiveLayer(0);
++
++        _resetKeyboardLayout(keyboard);
+     }
+ 
+     _originalKeyvalPress = null;
+     _originalKeyvalRelease = null;
+     _originalPopupLanguageMenu = null;
+     _originalSetActiveLayer = null;
++    _originalCreateLayersForGroup = null;
+ 
+     Main.keyboard._syncEnabled = _originalSyncEnabled;
+     _originalSyncEnabled = null;

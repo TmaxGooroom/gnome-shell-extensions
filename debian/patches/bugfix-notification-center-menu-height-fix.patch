@@ -1,0 +1,34 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 19 Oct 2021 17:40:49 +0900
+Subject: [bugfix] notification-center: menu height fix
+
+- menu height was following 1st monitor's height, not primary monitor
+- fixed menu to follow primary monitor height
+
+[IMS] 272293
+---
+ extensions/notification-center/extension.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 35f6aa2..f0f0f3d 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -331,7 +331,7 @@ const NotificationCenter = new LangClass({
+         let scaleFactor     = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+         this.scrollView     = new St.ScrollView({
+             hscrollbar_policy: 2,
+-            style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.monitors[0].height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;`,
++            style: `min-width:${this._messageList.width / scaleFactor}px;max-height: ${0.01 * this.prefs.get_int('max-height') * Main.layoutManager.primaryMonitor.height}px; max-width: ${this._messageList.width / scaleFactor}px; padding: 0px;`,
+         });
+ 
+         this.add_style_class_name('notification-center-panel-button');
+@@ -659,7 +659,7 @@ const NotificationCenter = new LangClass({
+         this.seenEvents = true;
+         this.resetIndicator();
+ 
+-        this.menu.actor.height = 0.9 * Main.layoutManager.monitors[0].height;
++        this.menu.actor.height = 0.9 * Main.layoutManager.primaryMonitor.height;
+ 
+     },
+ 

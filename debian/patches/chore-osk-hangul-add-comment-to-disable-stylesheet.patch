@@ -1,0 +1,17 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 9 Jul 2021 15:47:25 +0900
+Subject: [chore] osk-hangul: add comment to disable stylesheet
+
+ - add comment to disable stylesheet
+
+[IMS] N/A
+---
+ extensions/osk-hangul/stylesheet.css | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/osk-hangul/stylesheet.css b/extensions/osk-hangul/stylesheet.css
+index e69de29..25134b6 100644
+--- a/extensions/osk-hangul/stylesheet.css
++++ b/extensions/osk-hangul/stylesheet.css
+@@ -0,0 +1 @@
++/* This extensions requires no special styling */

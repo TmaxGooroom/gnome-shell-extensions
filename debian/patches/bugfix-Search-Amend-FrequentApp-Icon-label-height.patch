@@ -1,0 +1,25 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 29 Oct 2021 13:21:25 +0900
+Subject: [bugfix] Search : Amend FrequentApp Icon label height
+
+- Follow Tos UX/UI Guideline (03_01_01_TOS_START)
+- Height : 40px -> 31px
+
+[IMS] 273070
+---
+ extensions/search/menuWidgets.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 1dab819..79575e4 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -1357,7 +1357,7 @@ var FrequentAppItem = GObject.registerClass( // eslint-disable-line no-unused-va
+              y_expand: true,
+              y_align: Clutter.ActorAlign.START,
+          });
+-         this.label.style = 'color:rgb(0, 0,0); width: 100px; height: 40px;';
++         this.label.style = 'color:rgb(0, 0,0); width: 100px; height: 31px;';
+          this.box.add_child(this.label);
+ 
+          this.tooltipLocation = Constants.TooltipLocation.BOTTOM_CENTERED;

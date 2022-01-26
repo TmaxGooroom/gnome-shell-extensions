@@ -1,0 +1,109 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 14 Apr 2021 17:58:22 +0900
+Subject: [feat] Search : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/search/menuButton.js | 31 ++++++++++++-------------------
+ 1 file changed, 12 insertions(+), 19 deletions(-)
+
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index 781850c..5d7b125 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -23,26 +23,18 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Clutter, GLib, GObject, Shell, St } = imports.gi;
+-const appSys = Shell.AppSystem.get_default();
+-const Constants = Me.imports.constants;
+-const Convenience = Me.imports.convenience;
++const { Clutter, GLib, GObject, St } = imports.gi;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+-const MW = Me.imports.menuWidgets;
+ const PanelMenu = imports.ui.panelMenu;
+ const PopupMenu = imports.ui.popupMenu;
+ const SearchMenuLayout = Me.imports.searchMenuLayout;
+-const Util = imports.misc.util;
+-const Utils = Me.imports.utils;
+ const _ = Gettext.gettext;
+ 
+ var DASH_TO_PANEL_UUID = 'dash-to-panel@tos-shell-extensions';
+-var DASH_TO_DOCK_UUID = 'dash-to-dock@micxgx.gmail.com';
+-var UBUNTU_DOCK_UUID = 'ubuntu-dock@ubuntu.com';
+ 
+-var MenuButton = GObject.registerClass(class Arc_Menu_MenuButton extends PanelMenu.Button {
+-    _init(settings, panel, dashIndex) {
++var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelMenu.Button { // eslint-disable-line no-unused-vars
++    _init(settings, panel) {
+         super._init(0.5, null, true);
+         this._settings = settings;
+         this._panel = panel;
+@@ -59,14 +51,12 @@ var MenuButton = GObject.registerClass(class Arc_Menu_MenuButton extends PanelMe
+         this.searchMenu.connect('open-state-changed', this._onOpenStateChanged.bind(this));
+ 
+         this.menuManager = new PopupMenu.PopupMenuManager(menuManagerParent);
+-        this.menuManager._changeMenu = menu => {};
+         this.menuManager.addMenu(this.searchMenu);
+ 
+         // Context Menus for applications and other menu items
+         this.contextMenuManager = new PopupMenu.PopupMenuManager(this);
+-        this.contextMenuManager._changeMenu = menu => {};
+         this.contextMenuManager._onMenuSourceEnter = menu => {
+-            if (this.contextMenuManager.activeMenu && this.contextMenuManager.activeMenu != menu)
++            if (this.contextMenuManager.activeMenu && this.contextMenuManager.activeMenu !== menu)
+                 return Clutter.EVENT_STOP;
+ 
+             return Clutter.EVENT_PROPAGATE;
+@@ -74,7 +64,6 @@ var MenuButton = GObject.registerClass(class Arc_Menu_MenuButton extends PanelMe
+ 
+         // Sub Menu Manager - Control all other popup menus
+         this.subMenuManager = new PopupMenu.PopupMenuManager(this);
+-        this.subMenuManager._changeMenu = menu => {};
+         this.x_expand = false;
+         this.y_expand = false;
+     }
+@@ -173,7 +162,7 @@ var MenuButton = GObject.registerClass(class Arc_Menu_MenuButton extends PanelMe
+ 
+     vfunc_event(event) {
+         if (event.type() === Clutter.EventType.BUTTON_PRESS) {
+-            if (event.get_button() == 1)
++            if (event.get_button() === 1)
+                 this.toggleMenu();
+ 
+         } else if (event.type() === Clutter.EventType.TOUCH_BEGIN) {
+@@ -296,7 +285,9 @@ var MenuButton = GObject.registerClass(class Arc_Menu_MenuButton extends PanelMe
+         } else {
+             if (this.dtpPanel && this.dtpNeedsRelease) {
+                 this.dtpNeedsRelease = false;
+-                this.dtpPanel.intellihide ? this.dtpPanel.intellihide.release(2) : null;
++                if (this.dtpPanel.intellihide)
++                    this.dtpPanel.intellihide.release(2);
++
+             }
+             if (this.dtpPanel && this.dtpNeedsHiding) {
+                 this.dtpNeedsHiding = false;
+@@ -313,7 +304,7 @@ var MenuButton = GObject.registerClass(class Arc_Menu_MenuButton extends PanelMe
+     }
+ });
+ 
+-var SearchMenu = class Search_Menu_SearchMenu extends PopupMenu.PopupMenu {
++var SearchMenu = class SearchMenu extends PopupMenu.PopupMenu {
+     constructor(sourceActor, arrowAlignment, arrowSide) {
+         super(sourceActor, arrowAlignment, arrowSide);
+         this._settings = sourceActor._settings;
+@@ -327,7 +318,9 @@ var SearchMenu = class Search_Menu_SearchMenu extends PopupMenu.PopupMenu {
+     open(animation) {
+         if (this._menuButton.dtpPanel && !this._menuButton.dtpNeedsRelease) {
+             this._menuButton.dtpNeedsRelease = true;
+-            this._menuButton.dtpPanel.intellihide ? this._menuButton.dtpPanel.intellihide.revealAndHold(2) : null;
++            if (this._menuButton.dtpPanel.intellihide)
++                this._menuButton.dtpPanel.intellihide.revealAndHold(2);
++
+         }
+         this._onOpenEvent();
+         super.open(animation);

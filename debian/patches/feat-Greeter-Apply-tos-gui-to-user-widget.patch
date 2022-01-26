@@ -1,0 +1,314 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 30 Jul 2021 13:15:40 +0900
+Subject: [feat] Greeter: Apply tos gui to user widget
+
+- Apply tos gui to user widget
+- Add image resource
+
+[IMS] N/A
+---
+ extensions/greeter/constants.js                    |  1 +
+ extensions/greeter/loginDialog.js                  |  7 +-
+ .../greeter/media/tos_login_ic_line_arrow_down.svg |  7 ++
+ extensions/greeter/stylesheet.css                  | 86 +++++++++++++++++++++-
+ extensions/greeter/userWidget.js                   | 81 +++++++++++++++++---
+ 5 files changed, 169 insertions(+), 13 deletions(-)
+ create mode 100644 extensions/greeter/media/tos_login_ic_line_arrow_down.svg
+
+diff --git a/extensions/greeter/constants.js b/extensions/greeter/constants.js
+index 26bc3a3..1c894f6 100644
+--- a/extensions/greeter/constants.js
++++ b/extensions/greeter/constants.js
+@@ -1,3 +1,4 @@
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const USER_DEFAULT_ICON = `${Me.path}/media/tos_login_ic_user_01.svg`; // eslint-disable-line no-unused-vars
++const MENU_ARROW_DOWN = `${Me.path}/media/tos_login_ic_line_arrow_down.svg`; // eslint-disable-line no-unused-vars
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index eef300f..dbde2d8 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -18,7 +18,7 @@
+  */
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Gio, GObject, Clutter, St } = imports.gi;
++const { Gio, GLib, GObject, Clutter, St } = imports.gi;
+ const Main = imports.ui.main;
+ const GnomeLoginDialog = imports.gdm.loginDialog;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
+@@ -85,7 +85,10 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+         if (!this._userListLoaded)
+             this._authPrompt.setUserList(this._userList);
+ 
+-        return super._loadUserList();
++        super._loadUserList();
++        this._authPrompt._userWidget.updateLabelStyleAndIconVisibility();
++
++        return GLib.SOURCE_REMOVE;
+     }
+ 
+     _showUserList() {
+diff --git a/extensions/greeter/media/tos_login_ic_line_arrow_down.svg b/extensions/greeter/media/tos_login_ic_line_arrow_down.svg
+new file mode 100644
+index 0000000..cc5cb24
+--- /dev/null
++++ b/extensions/greeter/media/tos_login_ic_line_arrow_down.svg
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="28px" height="28px" viewBox="0 0 28 28" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_login_ic_line_arrow_down</title>
++    <g id="tos_login_ic_line_arrow_down" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <path d="M17.4970833,7.82833333 C17.0420833,7.37333333 16.3070833,7.37333333 15.8520833,7.82833333 L10.4970833,13.1833333 C10.0420833,13.6383333 10.0420833,14.3733333 10.4970833,14.8283333 L15.8520833,20.1833333 C16.3070833,20.6383333 17.0420833,20.6383333 17.4970833,20.1833333 C17.9520833,19.7283333 17.9520833,18.9933333 17.4970833,18.5383333 L12.9704167,14 L17.4970833,9.47333333 C17.9520833,9.01833333 17.9404167,8.27166667 17.4970833,7.82833333 Z" id="Path" fill="#FFFFFF" transform="translate(13.997083, 14.005833) rotate(-90.000000) translate(-13.997083, -14.005833) "></path>
++    </g>
++</svg>
+diff --git a/extensions/greeter/stylesheet.css b/extensions/greeter/stylesheet.css
+index 25134b6..e2857f2 100644
+--- a/extensions/greeter/stylesheet.css
++++ b/extensions/greeter/stylesheet.css
+@@ -1 +1,85 @@
+-/* This extensions requires no special styling */
++.user-avatar {
++border-radius: 99px;
++}
++
++.custom-user-widget.vertical {
++padding-bottom: 5px;
++padding-left: 50px;
++padding-right: 50px;
++spacing: 30px;
++font-size: 15pt;
++text-align: center;
++font-weight: normal;
++}
++
++.label-button-box-list {
++border-radius: 30px;
++border: 1px solid rgb(255, 255, 255);
++width: 300px;
++height: 24px;
++padding: 7px;
++spacing: 15px;
++margin-top: 40px;
++}
++.label-button-box {
++border: 0px;
++font-size: 20pt;
++width: 400px;
++height: 40px;
++padding: 6px;
++spacing: 15px;
++}
++
++.label-button-label-list {
++text-align: left;
++padding-left: 10px;
++font-weight: bold;
++}
++.label-button-label {
++text-align: center;
++}
++
++.authprompt {
++padding-top: 24px;
++padding-bottom: 12px;
++spacing: 12px;
++}
++
++.password-entry {
++background-color:rgb(167, 167, 167);
++color:rgb(0, 0, 0);
++width: 275px;
++height: 24px;
++border-radius: 30px;
++border: 0px;
++box-shadow: inset 0 0 0 1px transparent;
++font-size: 13pt;
++}
++
++.cancel {
++background-color:rgb(255, 255, 255);
++color:rgb(0, 0, 0);
++width: 35px;
++height: 35px;
++padding: 0px;
++border-radius: 99px;
++border: 0px;
++box-shadow: inset 0 0 0 1px transparent;
++}
++.cancel:hover {
++background-color:rgb(234, 235, 241);
++}
++.cancel:active {
++background-color:rgb(203, 206, 216);
++}
++.cancel:focus {
++background-color:rgb(255, 255, 255);
++box-shadow: 0 0 0 2px rgb(252, 252, 252) inset;
++}
++
++.hint-style {
++color: rgb(140, 138, 139);
++font-weight: bold;
++font-size: 12pt;
++}
++>>>>>>> cd0c129 ([feat] 수정)
+diff --git a/extensions/greeter/userWidget.js b/extensions/greeter/userWidget.js
+index 70f73ca..d5f8c1a 100644
+--- a/extensions/greeter/userWidget.js
++++ b/extensions/greeter/userWidget.js
+@@ -2,27 +2,65 @@
+ //
+ // A widget showing the user avatar and name
+ /* exported UserWidget */
++const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { Clutter, GObject, St } = imports.gi;
+-
++const { Clutter, Gio, GLib, GObject, St } = imports.gi;
+ const GnomeUserWidget = imports.ui.userWidget;
+ const Main = imports.ui.main;
+ const PopupMenu = imports.ui.popupMenu;
+ 
++const Constants = Me.imports.constants;
++
++const AVATAR_ICON_SIZE = 160;
++
+ var Avatar = GObject.registerClass(class Avatar extends GnomeUserWidget.Avatar {
+     _init(user, params) {
+         super._init(user, params);
++
++        this.remove_style_class_name('user-icon');
++        this.add_style_class_name('user-avatar');
+     }
+ 
+     changeUser(user) {
+         this._user = user;
+     }
++
++    update() {
++        let iconFile = null;
++        if (this._user) {
++            iconFile = this._user.get_icon_file();
++            if (iconFile && !GLib.file_test(iconFile, GLib.FileTest.EXISTS))
++                iconFile = null;
++        }
++
++        let { scaleFactor } = St.ThemeContext.get_for_stage(global.stage);
++        this._iconSize = AVATAR_ICON_SIZE;
++        this.set_size(this._iconSize * scaleFactor, this._iconSize * scaleFactor);
++
++        if (iconFile) {
++            this.child = null;
++            this.style = `
++                background-image: url("${iconFile}");
++                background-size: cover;`;
++        } else {
++            this.style = null;
++            this.child = new St.Icon({
++                gicon: Gio.icon_new_for_string(Constants.USER_DEFAULT_ICON),
++                icon_size: this._iconSize,
++            });
++        }
++    }
+ });
+ 
+ var UserWidgetLabel = GObject.registerClass(
+ class UserWidgetLabel extends St.Label {
+     _init(user) {
+-        super._init({ y_align: Clutter.ActorAlign.CENTER });
++        super._init({
++            x_expand: true,
++            x_align: Clutter.ActorAlign.FILL,
++            y_align: Clutter.ActorAlign.CENTER,
++            style_class: 'label-button-label-list',
++        });
+ 
+         this._user = user;
+     }
+@@ -36,6 +74,8 @@ class UserWidgetLabel extends St.Label {
+ 
+     changeUser(user) {
+         this._user = user;
++
++
+     }
+ });
+ 
+@@ -47,7 +87,7 @@ class UserWidget extends St.BoxLayout {
+ 
+         let vertical = true;
+         let xAlign = Clutter.ActorAlign.CENTER;
+-        let styleClass = 'user-widget vertical';
++        let styleClass = 'custom-user-widget vertical';
+         super._init({ styleClass, vertical, xAlign });
+ 
+         this.connect('destroy', this._onDestroy.bind(this));
+@@ -86,18 +126,19 @@ class UserWidget extends St.BoxLayout {
+             x_expand: true,
+             y_expand: true,
+             vertical: false,
+-            x_align: Clutter.ActorAlign.CENTER,
++            x_align: Clutter.ActorAlign.FILL,
++            style_class: 'label-button-box-list',
+         });
+-        this._labelButtonBox.style = 'spacing: 15px;';
+ 
+         // label and icon
+         this._label = new UserWidgetLabel(user);
+         this._labelButtonBox.add_actor(this._label);
+ 
+         this._icon = new St.Icon({
+-            icon_name: 'pan-down-symbolic',
+-            icon_size: 20,
+-            y_align: Clutter.ActorAlign.END,
++            gicon: Gio.icon_new_for_string(Constants.MENU_ARROW_DOWN),
++            icon_size: 30,
++            x_expand: true,
++            x_align: Clutter.ActorAlign.END,
+         });
+         this._labelButtonBox.add_actor(this._icon);
+ 
+@@ -118,6 +159,7 @@ class UserWidget extends St.BoxLayout {
+     }
+ 
+     setUserList(userList) {
++        this._userList = userList;
+         this._userListMenuSection.actor.add_actor(userList);
+     }
+ 
+@@ -138,6 +180,25 @@ class UserWidget extends St.BoxLayout {
+         this._label.update();
+     }
+ 
++    updateLabelStyleAndIconVisibility() {
++        let isListType = false;
++        if (this._userList && this._userList.numItems() > 1)
++            isListType = true;
++
++        if (!this._user)
++            isListType = false;
++
++        if (isListType) {
++            this._labelButtonBox.style_class = 'label-button-box-list';
++            this._label.style_class = 'label-button-label-list';
++            this._icon.visible = true;
++        } else {
++            this._labelButtonBox.style_class = 'label-button-box';
++            this._label.style_class = 'label-button-label';
++            this._icon.visible = false;
++        }
++    }
++
+     changeUser(user) {
+         this._onDestroy();
+ 
+@@ -152,7 +213,7 @@ class UserWidget extends St.BoxLayout {
+ 
+         this._updateUser();
+ 
+-        this._icon.visible = user !== null;
++        this.updateLabelStyleAndIconVisibility();
+     }
+ 
+     setOnlyUserName(name) {

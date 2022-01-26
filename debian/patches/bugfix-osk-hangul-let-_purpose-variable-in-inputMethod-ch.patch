@@ -1,0 +1,93 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 7 Oct 2021 17:28:19 +0900
+Subject: [bugfix] osk-hangul : let _purpose variable in inputMethod change
+ when external application change Ibus input purpose
+
+ - If the IBus input purpose is changed by external application,
+   modify the input method's member variable `_purpose` accordingly.
+
+[IMS] 271493
+---
+ extensions/osk-hangul/extension.js | 13 +++++++++++++
+ extensions/osk-hangul/utils.js     | 29 ++++++++++++++++++++++++++++-
+ 2 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index f721462..82da07d 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -1,6 +1,7 @@
+ /*
+  * extension descripttion. TBD.
+  */
++
+ const Main = imports.ui.main;
+ 
+ const IBusManager = imports.misc.ibusManager;
+@@ -8,6 +9,8 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Wrapper = Me.imports.keyboardWrapper;
+ const getIBusHangul = Me.imports.utils.getIBusHangul;
+ 
++const { changeIBusPurposeToClutterPurpose } = Me.imports.utils;
++
+ let _ibusReadyId = null;
+ 
+ let _a11ySignalId = null;
+@@ -88,6 +91,16 @@ function enable() { // eslint-disable-line no-unused-vars
+     _lastDeviceChangedId = global.backend.connect_after('last-device-changed', syncKeyboard);
+ 
+     syncKeyboard();
++
++    let ibusManager = IBusManager.getIBusManager();
++    ibusManager.connect('set-content-type', (im, purpose, _hints) => {
++        if (purpose !== Main.inputMethod._purpose) {
++            Main.inputMethod._purpose = changeIBusPurposeToClutterPurpose(purpose);
++
++            // To show the keyboard according to the purpose on the screen, call the method.
++            Main.keyboard._keyboard._setActiveLayer(0);
++        }
++    });
+ }
+ 
+ function _resetKeyboard() {
+diff --git a/extensions/osk-hangul/utils.js b/extensions/osk-hangul/utils.js
+index 2be17ba..1371ddd 100644
+--- a/extensions/osk-hangul/utils.js
++++ b/extensions/osk-hangul/utils.js
+@@ -1,4 +1,6 @@
+-/* exported getIBusHangul */
++/* exported getIBusHangul, changeIBusPurposeToClutterPurpose */
++
++const { Clutter, IBus } = imports.gi;
+ const Main = imports.ui.main;
+ 
+ function getIBusHangul() {
+@@ -15,3 +17,28 @@ function getIBusHangul() {
+ 
+     return null;
+ }
++
++function changeIBusPurposeToClutterPurpose(ibusPurpose) {
++    switch (ibusPurpose) {
++    case IBus.InputPurpose.FREE_FORM:
++        return Clutter.InputContentPurpose.NORMAL;
++    case IBus.InputPurpose.ALPHA:
++        return Clutter.InputContentPurpose.ALPHA;
++    case IBus.InputPurpose.DIGITS:
++        return Clutter.InputContentPurpose.DIGITS;
++    case IBus.InputPurpose.NUMBER:
++        return Clutter.InputContentPurpose.NUMBER;
++    case IBus.InputPurpose.PHONE:
++        return Clutter.InputContentPurpose.PHONE;
++    case IBus.InputPurpose.URL:
++        return Clutter.InputContentPurpose.URL;
++    case IBus.InputPurpose.EMAIL:
++        return Clutter.InputContentPurpose.EMAIL;
++    case IBus.InputPurpose.NAME:
++        return Clutter.InputContentPurpose.NAME;
++    case IBus.InputPurpose.PASSWORD:
++        return Clutter.InputContentPurpose.PASSWORD;
++    }
++
++    return 0;
++}

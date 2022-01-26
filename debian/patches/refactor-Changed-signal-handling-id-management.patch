@@ -1,0 +1,37 @@
+From: tos <tos@localhost.localdomain>
+Date: Thu, 13 May 2021 09:49:56 +0900
+Subject: [refactor] Changed signal handling id management
+
+- Changed signal handling id register_NotificationCenter
+- this._rightBox.register_NotificationCenter -> this.register_notificationcenter
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/panel.js | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index bb9ede3..08b62db 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -171,7 +171,8 @@ var dtpPanel = Utils.defineClass({
+                 this.panel.actor.add_child(container);
+             });
+ 
+-            this._rightBox.register_NotificationCenter = this._rightBox.connect('actor-added', actor => {
++            // signal to catch adding notificationcenter to rightbox
++            this.register_notificationcenter = this._rightBox.connect('actor-added', actor => {
+                 let container = actor.get_children()[actor.get_children().length - 1];
+                 let parent = actor;
+                 if (container.child.accessible_name !== 'NotificationCenter')
+@@ -475,7 +476,9 @@ var dtpPanel = Utils.defineClass({
+ 
+         this._setVertical(this.panel.actor, false);
+         if (!this.isStandalone) {
+-            this._rightBox.disconnect(this._rightBox.register_NotificationCenter);
++
++            // signal for catch adding notificationcenter to rightbox disconnect
++            this._rightBox.disconnect(this.register_notificationcenter);
+ 
+             this.statusArea.dateMenu._clockDisplay.text = this.statusArea.dateMenu._clock.clock;
+ 

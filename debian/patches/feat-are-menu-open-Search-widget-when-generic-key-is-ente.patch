@@ -1,0 +1,892 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 14 Apr 2021 15:31:57 +0900
+Subject: [feat] are-menu : open Search widget when generic key is entered
+
+ - when arc-menu widget is opened and user enters a key, open the search widget.
+
+[IMS] N/A
+---
+ extensions/arc-menu/baseMenuLayout.js | 445 +++++++++++++++++-----------------
+ extensions/search/menuWidgets.js      |   9 +-
+ 2 files changed, 227 insertions(+), 227 deletions(-)
+
+diff --git a/extensions/arc-menu/baseMenuLayout.js b/extensions/arc-menu/baseMenuLayout.js
+index cf306d7..14cb674 100644
+--- a/extensions/arc-menu/baseMenuLayout.js
++++ b/extensions/arc-menu/baseMenuLayout.js
+@@ -23,7 +23,7 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const {Clutter, GLib, Gio, GMenu, Gtk, Shell, St} = imports.gi;
++const { Clutter, GLib, Gio, GMenu, Gtk, Shell, St } = imports.gi;
+ const AppFavorites = imports.ui.appFavorites;
+ const appSys = Shell.AppSystem.get_default();
+ const Constants = Me.imports.constants;
+@@ -31,13 +31,14 @@ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+ const MW = Me.imports.menuWidgets;
+ const PlaceDisplay = Me.imports.placeDisplay;
+-const PopupMenu = imports.ui.popupMenu;
++const PopupMenu = imports.ui.popupMenu; // eslint-disable-line no-unused-vars
+ const SystemActions = imports.misc.systemActions;
+ const Utils =  Me.imports.utils;
++const _ = Gettext.gettext;
+ 
+-//This class handles the core functionality of all the menu layouts.
+-var BaseLayout = class {
+-    constructor(menuButton){
++// This class handles the core functionality of all the menu layouts.
++var BaseLayout = class { // eslint-disable-line no-unused-vars
++    constructor(menuButton) {
+         this.menuButton = menuButton;
+         this._settings = menuButton._settings;
+         this.mainBox = menuButton.mainBox;
+@@ -59,7 +60,7 @@ var BaseLayout = class {
+ 
+         this._gnomeFavoritesReloadID = AppFavorites.getAppFavorites().connect('changed', () => {
+             let categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.FAVORITES);
+-            if(categoryMenuItem)
++            if (categoryMenuItem)
+                 this._loadGnomeFavorites(categoryMenuItem);
+         });
+ 
+@@ -68,53 +69,53 @@ var BaseLayout = class {
+         this.updateStyle();
+     }
+ 
+-    updateIcons(){
+-        this.applicationsMap.forEach((value,key,map)=>{
++    updateIcons() {
++        this.applicationsMap.forEach((value, key, map) => {
+             map.get(key)._updateIcon();
+         });
+         let categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.PINNED_APPS);
+-        if(categoryMenuItem){
+-            for(let favoriteMenuItem of categoryMenuItem.appList){
++        if (categoryMenuItem) {
++            for (let favoriteMenuItem of categoryMenuItem.appList)
+                 favoriteMenuItem._updateIcon();
+-            }
++
+         }
+     }
+ 
+-    setDefaultMenuView(){
++    setDefaultMenuView() {
+         this._clearActorsFromBox();
+ 
+         let appsScrollBoxAdj = this.applicationsScrollBox.get_vscroll_bar().get_adjustment();
+         appsScrollBoxAdj.set_value(0);
+ 
+-        if(this.vertSep!=null)
++        if (this.vertSep !== null)
+             this.vertSep.queue_repaint();
+     }
+ 
+-    reload(){
++    reload() {
+         let isReload = true;
+         this.destroy(isReload);
+         this.createLayout();
+         this.updateStyle();
+     }
+ 
+-    updateStyle(){
+-        if(this.actionsBox){
+-            this.actionsBox.get_children().forEach((actor) => {
+-                if(actor instanceof St.Button){
++    updateStyle() {
++        if (this.actionsBox) {
++            this.actionsBox.get_children().forEach(actor => {
++                if (actor instanceof St.Button)
+                     actor.remove_style_class_name('arc-menu-action');
+-                }
++
+             });
+         }
+     }
+ 
+-    loadCategories(categoryWidget = MW.CategoryMenuItem, isIconGrid = false){
++    loadCategories(categoryWidget = MW.CategoryMenuItem, isIconGrid = false) {
+         this.applicationsMap = new Map();
+         this._tree.load_sync();
+         let root = this._tree.get_root_directory();
+         let iter = root.iter();
+         let nextType;
+-        while ((nextType = iter.next()) != GMenu.TreeItemType.INVALID) {
+-            if (nextType == GMenu.TreeItemType.DIRECTORY) {
++        while ((nextType = iter.next()) !== GMenu.TreeItemType.INVALID) {
++            if (nextType === GMenu.TreeItemType.DIRECTORY) {
+                 let dir = iter.get_directory();
+                 if (!dir.get_is_nodisplay()) {
+                     let categoryId = dir.get_menu_id();
+@@ -122,7 +123,7 @@ var BaseLayout = class {
+                     this.categoryDirectories.set(categoryId, categoryMenuItem);
+                     let foundRecentlyInstallApp = this._loadCategory(isIconGrid, categoryId, dir);
+                     categoryMenuItem.setRecentlyInstalledIndicator(foundRecentlyInstallApp);
+-                    //Sort the App List Alphabetically
++                    // Sort the App List Alphabetically
+                     categoryMenuItem.appList.sort((a, b) => {
+                         return a.get_name().toLowerCase() > b.get_name().toLowerCase();
+                     });
+@@ -130,12 +131,12 @@ var BaseLayout = class {
+             }
+         }
+         let categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.ALL_PROGRAMS);
+-        if(categoryMenuItem){
++        if (categoryMenuItem) {
+             let appList = [];
+-            this.applicationsMap.forEach((value,key,map) => {
++            this.applicationsMap.forEach((value, key) => {
+                 appList.push(key);
+-                //Show Recently Installed Indicator on All Programs category
+-                if(value.isRecentlyInstalled && !categoryMenuItem.isRecentlyInstalled)
++                // Show Recently Installed Indicator on All Programs category
++                if (value.isRecentlyInstalled && !categoryMenuItem.isRecentlyInstalled)
+                     categoryMenuItem.setRecentlyInstalledIndicator(true);
+             });
+             appList.sort((a, b) => {
+@@ -144,11 +145,12 @@ var BaseLayout = class {
+             categoryMenuItem.appList = appList;
+         }
+         categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.FAVORITES);
+-        if(categoryMenuItem){
++        if (categoryMenuItem)
+             this._loadGnomeFavorites(categoryMenuItem);
+-        }
++
++
+         categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.FREQUENT_APPS);
+-        if(categoryMenuItem){
++        if (categoryMenuItem) {
+             let mostUsed = Shell.AppUsage.get_default().get_most_used();
+             for (let i = 0; i < mostUsed.length; i++) {
+                 if (mostUsed[i] && mostUsed[i].get_app_info().should_show())
+@@ -156,16 +158,16 @@ var BaseLayout = class {
+             }
+         }
+         categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.PINNED_APPS);
+-        if(categoryMenuItem){
++        if (categoryMenuItem) {
+             categoryMenuItem.appList = categoryMenuItem.appList.concat(this.favoritesArray);
+-            for(let favoriteMenuItem of categoryMenuItem.appList){
++            for (let favoriteMenuItem of categoryMenuItem.appList)
+                 favoriteMenuItem._updateIcon();
+-            }
++
+         }
+         categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.RECENT_FILES);
+-        if(categoryMenuItem){
++        if (categoryMenuItem)
+             this._loadRecentFiles(categoryMenuItem);
+-        }
++
+ 
+     }
+ 
+@@ -173,8 +175,8 @@ var BaseLayout = class {
+         let iter = dir.iter();
+         let nextType;
+         let foundRecentlyInstallApp = false;
+-        while ((nextType = iter.next()) != GMenu.TreeItemType.INVALID) {
+-            if (nextType == GMenu.TreeItemType.ENTRY) {
++        while ((nextType = iter.next()) !== GMenu.TreeItemType.INVALID) {
++            if (nextType === GMenu.TreeItemType.ENTRY) {
+                 let entry = iter.get_entry();
+                 let id;
+                 try {
+@@ -185,28 +187,28 @@ var BaseLayout = class {
+                 let app = appSys.lookup_app(id);
+                 if (!app)
+                     app = new Shell.App({ app_info: entry.get_app_info() });
+-                if (app.get_app_info().should_show()){
++                if (app.get_app_info().should_show()) {
+                     let item = this.applicationsMap.get(app);
+-                    if (!item) {
++                    if (!item)
+                         item = new MW.ApplicationMenuItem(this, app, isIconGrid);
+-                    }
+-                    if(item.isRecentlyInstalled)
++
++
++                    if (item.isRecentlyInstalled)
+                         foundRecentlyInstallApp = true;
+-                    if(!submenuItem){
++
++                    if (!submenuItem) {
+                         let categoryMenuItem = this.categoryDirectories.get(categoryId);
+                         categoryMenuItem.appList.push(app);
+                         this.applicationsMap.set(app, item);
+-                    }
+-                    else{
++                    } else {
+                         submenuItem.applicationsMap.set(app, item);
+                     }
+                 }
+-            }
+-            else if (nextType == GMenu.TreeItemType.DIRECTORY) {
++            } else if (nextType === GMenu.TreeItemType.DIRECTORY) {
+                 let subdir = iter.get_directory();
+-                if (!subdir.get_is_nodisplay()){
++                if (!subdir.get_is_nodisplay()) {
+                     let recentlyInstallApp = this._loadCategory(isIconGrid, categoryId, subdir);
+-                    if(recentlyInstallApp)
++                    if (recentlyInstallApp)
+                         foundRecentlyInstallApp = true;
+                 }
+             }
+@@ -214,12 +216,12 @@ var BaseLayout = class {
+         return foundRecentlyInstallApp;
+     }
+ 
+-    setRecentlyInstalledIndicator(){
+-        for(let categoryMenuItem of this.categoryDirectories.values()){
++    setRecentlyInstalledIndicator() {
++        for (let categoryMenuItem of this.categoryDirectories.values()) {
+             categoryMenuItem.setRecentlyInstalledIndicator(false);
+-            for(let i = 0; i < categoryMenuItem.appList.length; i++){
++            for (let i = 0; i < categoryMenuItem.appList.length; i++) {
+                 let item = this.applicationsMap.get(categoryMenuItem.appList[i]);
+-                if(item.isRecentlyInstalled){
++                if (item.isRecentlyInstalled) {
+                     categoryMenuItem.setRecentlyInstalledIndicator(true);
+                     break;
+                 }
+@@ -227,62 +229,62 @@ var BaseLayout = class {
+         }
+     }
+ 
+-    displayCategories(categoriesBox){
+-        if(!categoriesBox){
++    displayCategories(categoriesBox) {
++        if (!categoriesBox)
+             categoriesBox = this.applicationsBox;
+-        }
++
+         this._clearActorsFromBox(categoriesBox);
+ 
+         let isActiveMenuItemSet = false;
+-        for(let categoryMenuItem of this.categoryDirectories.values()){
++        for (let categoryMenuItem of this.categoryDirectories.values()) {
+             categoriesBox.add_actor(categoryMenuItem.actor);
+-            if(!isActiveMenuItemSet){
++            if (!isActiveMenuItemSet) {
+                 isActiveMenuItemSet = true;
+                 this.activeMenuItem = categoryMenuItem;
+-                if(this.arcMenu.isOpen){
++                if (this.arcMenu.isOpen)
+                     this.mainBox.grab_key_focus();
+-                }
++
+             }
+         }
+     }
+ 
+-    displayGnomeFavorites(){
++    displayGnomeFavorites() {
+         let categoryMenuItem = this.categoryDirectories.get(Constants.CategoryType.FAVORITES);
+-        if(categoryMenuItem){
++        if (categoryMenuItem)
+             this.displayCategoryAppList(categoryMenuItem.appList);
+-        }
++
+     }
+ 
+-    _loadGnomeFavorites(categoryMenuItem){
++    _loadGnomeFavorites(categoryMenuItem) {
+         let appList = AppFavorites.getAppFavorites().getFavorites();
+ 
+-        //Show Recently Installed Indicator on GNOME favorites category
+-        for(let i = 0; i < appList.length; i++){
++        // Show Recently Installed Indicator on GNOME favorites category
++        for (let i = 0; i < appList.length; i++) {
+             let item = this.applicationsMap.get(appList[i]);
+-            if(item && item.isRecentlyInstalled && !categoryMenuItem.isRecentlyInstalled)
++            if (item && item.isRecentlyInstalled && !categoryMenuItem.isRecentlyInstalled)
+                 categoryMenuItem.setRecentlyInstalledIndicator(true);
+         }
+ 
+         categoryMenuItem.appList = appList;
+     }
+ 
+-    _loadRecentFiles(){
+-        if(!this.recentManager)
++    _loadRecentFiles() {
++        if (!this.recentManager)
+             this.recentManager = new Gtk.RecentManager();
+ 
+         this._recentFiles = this.recentManager.get_items();
+ 
+-        if(!this._recentFilesChangedID){
++        if (!this._recentFilesChangedID) {
+             this._recentFilesChangedID = this.recentManager.connect('changed', () => {
+                 this._recentFiles = this.recentManager.get_items();
+             });
+         }
+     }
+ 
+-    displayRecentFiles(box = this.applicationsBox){
++    displayRecentFiles(box = this.applicationsBox) {
+         this._clearActorsFromBox(box);
+-        const homeRegExp = new RegExp('^(' + GLib.get_home_dir() + ')');
+-        for(let i = 0; i < this._recentFiles.length; i++){
++        const homeRegExp = new RegExp(`^(${GLib.get_home_dir()})`);
++        for (let i = 0; i < this._recentFiles.length; i++) {
+             let file = Gio.File.new_for_uri(this._recentFiles[i].get_uri()).get_path();
+             let name = this._recentFiles[i].get_display_name();
+             let icon = Gio.content_type_get_symbolic_icon(this._recentFiles[i].get_mime_type()).to_string();
+@@ -292,20 +294,20 @@ var BaseLayout = class {
+             placeMenuItem.fileUri = this._recentFiles[i].get_uri();
+             placeMenuItem._removeBtn = new St.Button({
+                 style_class: 'button',
+-                style: 'padding: 0px 8px;'
++                style: 'padding: 0px 8px;',
+             });
+             placeMenuItem._removeBtn.child = new St.Icon({
+                 icon_name: 'edit-delete-symbolic',
+                 style_class: 'popup-menu-icon',
+                 icon_size: 16,
+-                x_align: St.Align.END
++                x_align: St.Align.END,
+             });
+             placeMenuItem._removeBtn.connect('clicked', () =>  {
+                 try {
+                     this.recentManager.remove_item(placeMenuItem.fileUri);
+                     box.remove_actor(placeMenuItem);
+                     placeMenuItem.destroy();
+-                } catch(err) {
++                } catch (err) {
+                     log(err);
+                 }
+             });
+@@ -314,16 +316,16 @@ var BaseLayout = class {
+         }
+     }
+ 
+-    loadPinnedApps(pinnedAppsArray, separatorIndex){
++    loadPinnedApps(pinnedAppsArray, separatorIndex) {
+         let pinnedApps = pinnedAppsArray;
+-        if(!pinnedApps.length || !Array.isArray(pinnedApps)){
++        if (!pinnedApps.length || !Array.isArray(pinnedApps))
+             pinnedApps = this._updatePinnedApps();
+-        }
+ 
+-        for(let i = 0;i < pinnedApps.length; i += 3){
+-            if(i == separatorIndex * 3 && i != 0)
++
++        for (let i = 0; i < pinnedApps.length; i += 3) {
++            if (i === separatorIndex * 3 && i !== 0)
+                 this._addSeparator();
+-            let placeMenuItem = this.createMenuItem([pinnedApps[i],pinnedApps[i+1], pinnedApps[i+2]], Constants.MenuItemType.BUTTON);
++            let placeMenuItem = this.createMenuItem([pinnedApps[i], pinnedApps[i + 1], pinnedApps[i + 2]], Constants.MenuItemType.BUTTON);
+             placeMenuItem.actor.x_expand = false;
+             placeMenuItem.actor.y_expand = false;
+             placeMenuItem.actor.y_align = Clutter.ActorAlign.CENTER;
+@@ -332,88 +334,81 @@ var BaseLayout = class {
+         }
+     }
+ 
+-    createMenuItem(menuItemArray, menuItemType){
++    createMenuItem(menuItemArray, menuItemType) {
+         let placeInfo, placeMenuItem;
+         let app = Shell.AppSystem.get_default().lookup_app(menuItemArray[2]);
+ 
+-        if(menuItemArray[2] === "ArcMenu_Home"){
++        if (menuItemArray[2] === 'ArcMenu_Home') {
+             let homePath = GLib.get_home_dir();
+-            placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(homePath), _("Home"));
+-            if(menuItemType === Constants.MenuItemType.BUTTON)
++            placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(homePath), _('Home'));
++            if (menuItemType === Constants.MenuItemType.BUTTON)
+                 placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+-            else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
++            else if (menuItemType === Constants.MenuItemType.MENU_ITEM)
+                 placeMenuItem = new MW.PlaceMenuItem(this, placeInfo);
+-        }
+-        else if(menuItemArray[2] === "ArcMenu_Computer"){
++        } else if (menuItemArray[2] === 'ArcMenu_Computer') {
+             placeInfo = new PlaceDisplay.RootInfo();
+-            if(menuItemType === Constants.MenuItemType.BUTTON){
++            if (menuItemType === Constants.MenuItemType.BUTTON) {
+                 placeInfo.icon = placeInfo.icon.to_string();
+                 placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+-            }
+-            else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
++            } else if (menuItemType === Constants.MenuItemType.MENU_ITEM) {
+                 placeMenuItem = new PlaceDisplay.PlaceMenuItem(this, placeInfo);
+-        }
+-        else if(menuItemArray[2] === "ArcMenu_Network"){
+-            placeInfo = new PlaceDisplay.PlaceInfo('network',Gio.File.new_for_uri('network:///'), _('Network'),'network-workgroup-symbolic');
+-            if(menuItemType === Constants.MenuItemType.BUTTON){
++            }
++        } else if (menuItemArray[2] === 'ArcMenu_Network') {
++            placeInfo = new PlaceDisplay.PlaceInfo('network', Gio.File.new_for_uri('network:///'), _('Network'), 'network-workgroup-symbolic');
++            if (menuItemType === Constants.MenuItemType.BUTTON) {
+                 placeInfo.icon = placeInfo.icon.to_string();
+                 placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+-            }
+-            else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
++            } else if (menuItemType === Constants.MenuItemType.MENU_ITEM) {
+                 placeMenuItem = new PlaceDisplay.PlaceMenuItem(this, placeInfo);
+-        }
+-        else if(menuItemArray[2] === "ArcMenu_Software"){
++            }
++        } else if (menuItemArray[2] === 'ArcMenu_Software') {
+             let software = Utils.findSoftwareManager();
+-            if(software){
+-                if(menuItemType === Constants.MenuItemType.BUTTON)
+-                    placeMenuItem = new MW.ShortcutButtonItem(this, _("Software"), 'system-software-install-symbolic', software);
+-                if(menuItemType === Constants.MenuItemType.MENU_ITEM)
+-                    placeMenuItem = new MW.ShortcutMenuItem(this, _("Software"), 'system-software-install-symbolic', software);
++            if (software) {
++                if (menuItemType === Constants.MenuItemType.BUTTON)
++                    placeMenuItem = new MW.ShortcutButtonItem(this, _('Software'), 'system-software-install-symbolic', software);
++                if (menuItemType === Constants.MenuItemType.MENU_ITEM)
++                    placeMenuItem = new MW.ShortcutMenuItem(this, _('Software'), 'system-software-install-symbolic', software);
+             }
+ 
+-        }
+-        else if(menuItemArray[2] === "ArcMenu_Trash"){
+-            if(menuItemType === Constants.MenuItemType.BUTTON)
+-                placeMenuItem = new MW.ShortcutButtonItem(this, _("Trash"), '', "ArcMenu_Trash");
+-            else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
+-                placeMenuItem = new MW.ShortcutMenuItem(this, _("Trash"), '', "ArcMenu_Trash");
+-        }
+-        else if(menuItemArray[2] === "ArcMenu_Suspend" || menuItemArray[2] === "ArcMenu_LogOut" || menuItemArray[2] === "ArcMenu_PowerOff"
+-                || menuItemArray[2] === "ArcMenu_Lock" || menuItemArray[2] === "ArcMenu_Restart" || app){
+-            if(menuItemType === Constants.MenuItemType.BUTTON)
++        } else if (menuItemArray[2] === 'ArcMenu_Trash') {
++            if (menuItemType === Constants.MenuItemType.BUTTON)
++                placeMenuItem = new MW.ShortcutButtonItem(this, _('Trash'), '', 'ArcMenu_Trash');
++            else if (menuItemType === Constants.MenuItemType.MENU_ITEM)
++                placeMenuItem = new MW.ShortcutMenuItem(this, _('Trash'), '', 'ArcMenu_Trash');
++        } else if (menuItemArray[2] === 'ArcMenu_Suspend' || menuItemArray[2] === 'ArcMenu_LogOut' || menuItemArray[2] === 'ArcMenu_PowerOff' ||
++                menuItemArray[2] === 'ArcMenu_Lock' || menuItemArray[2] === 'ArcMenu_Restart' || app) {
++            if (menuItemType === Constants.MenuItemType.BUTTON)
+                 placeMenuItem = new MW.ShortcutButtonItem(this, menuItemArray[0], menuItemArray[1], menuItemArray[2]);
+-            else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
++            else if (menuItemType === Constants.MenuItemType.MENU_ITEM)
+                 placeMenuItem = new MW.ShortcutMenuItem(this, menuItemArray[0], menuItemArray[1], menuItemArray[2]);
+-        }
+-        else if(menuItemArray[2].startsWith("ArcMenu_")){
+-            let path = menuItemArray[2].replace("ArcMenu_",'');
++        } else if (menuItemArray[2].startsWith('ArcMenu_')) {
++            let path = menuItemArray[2].replace('ArcMenu_', '');
+ 
+-            if(path === "Documents")
++            if (path === 'Documents')
+                 path = imports.gi.GLib.UserDirectory.DIRECTORY_DOCUMENTS;
+-            else if(path === "Downloads")
++            else if (path === 'Downloads')
+                 path = imports.gi.GLib.UserDirectory.DIRECTORY_DOWNLOAD;
+-            else if(path === "Music")
++            else if (path === 'Music')
+                 path = imports.gi.GLib.UserDirectory.DIRECTORY_MUSIC;
+-            else if(path === "Pictures")
++            else if (path === 'Pictures')
+                 path = imports.gi.GLib.UserDirectory.DIRECTORY_PICTURES;
+-            else if(path === "Videos")
++            else if (path === 'Videos')
+                 path = imports.gi.GLib.UserDirectory.DIRECTORY_VIDEOS;
+ 
+             path = GLib.get_user_special_dir(path);
+-            if (path !== null){
++            if (path !== null) {
+                 placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _(menuItemArray[0]));
+-                if(menuItemType === Constants.MenuItemType.BUTTON)
++                if (menuItemType === Constants.MenuItemType.BUTTON)
+                     placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+-                else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
++                else if (menuItemType === Constants.MenuItemType.MENU_ITEM)
+                     placeMenuItem = new MW.PlaceMenuItem(this, placeInfo);
+             }
+-        }
+-        else{
++        } else {
+             let path = menuItemArray[2];
+-            placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _(menuItemArray[0]), (menuItemArray[1] !== "ArcMenu_Folder") ? menuItemArray[1] : null);
+-            if(menuItemType === Constants.MenuItemType.BUTTON)
++            placeInfo = new MW.PlaceInfo(Gio.File.new_for_path(path), _(menuItemArray[0]), menuItemArray[1] !== 'ArcMenu_Folder' ? menuItemArray[1] : null);
++            if (menuItemType === Constants.MenuItemType.BUTTON)
+                 placeMenuItem = new MW.PlaceButtonItem(this, placeInfo);
+-            else if(menuItemType === Constants.MenuItemType.MENU_ITEM)
++            else if (menuItemType === Constants.MenuItemType.MENU_ITEM)
+                 placeMenuItem = new MW.PlaceMenuItem(this, placeInfo);
+         }
+         return placeMenuItem;
+@@ -423,58 +418,57 @@ var BaseLayout = class {
+         let pinnedApps = this._settings.get_strv('pinned-app-list');
+         this.favoritesArray = null;
+         this.favoritesArray = [];
+-        for (let i = 0; i < pinnedApps.length; i+=3) {
+-            if (i == 0 && pinnedApps[0]=="ArcMenu_WebBrowser") {
++        for (let i = 0; i < pinnedApps.length; i += 3) {
++            if (i === 0 && pinnedApps[0] === 'ArcMenu_WebBrowser')
+                 this._updatePinnedAppsWebBrowser(pinnedApps);
+-            }
++
+             let favoritesMenuItem = new MW.FavoritesMenuItem(
+-                this, pinnedApps[i], pinnedApps[i+1], pinnedApps[i+2]);
+-            favoritesMenuItem.connect('saveSettings', ()=> {
++                this, pinnedApps[i], pinnedApps[i + 1], pinnedApps[i + 2]);
++            favoritesMenuItem.connect('saveSettings', () => {
+                 let array = [];
+-                for (let i = 0; i < this.favoritesArray.length; i++){
+-                    array.push(this.favoritesArray[i]._name);
+-                    array.push(this.favoritesArray[i]._iconPath);
+-                    array.push(this.favoritesArray[i]._command);
++                for (let j = 0; j < this.favoritesArray.length; j++) {
++                    array.push(this.favoritesArray[j]._name);
++                    array.push(this.favoritesArray[j]._iconPath);
++                    array.push(this.favoritesArray[j]._command);
+                 }
+-                this._settings.set_strv('pinned-app-list',array);
++                this._settings.set_strv('pinned-app-list', array);
+             });
+             this.favoritesArray.push(favoritesMenuItem);
+         }
+         let categoryMenuItem = this.categoryDirectories ? this.categoryDirectories.get(Constants.CategoryType.PINNED_APPS) : null;
+-        if(categoryMenuItem){
++        if (categoryMenuItem) {
+             categoryMenuItem.appList = null;
+             categoryMenuItem.appList = [];
+             categoryMenuItem.appList = categoryMenuItem.appList.concat(this.favoritesArray);
+-            for(let favoriteMenuItem of categoryMenuItem.appList){
++            for (let favoriteMenuItem of categoryMenuItem.appList)
+                 favoriteMenuItem._updateIcon();
+-            }
++
+         }
+     }
+ 
+     _updatePinnedAppsWebBrowser(pinnedApps) {
+-        //Find the Default Web Browser, if found add to pinned apps list, if not found delete the placeholder.
+-        //Will only run if placeholder is found. Placeholder only found with default settings set.
+-        if (pinnedApps[0] == "ArcMenu_WebBrowser") {
+-            let [res, stdout, stderr, status] = GLib.spawn_command_line_sync("xdg-settings get default-web-browser");
++        // Find the Default Web Browser, if found add to pinned apps list, if not found delete the placeholder.
++        // Will only run if placeholder is found. Placeholder only found with default settings set.
++        if (pinnedApps[0] === 'ArcMenu_WebBrowser') {
++            let [res_, stdout, stderr_, status_] = GLib.spawn_command_line_sync('xdg-settings get default-web-browser');
+             let webBrowser = String.fromCharCode.apply(null, stdout);
+-            let browserName = webBrowser.split(".desktop")[0];
+-            browserName += ".desktop";
++            let browserName = webBrowser.split('.desktop')[0];
++            browserName += '.desktop';
+             this._app = appSys.lookup_app(browserName);
+             if (this._app) {
+                 pinnedApps[0] = this._app.get_name();
+                 pinnedApps[1] = '';
+                 pinnedApps[2] = this._app.get_id();
+-            }
+-            else {
+-                pinnedApps.splice(0,3);
++            } else {
++                pinnedApps.splice(0, 3);
+             }
+             this.shouldLoadFavorites = false; // We don't want to trigger a setting changed event
+-            this._settings.set_strv('pinned-app-list',pinnedApps);
++            this._settings.set_strv('pinned-app-list', pinnedApps);
+             this.shouldLoadFavorites = true;
+         }
+     }
+ 
+-    setFrequentAppsList(categoryMenuItem){
++    setFrequentAppsList(categoryMenuItem) {
+         categoryMenuItem.appList = [];
+         let mostUsed = Shell.AppUsage.get_default().get_most_used();
+         for (let i = 0; i < mostUsed.length; i++) {
+@@ -483,12 +477,12 @@ var BaseLayout = class {
+         }
+     }
+ 
+-    _clearActorsFromBox(box){
+-        if(!box){
++    _clearActorsFromBox(box) {
++        if (!box)
+             box = this.applicationsBox;
+-        }
++
+         let parent = box.get_parent();
+-        if(parent instanceof St.ScrollView){
++        if (parent instanceof St.ScrollView) {
+             let scrollBoxAdj = parent.get_vscroll_bar().get_adjustment();
+             scrollBoxAdj.set_value(0);
+         }
+@@ -499,7 +493,7 @@ var BaseLayout = class {
+         }
+     }
+ 
+-    displayCategoryAppList(appList, category){
++    displayCategoryAppList(appList, category) {
+         this._clearActorsFromBox();
+         this._displayAppList(appList, category);
+     }
+@@ -510,7 +504,7 @@ var BaseLayout = class {
+         let left = 0;
+         let grid = differentGrid ? differentGrid : this.grid;
+         let activeMenuItemSet = false;
+-        let rtl = this.mainBox.get_text_direction() == Clutter.TextDirection.RTL;
++        let rtl = this.mainBox.get_text_direction() === Clutter.TextDirection.RTL;
+         for (let i = 0; i < apps.length; i++) {
+             let app = apps[i];
+             let item;
+@@ -520,9 +514,9 @@ var BaseLayout = class {
+                 item = app;
+                 if (!item.shouldShow)
+                     shouldShow = false;
+-            }
+-            else
++            } else {
+                 item = this.applicationsMap.get(app);
++            }
+ 
+             if (!item) {
+                 let isIconGrid = true;
+@@ -531,37 +525,36 @@ var BaseLayout = class {
+             }
+ 
+             if (shouldShow) {
+-                if(!rtl && (count % columns == 0)){
++                if (!rtl && count % columns === 0) {
+                     top++;
+                     left = 0;
+-                }
+-                else if(rtl && (left === 0)){
++                } else if (rtl && left === 0) {
+                     top++;
+                     left = columns;
+                 }
+                 grid.layout_manager.attach(item, left, top, 1, 1);
+-                if(!rtl){
++                if (!rtl)
+                     left++;
+-                }
+-                else if(rtl){
++
++                else if (rtl)
+                     left--;
+-                }
++
+                 count++;
+ 
+                 if (!activeMenuItemSet && !differentGrid) {
+                     activeMenuItemSet = true;
+                     this.activeMenuItem = item;
+-                    if (this.arcMenu.isOpen) {
++                    if (this.arcMenu.isOpen)
+                         this.mainBox.grab_key_focus();
+-                    }
++
+                 }
+             }
+         }
+     }
+ 
+-    displayAllApps(isGridLayout = false){
++    displayAllApps(isGridLayout = false) {
+         let appList = [];
+-        this.applicationsMap.forEach((value,key,map) => {
++        this.applicationsMap.forEach((value, key) => {
+             appList.push(key);
+         });
+         appList.sort((a, b) => {
+@@ -573,79 +566,79 @@ var BaseLayout = class {
+     }
+ 
+     _onMainBoxKeyPress(actor, event) {
+-        if (event.has_control_modifier()) {
++        if (event.has_control_modifier())
+             return Clutter.EVENT_PROPAGATE;
+-        }
++
+ 
+         let symbol = event.get_key_symbol();
+-        let key = event.get_key_unicode();
++        let direction;
+ 
+         switch (symbol) {
+-            case Clutter.KEY_BackSpace:
+-            case Clutter.KEY_Tab:
+-            case Clutter.KEY_KP_Tab:
+-                return Clutter.EVENT_PROPAGATE;
+-            case Clutter.KEY_Up:
+-            case Clutter.KEY_Down:
+-            case Clutter.KEY_Left:
+-            case Clutter.KEY_Right:
+-                let direction;
+-                if (symbol === Clutter.KEY_Down)
+-                    direction = St.DirectionType.DOWN;
+-                if (symbol === Clutter.KEY_Right)
+-                    direction = St.DirectionType.RIGHT
+-                if (symbol === Clutter.KEY_Up)
+-                    direction = St.DirectionType.UP;
+-                if (symbol === Clutter.KEY_Left)
+-                    direction = St.DirectionType.LEFT;
+-
+-                if (global.stage.key_focus === this.mainBox) {
+-                    this.activeMenuItem.actor.grab_key_focus();
+-                    return Clutter.EVENT_STOP;
+-                }
+-                return actor.navigate_focus(global.stage.key_focus, direction, false);
+-            case Clutter.KEY_KP_Enter:
+-            case Clutter.KEY_Return:
+-            case Clutter.KEY_Escape:
+-                return Clutter.EVENT_PROPAGATE;
+-            default:
++        case Clutter.KEY_BackSpace:
++        case Clutter.KEY_Tab:
++        case Clutter.KEY_KP_Tab:
++            return Clutter.EVENT_PROPAGATE;
++        case Clutter.KEY_Up:
++        case Clutter.KEY_Down:
++        case Clutter.KEY_Left:
++        case Clutter.KEY_Right:
++            if (symbol === Clutter.KEY_Down)
++                direction = St.DirectionType.DOWN;
++            if (symbol === Clutter.KEY_Right)
++                direction = St.DirectionType.RIGHT;
++            if (symbol === Clutter.KEY_Up)
++                direction = St.DirectionType.UP;
++            if (symbol === Clutter.KEY_Left)
++                direction = St.DirectionType.LEFT;
++
++            if (global.stage.key_focus === this.mainBox) {
++                this.activeMenuItem.actor.grab_key_focus();
++                return Clutter.EVENT_STOP;
++            }
++            return actor.navigate_focus(global.stage.key_focus, direction, false);
++        case Clutter.KEY_KP_Enter:
++        case Clutter.KEY_Return:
++        case Clutter.KEY_Escape:
++            return Clutter.EVENT_PROPAGATE;
++        default:
++            Main.overview.focusSearch(event);
+         }
+         return Clutter.EVENT_PROPAGATE;
+     }
+ 
+-    destroy(isReload){
+-        if(this.applicationsMap){
+-            this.applicationsMap.forEach((value,key,map)=>{
+-                if(value && value.needsDestroy)
++    destroy(isReload) {
++        if (this.applicationsMap) {
++            this.applicationsMap.forEach(value => {
++                if (value && value.needsDestroy)
+                     value.destroy();
+             });
+             this.applicationsMap = null;
+         }
+ 
+-        if(this.categoryDirectories){
+-            this.categoryDirectories.forEach((value,key,map)=>{
+-                if(value && value.needsDestroy)
++        if (this.categoryDirectories) {
++            this.categoryDirectories.forEach(value => {
++                if (value && value.needsDestroy)
+                     value.destroy();
+             });
+             this.categoryDirectories = null;
+         }
+ 
+-        if(this.favoritesArray){
+-            for(let i = 0; i < this.favoritesArray.length; i++){
+-                if(this.favoritesArray[i] && this.favoritesArray[i].needsDestroy)
++        if (this.favoritesArray) {
++            for (let i = 0; i < this.favoritesArray.length; i++) {
++                if (this.favoritesArray[i] && this.favoritesArray[i].needsDestroy)
+                     this.favoritesArray[i].destroy();
+             }
+             this.favoritesArray = null;
+         }
+ 
+-        if(this.recentManager){
+-            if(this._recentFilesChangedID){
++        if (this.recentManager) {
++            if (this._recentFilesChangedID) {
+                 this.recentManager.disconnect(this._recentFilesChangedID);
+                 this._recentFilesChangedID = null;
+             }
+         }
+ 
+-        if(!isReload){
++        if (!isReload) {
+             if (this._mainBoxKeyPressId > 0) {
+                 this.mainBox.disconnect(this._mainBoxKeyPressId);
+                 this._mainBoxKeyPressId = 0;
+@@ -656,7 +649,7 @@ var BaseLayout = class {
+                 this._treeChangedId = 0;
+                 this._tree = null;
+             }
+-            if(this._gnomeFavoritesReloadID){
++            if (this._gnomeFavoritesReloadID) {
+                 AppFavorites.getAppFavorites().disconnect(this._gnomeFavoritesReloadID);
+                 this._gnomeFavoritesReloadID = null;
+             }
+@@ -664,21 +657,21 @@ var BaseLayout = class {
+             this.isRunning = false;
+         }
+ 
+-        this.mainBox.get_children().forEach((child) => {
+-            if(child && child !== undefined && child !== null)
++        this.mainBox.get_children().forEach(child => {
++            if (child && child !== undefined && child !== null)
+                 child.destroy();
+         });
+     }
+ 
+-    _createScrollBox(params){
++    _createScrollBox(params) {
+         let scrollBox = new MW.ScrollView(params);
+         let panAction = new Clutter.PanAction({ interpolate: false });
+-        panAction.connect('pan', (action) => {
++        panAction.connect('pan', action => {
+             this._blockActivateEvent = true;
+             this.onPan(action, scrollBox);
+         });
+-        panAction.connect('gesture-cancel',(action) => this.onPanEnd(action, scrollBox));
+-        panAction.connect('gesture-end', (action) => this.onPanEnd(action, scrollBox));
++        panAction.connect('gesture-cancel', action => this.onPanEnd(action, scrollBox));
++        panAction.connect('gesture-end', action => this.onPanEnd(action, scrollBox));
+         scrollBox.add_action(panAction);
+ 
+         scrollBox.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC);
+@@ -688,7 +681,7 @@ var BaseLayout = class {
+     }
+ 
+     _keyFocusIn(actor) {
+-        if (this._focusChild == actor)
++        if (this._focusChild === actor)
+             return;
+         this._focusChild = actor;
+         Utils.ensureActorVisibleInScrollView(actor);
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 0b43cd9..b4c456e 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -861,6 +861,7 @@ var SearchBox = class ArcMenuSearchBox {
+         this._maxInputHistory = 5;
+ 
+         this.actor.connect('destroy', this._onDestroy.bind(this));
++        Main.overview['focusSearch'] = this.grabKeyFocus.bind(this);
+     }
+ 
+     _onButtonPress() {
+@@ -903,8 +904,14 @@ var SearchBox = class ArcMenuSearchBox {
+         this._stEntry.set_text(text);
+     }
+ 
+-    grabKeyFocus() {
++    grabKeyFocus(event) {
++        if (!this.menuLayout.searchMenu.isOpen)
++            this.menuLayout.searchMenu.open();
++
+         this._stEntry.grab_key_focus();
++        if (event && event.type() === Clutter.EventType.KEY_PRESS)
++            this.menuLayout._onMainBoxKeyPress(this.menuLayout, event);
++
+     }
+ 
+     hasKeyFocus() {

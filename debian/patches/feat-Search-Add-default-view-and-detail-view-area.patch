@@ -1,0 +1,176 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 13 Apr 2021 15:00:30 +0900
+Subject: [feat] Search : Add default view and detail view area
+
+- Add sub main box
+- Implement to show default view area in sub main box if text is empty.
+- Implement to show result and detail view area in sub main box if text is not empty.
+- Default view area is separated into frequent apps area and recent files area.
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js   | 49 ++++++++++++++-------------
+ extensions/search/searchMenuLayout.js | 62 ++++++++++++++++++++++++++++++-----
+ 2 files changed, 79 insertions(+), 32 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 43115bc..992d281 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -57,23 +57,18 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         this.searchBox.clear();
+         this.newSearch._reset();
+ 
+-        this._clearActorsFromBox();
++        this.resultScrollBox.hide();
++        this.detailScrollBox.hide();
+ 
+-        let appsScrollBoxAdj = this.applicationsScrollBox.get_vscroll_bar().get_adjustment();
+-        appsScrollBoxAdj.set_value(0);
++        // refresh (clear an existing items and replace it with a new one)
++        this._clearActorsFromBox(this.frequentAppsBox);
++        this._clearActorsFromBox(this.recentFilesBox);
+ 
+-        if (this.categoriesScrollBox) {
+-            appsScrollBoxAdj = this.categoriesScrollBox.get_vscroll_bar().get_adjustment();
+-            appsScrollBoxAdj.set_value(0);
+-        }
+-        if (this.shortcutsScrollBox) {
+-            appsScrollBoxAdj = this.shortcutsScrollBox.get_vscroll_bar().get_adjustment();
+-            appsScrollBoxAdj.set_value(0);
+-        }
+-        if (this.actionsScrollBox) {
+-            appsScrollBoxAdj = this.actionsScrollBox.get_vscroll_bar().get_adjustment();
+-            appsScrollBoxAdj.set_value(0);
+-        }
++        let recentFilesScrollBoxAdj = this.recentFilesScrollBox.get_vscroll_bar().get_adjustment();
++        recentFilesScrollBoxAdj.set_value(0);
++
++        this.createDefaultLabel();
++        this.defaultBox.show();
+     }
+ 
+     reload() {
+@@ -108,10 +103,9 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+     }
+ 
+     _clearActorsFromBox(box) {
+-        if (!box) {
+-            box = this.applicationsBox;
+-            this.activeCategoryType = -1;
+-        }
++        if (!box)
++            box = this.resultBox;
++
+         let parent = box.get_parent();
+         if (parent instanceof St.ScrollView) {
+             let scrollBoxAdj = parent.get_vscroll_bar().get_adjustment();
+@@ -149,10 +143,19 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             this.setDefaultMenuView();
+             this.newSearch.actor.hide();
+         } else {
+-            this._clearActorsFromBox();
+-            let appsScrollBoxAdj = this.applicationsScrollBox.get_vscroll_bar().get_adjustment();
+-            appsScrollBoxAdj.set_value(0);
+-            this.applicationsBox.add(this.newSearch.actor);
++            this.defaultBox.hide();
++
++            // refresh (clear an existing items and replace it with a new one)
++            this._clearActorsFromBox(this.resultBox);
++            this._clearActorsFromBox(this.detailBox);
++
++            let resultScrollBoxAdj = this.resultScrollBox.get_vscroll_bar().get_adjustment();
++            resultScrollBoxAdj.set_value(0);
++
++            this.resultBox.add(this.newSearch.actor);
++
++            this.resultScrollBox.show();
++            this.detailScrollBox.show();
+ 
+             this.newSearch.actor.show();
+             this.newSearch.setTerms([searchString]);
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index 08b70ee..3c7933f 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -45,27 +45,71 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+     }
+ 
+     createLayout() {
+-        // Search Result Box
+-        this.applicationsBox = new St.BoxLayout({
++        this.subMainBox = new St.BoxLayout({
++            x_expand: true,
++            y_expand: true,
++            y_align: Clutter.ActorAlign.START,
++            vertical: false,
++        });
++        this.subMainBox.style = 'width: 662px;';
++        this.mainBox.add(this.subMainBox);
++
++        // Default View
++        this.frequentAppsBox = new St.BoxLayout({
++            vertical: false,
++        });
++
++        this.recentFilesBox = new St.BoxLayout({
++            vertical: false,
++        });
++        this.recentFilesScrollBox = this._createScrollBox({
++            y_align: Clutter.ActorAlign.START,
++            overlay_scrollbars: true,
++        });
++        this.recentFilesScrollBox.add_actor(this.recentFilesBox);
++
++        this.defaultBox = new St.BoxLayout({
++            x_expand: true,
++            y_expand: true,
++            y_align: Clutter.ActorAlign.START,
++            vertical: true,
++        });
++
++        this.defaultBox.add_actor(this.frequentAppsBox);
++        this.defaultBox.add_actor(this.recentFilesScrollBox);
++        this.subMainBox.add_actor(this.defaultBox);
++
++        // Search Result View
++        this.resultBox = new St.BoxLayout({
++            vertical: true,
++        });
++        this.resultScrollBox = this._createScrollBox({
++            y_align: Clutter.ActorAlign.START,
++            overlay_scrollbars: true,
++        });
++        this.resultScrollBox.style = 'width: 300px;';
++        this.resultScrollBox.add_actor(this.resultBox);
++        this.subMainBox.add(this.resultScrollBox);
++
++        // Search Detail View
++        this.detailBox = new St.BoxLayout({
+             vertical: true,
+         });
+-        this.applicationsScrollBox = this._createScrollBox({
++        this.detailScrollBox = this._createScrollBox({
+             y_align: Clutter.ActorAlign.START,
+             overlay_scrollbars: true,
+-            style_class: 'small-vfade',
+         });
+-        this.applicationsScrollBox.style = 'width: 380px;';
+-        this.applicationsScrollBox.add_actor(this.applicationsBox);
+-        this.mainBox.add(this.applicationsScrollBox);
++        this.detailScrollBox.style = 'width: 362px; height: 400px;';
++        this.detailScrollBox.add_actor(this.detailBox);
++        this.subMainBox.add(this.detailScrollBox);
+ 
+         this.setDefaultMenuView();
+-        this.createDefaultLabel();
+     }
+ 
+     createDefaultLabel() {
+         let labelString = '검색어를 입력하세요';
+         let defaultLabel = new PopupMenu.PopupMenuItem(labelString);
+         defaultLabel.label.style = 'font-weight: bold; font-size: 16px;';
+-        this.applicationsBox.add_actor(defaultLabel.actor);
++        this.frequentAppsBox.add_actor(defaultLabel.actor);
+     }
+ };

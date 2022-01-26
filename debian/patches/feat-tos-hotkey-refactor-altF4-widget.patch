@@ -1,0 +1,518 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 29 Apr 2021 17:58:55 +0900
+Subject: [feat] tos-hotkey : refactor altF4 widget
+
+ - renamed classes and instances with more appropriate name.
+ - made BaseWidget extend Widget instead of Modal
+ - refactored SystemWidget
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/altF4.js       |  74 +++++++++
+ extensions/tos-hotkey/baseWidget.js  | 301 +++++++++++++++++++++++++++++++++++
+ extensions/tos-hotkey/extension.js   |  10 +-
+ extensions/tos-hotkey/meson.build    |   3 +-
+ extensions/tos-hotkey/stylesheet.css |  18 +--
+ 5 files changed, 391 insertions(+), 15 deletions(-)
+ create mode 100644 extensions/tos-hotkey/altF4.js
+ create mode 100644 extensions/tos-hotkey/baseWidget.js
+
+diff --git a/extensions/tos-hotkey/altF4.js b/extensions/tos-hotkey/altF4.js
+new file mode 100644
+index 0000000..2b75d3b
+--- /dev/null
++++ b/extensions/tos-hotkey/altF4.js
+@@ -0,0 +1,74 @@
++const { GObject } = imports.gi;
++
++const _ = imports.gettext.gettext;
++
++const SystemActions = imports.misc.systemActions;
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++const BaseWidget = Me.imports.baseWidget;
++
++const LOGOUT_IMG_FILE_PATH = '/assets/tos_desktop_ic_windowf4_logout.svg';
++const USER_SWITCH_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_user.svg';
++const SLEEP_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_sleep.svg';
++const RESTART_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_restart.svg';
++const POWEROFF_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_power.svg';
++
++const LOGOUT_LABEL_TEXT = _('로그아웃');
++const USER_SWITCH_LABEL_TEXT = _('사용자 전환');
++const SLEEP_LABEL_TEXT = _('잠자기');
++const RESTART_LABEL_TEXT = _('다시 시작');
++const POWEROFF_LABEL_TEXT = _('시스템 종료');
++
++
++var SystemWidget = GObject.registerClass(// eslint-disable-line no-unused-vars
++class SystemWidget extends BaseWidget.BaseWidget {
++    _init() {
++        super._init();
++        this.systemActions = SystemActions.getDefault();
++        this._setTitle(_('원하는 작업을 선택해 주세요.'));
++        this._addActionToButtons();
++    }
++
++    _createHandler(handler) {
++        if (!handler)
++            return;
++
++        let func = function func() {
++            this.close();
++            handler();
++        }.bind(this, handler);
++
++        return func;
++    }
++
++    _addActionToButtons() {
++        let button;
++        let bindFlags = GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE;
++
++        button = this.addButton(LOGOUT_LABEL_TEXT, Me.path + LOGOUT_IMG_FILE_PATH,
++            { handler: this._createHandler(this.systemActions.activateLogout.bind(this.systemActions)) });
++        this.systemActions.bind_property('can-logout', button, 'reactive', bindFlags);
++        this.systemActions.bind_property('can-logout', button, 'can-focus', bindFlags);
++
++        button = this.addButton(USER_SWITCH_LABEL_TEXT, Me.path + USER_SWITCH_IMAGE_PATH,
++            { handler: this._createHandler(this.systemActions.activateSwitchUser.bind(this.systemActions)) });
++        this.systemActions.bind_property('can-switch-user', button, 'reactive', bindFlags);
++        this.systemActions.bind_property('can-switch-user', button, 'can-focus', bindFlags);
++
++        button = this.addButton(SLEEP_LABEL_TEXT, Me.path + SLEEP_IMAGE_PATH,
++            { handler: this._createHandler(this.systemActions.activateSuspend.bind(this.systemActions)) });
++        this.systemActions.bind_property('can-suspend', button, 'reactive', bindFlags);
++        this.systemActions.bind_property('can-suspend', button, 'can-focus', bindFlags);
++
++        button = this.addButton(RESTART_LABEL_TEXT, Me.path + RESTART_IMAGE_PATH,
++            { handler: this._createHandler(this.systemActions.activateRestart.bind(this.systemActions)) });
++        this.systemActions.bind_property('can-restart', button, 'reactive', bindFlags);
++        this.systemActions.bind_property('can-restart', button, 'can-focus', bindFlags);
++
++        button = this.addButton(POWEROFF_LABEL_TEXT, Me.path + POWEROFF_IMAGE_PATH,
++            { handler: this._createHandler(this.systemActions.activatePowerOff.bind(this.systemActions)) }
++        );
++        this.systemActions.bind_property('can-power-off', button, 'reactive', bindFlags);
++        this.systemActions.bind_property('can-power-off', button, 'can-focus', bindFlags);
++    }
++});
+diff --git a/extensions/tos-hotkey/baseWidget.js b/extensions/tos-hotkey/baseWidget.js
+new file mode 100644
+index 0000000..a6818d1
+--- /dev/null
++++ b/extensions/tos-hotkey/baseWidget.js
+@@ -0,0 +1,301 @@
++// Credits:
++// Some code was adapted from the upstream Gnome Shell source code.
++
++const { Atk, Clutter, GObject, Gio, Shell, St } = imports.gi;
++
++const Layout = imports.ui.layout;
++const Main = imports.ui.main;
++const Params = imports.misc.params;
++
++const GrabHelper = imports.ui.grabHelper;
++
++var OPEN_AND_CLOSE_TIME = 100;
++
++var State = {
++    OPENED: 0,
++    CLOSED: 1,
++    OPENING: 2,
++    CLOSING: 3,
++    FADED_OUT: 4,
++};
++
++var IconLabelButton = GObject.registerClass(
++class IconLabelButton extends St.BoxLayout {
++    _init(params) {
++        params = Params.parse(params, {
++            style_class: 'system-widget-button',
++            reactive: true,
++            track_hover: true,
++            can_focus: true,
++            handler: null,
++            accessible_role: Atk.Role.TOGGLE_BUTTON,
++        });
++        super._init({ style_class: params.style_class,
++            reactive: params.reactive,
++            track_hover: params.reactive,
++            can_focus: params.can_focus,
++            accessible_role: params.accessible_role });
++
++        this._delegate = this;
++
++        if (params.handler)
++            this._handler = params.handler;
++
++        this.connect('notify::reactive', () => {
++            if (this.reactive)
++                this.set_opacity(255);
++            else
++                this.set_opacity(31); // #1f
++        });
++    }
++
++    vfunc_key_focus_in() {
++        this.add_style_pseudo_class('focus');
++    }
++
++    vfunc_key_focus_out() {
++        this.remove_style_pseudo_class('focus');
++    }
++
++    vfunc_button_press_event() {
++        this.add_style_pseudo_class('active');
++    }
++
++    vfunc_button_release_event() {
++        this.remove_style_pseudo_class('active');
++        this._handler();
++    }
++
++    vfunc_key_release_event(event) {
++        if (event.keyval === Clutter.KEY_Return)
++            this._handler();
++
++
++        return Clutter.EVENT_PROPAGATE;
++    }
++});
++
++var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
++    Properties: {
++        'state': GObject.ParamSpec.int('state', 'Dialog state', 'state',
++            GObject.ParamFlags.READABLE,
++            Math.min(...Object.values(State)),
++            Math.max(...Object.values(State)),
++            State.CLOSED),
++    },
++    Signals: { 'opened': {}, 'closed': {} },
++}, class BaseWidget extends St.Widget {
++    _init(params) {
++        super._init({ layout_manager: new Clutter.BinLayout(),
++            visible: false,
++            x: 0,
++            y: 0,
++            accessible_role: Atk.Role.DIALOG });
++
++        params = Params.parse(params, { styleClass: null,
++            actionMode: Shell.ActionMode.NORMAL,
++            shouldFadeIn: true,
++            shouldFadeOut: true,
++            destroyOnClose: false });
++
++        this._state = State.CLOSED;
++        this._actionMode = params.actionMode;
++        this._shouldFadeIn = params.shouldFadeIn;
++        this._shouldFadeOut = params.shouldFadeOut;
++        this._destroyOnClose = params.destroyOnClose;
++
++        Main.uiGroup.add_actor(this);
++
++        let constraint = new Clutter.BindConstraint({ source: global.stage,
++            coordinate: Clutter.BindCoordinate.ALL });
++        this.add_constraint(constraint);
++
++        this.backgroundStack = new St.Widget({
++            layout_manager: new Clutter.BinLayout(),
++            x_expand: true,
++            y_expand: true,
++        });
++
++        // transparent background
++        this._backgroundBin = new St.Bin({ child: this.backgroundStack });
++        this._monitorConstraint = new Layout.MonitorConstraint();
++        this._backgroundBin.add_constraint(this._monitorConstraint);
++        this.add_actor(this._backgroundBin);
++
++        this.box = new St.Widget({
++            layout_manager: new Clutter.BinLayout(),
++        });
++        this.add_actor(this.box);
++
++        this.baseLayout = new St.BoxLayout({
++            style_class: 'system-widget',
++            x_align: Clutter.ActorAlign.CENTER,
++            y_align: Clutter.ActorAlign.CENTER,
++            vertical: true,
++        });
++        this.box.add_actor(this.baseLayout);
++
++        this.contentLayout = new St.BoxLayout({
++            style_class: 'system-widget-content-box',
++            vertical: true,
++            y_expand: true,
++        });
++        this.baseLayout.add_actor(this.contentLayout);
++
++        this.buttonLayout = new St.Widget({
++            layout_manager: new Clutter.BoxLayout({ homogeneous: true }),
++            style_class: 'system-widget-button-box',
++        });
++        this.baseLayout.add_actor(this.buttonLayout);
++
++        this._grabHelper = new GrabHelper.GrabHelper(this);
++        Main.layoutManager.connect('system-modal-opened', () => this.close());
++    }
++
++    get state() {
++        return this._state;
++    }
++
++    _setTitle(title) {
++        let label = new St.Label({ style_class: 'system-widget-title',
++            text: title });
++        this.contentLayout.add_actor(label);
++    }
++
++    _setState(state) {
++        if (this._state === state)
++            return;
++
++        this._state = state;
++        this.notify('state');
++    }
++
++    _fadeOpen(onPrimary) {
++        if (onPrimary)
++            this._monitorConstraint.primary = true;
++        else
++            this._monitorConstraint.index = global.display.get_current_monitor();
++
++        this._setState(State.OPENING);
++
++        this.baseLayout.opacity = 255;
++
++        this.opacity = 0;
++        this.show();
++        this.ease({
++            opacity: 255,
++            duration: this._shouldFadeIn ? OPEN_AND_CLOSE_TIME : 0,
++            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
++            onComplete: () => {
++                this._setState(State.OPENED);
++                this.emit('opened');
++            },
++        });
++    }
++
++    open(onPrimary) {
++        if (this.state === State.OPENED || this.state === State.OPENING)
++            return true;
++
++        this._fadeOpen(onPrimary);
++        this._grabHelper.grab({ actor: this,
++            focus: this.buttonLayout.get_children()[0],
++            onUngrab: this.close.bind(this) });
++        return true;
++    }
++
++    _closeComplete() {
++        this._setState(State.CLOSED);
++        this.hide();
++        this.emit('closed');
++
++        if (this._destroyOnClose)
++            this.destroy();
++    }
++
++    close() {
++        if (this.state === State.CLOSED || this.state === State.CLOSING)
++            return;
++
++        if (this._grabHelper._isWithinGrabbedActor(this))
++            this._grabHelper.ungrab();
++
++        this._setState(State.CLOSING);
++
++        if (this._shouldFadeOut) {
++            this.ease({
++                opacity: 0,
++                duration: OPEN_AND_CLOSE_TIME,
++                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
++                onComplete: () => this._closeComplete(),
++            });
++        } else {
++            this._closeComplete();
++        }
++    }
++
++    addButton(labelText, iconName, params) {
++        let icon = new St.Icon({ style_class: 'system-widget-button-image',
++            y_align: Clutter.ActorAlign.CENTER,
++            gicon: Gio.icon_new_for_string(iconName),
++            icon_size: 38 });
++        let label = new St.Label({ style_class: 'system-widget-button-label',
++            text: labelText,
++            y_align: Clutter.ActorAlign.CENTER });
++
++        let button = new IconLabelButton(params);
++
++        button.add_child(icon);
++        button.add_child(label);
++        button.vertical = true;
++
++        this.buttonLayout.add_child(button);
++
++        return button;
++    }
++
++    _isWithinFocusGroup(actor) {
++        if (this.buttonLayout.get_children().includes(actor))
++            return true;
++
++        return false;
++    }
++
++    _navigateFocus(event) {
++        let keyval = event.keyval;
++        let current = global.stage.key_focus;
++        let direction;
++
++        switch (keyval) {
++        case Clutter.KEY_Down:
++        case Clutter.KEY_Left:
++        case Clutter.KEY_ISO_Left_Tab:
++            direction = St.DirectionType.TAB_BACKWARD;
++            break;
++        case Clutter.KEY_Up:
++        case Clutter.KEY_Right:
++            direction = St.DirectionType.TAB_FORWARD;
++            break;
++        case Clutter.KEY_Tab:
++            if (event.modifier_state & Clutter.SHIFT_MAST)
++                direction = St.DirectionType.TAB_BACKWARD;
++            else
++                direction = St.DirectionType.TAB_FORWARD;
++            break;
++        default:
++            break;
++        }
++
++        if (direction !== undefined)
++            return this.buttonLayout.navigate_focus(current, direction, true);
++
++
++        return Clutter.EVENT_PROPAGATE;
++    }
++
++    vfunc_key_press_event(event) {
++        if (this._isWithinFocusGroup(event.source))
++            return this._navigateFocus(event);
++
++    }
++});
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+index 6f5a163..f7447cf 100644
+--- a/extensions/tos-hotkey/extension.js
++++ b/extensions/tos-hotkey/extension.js
+@@ -4,13 +4,13 @@ const Main = imports.ui.main;
+ 
+ const ExtensionUtils = imports.misc.extensionUtils;
+ const Me = ExtensionUtils.getCurrentExtension();
+-const SystemDialog = Me.imports.systemDialog;
++const AltF4 = Me.imports.altF4;
+ 
+ // const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
+ // const WM_KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
+ const SHELL_EXTENSIONS_TOS_HOTKEY = 'org.gnome.shell.extensions.tos-hotkey';
+ 
+-let systemDialog;
++let systemWidget;
+ 
+ function _addKeybinding(key, schema, flags, action, handler) {
+     if (Main.wm._allowedKeybindings[key])
+@@ -41,9 +41,9 @@ function _handleAltF4(display, window) {
+     if (window && !window.skip_taskbar) {
+         window.delete(Clutter.get_current_event_time());
+     } else if (Me.state === 1) {
+-        if (!systemDialog)
+-            systemDialog = new SystemDialog.SystemDialog();
+-        systemDialog.open();
++        if (!systemWidget)
++            systemWidget = new AltF4.SystemWidget();
++        systemWidget.open();
+     }
+ }
+ 
+diff --git a/extensions/tos-hotkey/meson.build b/extensions/tos-hotkey/meson.build
+index d96d42e..c74a646 100644
+--- a/extensions/tos-hotkey/meson.build
++++ b/extensions/tos-hotkey/meson.build
+@@ -5,7 +5,8 @@ extension_data += configure_file(
+ )
+ 
+ extension_sources += files(
+-'systemDialog.js',
++'baseWidget.js',
++'altF4.js',
+ )
+ 
+ extension_dir = join_paths(extensiondir, uuid)
+diff --git a/extensions/tos-hotkey/stylesheet.css b/extensions/tos-hotkey/stylesheet.css
+index fd5da27..f74a244 100644
+--- a/extensions/tos-hotkey/stylesheet.css
++++ b/extensions/tos-hotkey/stylesheet.css
+@@ -1,4 +1,4 @@
+-.system-dialog {
++.system-widget {
+   border-radius: 16px;
+   background-color: white;
+   width: 461px;
+@@ -9,12 +9,12 @@
+   padding: 0px 20px 20px 20px;
+ }
+ 
+-.system-dialog-content-box {
++.system-widget-content-box {
+   margin: 36px 0 0 0;
+   padding: 0px;
+ }
+ 
+-.system-dialog-title {
++.system-widget-title {
+   font-size: 13px;
+   letter-spacing: 0;
+   text-align: center;
+@@ -22,12 +22,12 @@
+   color: #000000;
+ }
+ 
+-.system-dialog-button-container {
++.system-widget-button-box {
+   height: 103px;
+   margin-top: 41px;
+ }
+ 
+-.system-dialog-button {
++.system-widget-button {
+   border: none;
+   border-radius: 10px;
+   background-color: white;
+@@ -43,20 +43,20 @@
+   height: 103px;
+ }
+ 
+-.system-dialog-button:hover {
++.system-widget-button:focus, .system-widget-button:hover  {
+   background-color: rgba(0, 79, 255, 0.12);
+ }
+ 
+-.system-dialog-button:active {
++.system-widget-button:active {
+   background-color: rgba(0, 79, 255, 0.2);
+ }
+ 
+-.system-dialog-button-image {
++.system-widget-button-image {
+   icon-size: 38px;
+   margin: 18px 21px 15px 21px;
+ }
+ 
+-.system-dialog-button-label {
++.system-widget-button-label {
+   font-size: 13px;
+   letter-spacing: 0;
+   text-align: center;

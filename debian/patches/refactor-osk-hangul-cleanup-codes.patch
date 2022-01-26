@@ -1,0 +1,305 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 15 Oct 2021 14:27:39 +0900
+Subject: [refactor] osk-hangul : cleanup codes
+
+ - clean up codes
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js       |  67 ++++++++++----------
+ extensions/osk-hangul/keyboardWrapper.js | 104 +++++++++++++++----------------
+ 2 files changed, 81 insertions(+), 90 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 11ca737..b2814f5 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -57,17 +57,6 @@ function _getSyncKeyboardFunc() {
+                     _enable('xkb');
+             });
+ 
+-            _keyboardDestroyId = KeyboardManager._keyboard.connect('destroy', () => {
+-                _resetKeyboard();
+-                if (_ibusFocusInId)
+-                    ibusManager.disconnect(_ibusFocusInId);
+-
+-                if (_layoutKeyTypeChagnedId)
+-                    adapter.disconnect(_layoutKeyTypeChagnedId);
+-
+-                _isOSKEnabled = false;
+-            });
+-
+             _layoutKeyTypeChagnedId = adapter.connect('layout-key-type', () => {
+                 KeyboardManager._keyboard._onKeyboardGroupsChanged();
+             });
+@@ -81,12 +70,44 @@ function _getSyncKeyboardFunc() {
+             _nimfFocusOutId = nimfService.connect('focus-out', () => {
+                 focusTracker.emit('focus-changed', false);
+             });
++
++            _keyboardDestroyId = KeyboardManager._keyboard.connect('destroy', () => {
++                _resetKeyboard();
++                _isOSKEnabled = false;
++            });
+         }
+     }
+ 
+     return applyKoreanKeyboard;
+ }
+ 
++function _resetKeyboard() {
++    let keyboard = KeyboardManager._keyboard;
++    if (keyboard) {
++        if (adapter)
++            adapter.restoreAll();
++
++        let ibusManager = IBusManager.getIBusManager();
++        if (_ibusFocusInId)
++            ibusManager.disconnect(_ibusFocusInId);
++
++        if (_layoutKeyTypeChagnedId)
++            adapter.disconnect(_layoutKeyTypeChagnedId);
++
++        const nimfService = getNimfService();
++        if (_nimfFocusInId)
++            nimfService.disconnect(_nimfFocusInId);
++
++        if (_nimfFocusOutId)
++            nimfService.disconnect(_nimfFocusOutId);
++
++        if (_keyboardDestroyId) {
++            keyboard.disconnect(_keyboardDestroyId);
++            _keyboardDestroyId = null;
++        }
++    }
++}
++
+ function enable() { // eslint-disable-line no-unused-vars
+     let syncKeyboard = _getSyncKeyboardFunc();
+ 
+@@ -107,30 +128,6 @@ function enable() { // eslint-disable-line no-unused-vars
+     });
+ }
+ 
+-function _resetKeyboard() {
+-    let keyboard = KeyboardManager._keyboard;
+-    if (keyboard) {
+-        if (adapter)
+-            adapter.restoreAll();
+-
+-        if (_keyboardDestroyId) {
+-            keyboard.disconnect(_keyboardDestroyId);
+-            _keyboardDestroyId = null;
+-        }
+-
+-        let ibusManager = IBusManager.getIBusManager();
+-        if (_ibusFocusInId)
+-            ibusManager.disconnect(_ibusFocusInId);
+-
+-        if (_layoutKeyTypeChagnedId)
+-            adapter.disconnect(_layoutKeyTypeChagnedId);
+-
+-        const nimfService = getNimfService();
+-        nimfService.disconnect(_nimfFocusInId);
+-        nimfService.disconnect(_nimfFocusOutId);
+-    }
+-}
+-
+ function disable() { // eslint-disable-line no-unused-vars
+     _resetKeyboard();
+ 
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index c9db918..26f17a0 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -24,60 +24,73 @@ function _krToUsKeysym(keyval) {
+     return _isKoreanCharactor(keyval) ? QwertyKeysyms[keyval] : keyval;
+ }
+ 
+-
+ class BaseKeyboardWrapper {
+     constructor() {
+-        this._originalFunctions = [];
+-        this._setAnimationWindow = () => {};
++        this._functionsToOverride = {};
++        this._declareFunctionsToOverrde();
+     }
+ 
+-    wrap(target, originalFuncName, replaceFunc) {
+-        if (!target[originalFuncName])
+-            throw new Error(`such function name does not exist in ${target.name}!`);
+-
+-        let originalFunction = target[originalFuncName];
++    _save(target, originalFunc, replaceFunc) {
++        let funcName = originalFunc.name;
++        this._functionsToOverride[funcName] = { target, originalFunc, replaceFunc };
++    }
+ 
+-        this._originalFunctions.push({ target, 'function': originalFunction });
++    _declareFunctionsToOverrde() {
++        let keyboard = KeyboardManager._keyboard;
+ 
+-        target[originalFuncName] = function (...args) {
+-            return replaceFunc.apply(this, [originalFunction].concat(args));
+-        };
++        let _setAnimationWindow = () => {};
++        this._save(keyboard, keyboard._setAnimationWindow, _setAnimationWindow);
+     }
+ 
+     wrapAll() {
+-        let keyboard = KeyboardManager._keyboard;
+-        this.wrap(keyboard, '_setAnimationWindow', this._setAnimationWindow);
++        for (let funcName of Object.keys(this._functionsToOverride)) {
++            let { target, originalFunc, replaceFunc } = this._functionsToOverride[funcName];
++
++            if (!target[funcName])
++                throw new Error(`such function name does not exist in ${target.name}!`);
++
++            target[funcName] = function (...args) {
++                return replaceFunc.apply(this, [originalFunc].concat(args));
++            };
++        }
+     }
+ 
+     restoreAll() {
+-        for (let info of this._originalFunctions) {
+-            let { target, 'function': func } = info;
+-            target[func.name] = func;
++        for (let funcName of Object.keys(this._functionsToOverride)) {
++            let { target, originalFunc } = this._functionsToOverride[funcName];
++
++            if (!target[funcName])
++                throw new Error(`such function name does not exist in ${target.name}!`);
++
++            target[funcName] = originalFunc;
+         }
+     }
+ }
+ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper {
+-    constructor() {
+-        super();
++    _declareFunctionsToOverrde() {
++        super._declareFunctionsToOverrde();
+ 
+         let keyboard = KeyboardManager._keyboard;
+         let controller = keyboard._keyboardController;
+ 
+-        this.keyvalPress = (originalKeyvalPress, keyval) => {
++        const keyvalPress = (originalKeyvalPress, keyval) => {
+             keyval = _krToUsKeysym(keyval);
+             return originalKeyvalPress.call(controller, keyval);
+         };
++        this._save(controller, controller.keyvalPress, keyvalPress);
+ 
+-        this.keyvalRelease = (originalKeyvalRelease, keyval) => {
++        const keyvalRelease = (originalKeyvalRelease, keyval) => {
+             keyval = _krToUsKeysym(keyval);
+             return originalKeyvalRelease.call(controller, keyval);
+         };
++        this._save(controller, controller.keyvalRelease, keyvalRelease);
+ 
+-        this._popupLanguageMenu = () => {
++        const _popupLanguageMenu = () => {
+             this._switchInputMethod(controller);
+         };
++        this._save(keyboard, keyboard._popupLanguageMenu, _popupLanguageMenu);
+ 
+-        this._createLayersForGroup = (originalCreateLayersForGroup, groupname) => {
++        const _createLayersForGroup = (originalCreateLayersForGroup, groupname) => {
+             let layers = originalCreateLayersForGroup.call(keyboard, groupname);
+             for (let layer of Object.keys(layers)) {
+                 for (let key of layers[layer]) {
+@@ -89,8 +102,9 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+ 
+             return layers;
+         };
++        this._save(keyboard, keyboard._createLayersForGroup, _createLayersForGroup);
+ 
+-        this._setActiveLayer = (originalSetActiveLayer, activeLevel) => {
++        const _setActiveLayer = (originalSetActiveLayer, activeLevel) => {
+             // make us keyboard layout if not exist
+             keyboard._ensureKeysForGroup('us');
+ 
+@@ -109,26 +123,7 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+ 
+             controller._currentSource.xkbId = oldGroupName;
+         };
+-    }
+-
+-    wrapAll() {
+-        super.wrapAll();
+-        let keyboard = KeyboardManager._keyboard;
+-        let controller = keyboard._keyboardController;
+-
+-        this.wrap(controller, 'keyvalPress', this.keyvalPress);
+-
+-        this.wrap(controller, 'keyvalRelease', this.keyvalRelease);
+-
+-        // change the functionality of flag icon
+-        this.wrap(keyboard, '_popupLanguageMenu', this._popupLanguageMenu);
+-
+-        this.wrap(keyboard, '_createLayersForGroup', this._createLayersForGroup);
+-
+-        // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+-        // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+-        // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+-        this.wrap(keyboard, '_setActiveLayer', this._setActiveLayer);
++        this._save(keyboard, keyboard._setActiveLayer, _setActiveLayer);
+     }
+ 
+     _getCurrentGroup() {
+@@ -150,11 +145,15 @@ var NimfKeyboardWrapper = class NimfKeyboardWrapper extends IbusKeyboardWrapper
+     constructor() {
+         super();
+         this._current = 'us';
++    }
++
++    _declareFunctionsToOverrde() {
++        super._declareFunctionsToOverrde();
+ 
+         let keyboard = KeyboardManager._keyboard;
+         let controller = keyboard._keyboardController;
+ 
+-        this._setActiveLayer = (originalSetActiveLayer, activeLevel) => {
++        const _setActiveLayer = (originalSetActiveLayer, activeLevel) => {
+             // make us keyboard layout if not exist
+             keyboard._ensureKeysForGroup('us');
+ 
+@@ -167,6 +166,8 @@ var NimfKeyboardWrapper = class NimfKeyboardWrapper extends IbusKeyboardWrapper
+ 
+             controller._currentSource.xkbId = oldGroupName;
+         };
++
++        this._save(keyboard, keyboard._setActiveLayer, _setActiveLayer);
+     }
+ 
+     wrapAll() {
+@@ -198,12 +199,10 @@ var NimfKeyboardWrapper = class NimfKeyboardWrapper extends IbusKeyboardWrapper
+ };
+ 
+ var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper {
+-    constructor() {
+-        super();
+-
++    _declareFunctionsToOverrde() {
+         let keyboard = KeyboardManager._keyboard;
+         let controller = keyboard._keyboardController;
+-        this._setActiveLayer = (originalSetActiveLayer, activeLevel) => {
++        const _setActiveLayer = (originalSetActiveLayer, activeLevel) => {
+             // make us keyboard layout if not exist
+             keyboard._ensureKeysForGroup('us');
+             controller._currentSource.xkbId = 'us';
+@@ -212,12 +211,7 @@ var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper {
+ 
+             controller._currentSource.xkbId = 'kr';
+         };
+-    }
+ 
+-    wrapAll() {
+-        super.wrapAll();
+-
+-        let keyboard = KeyboardManager._keyboard;
+-        this.wrap(keyboard, '_setActiveLayer', this._setActiveLayer);
++        this._save(keyboard, keyboard._setActiveLayer, _setActiveLayer);
+     }
+ };

@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+# Files that require do not fix permission by dh_fixperms
+EXTENSION_DIR = debian/gnome-shell-extensions/usr/share/gnome-shell/extensions
+NO_FIX_PERMISSIONS= $(EXTENSION_DIR)/desktop-icons-ng@tmax-shell-extensions/createThumbnail.js \
+                    $(EXTENSION_DIR)/desktop-icons-ng@tmax-shell-extensions/ding.js
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-Dextension_set=tos \
+		-Dclassic_mode=false
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 755 $(NO_FIX_PERMISSIONS)

@@ -1,0 +1,45 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Mon, 7 Jun 2021 15:59:59 +0900
+Subject: [feat] desktop-icons-ng : Consider Icon Focus on Multi-Display
+ Environment
+
+- Consider Icon Focus on Multi-Display Environment
+- Call GtkWindow::Present() when focused monitor is changed
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 2 +-
+ extensions/desktop-icons-ng/fileItem.js       | 8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 07da7fb..cc47c1d 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -1552,6 +1552,6 @@ var DesktopManager = class {
+             item.setSelected();
+ 
+         // To ensure next shift selection
+-        nextFocusItem.actor.grab_focus();
++        nextFocusItem.focusItem();
+     }
+ };
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 26e1bbb..8a1c5dd 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -306,6 +306,14 @@ var FileItem = class {
+         return [this._x1, this._y1, this._x2, this._y2, this._grid];
+     }
+ 
++    focusItem() {
++        // make desktop window active if it's not
++        if (!this._grid._window.is_active)
++            this._grid._window.present();
++
++        this.actor.grab_focus();
++    }
++
+     _onDestroy() {
+         /* Regular file data */
+         if (this._queryFileInfoCancellable)

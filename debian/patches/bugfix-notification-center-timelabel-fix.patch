@@ -1,0 +1,33 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Mon, 3 May 2021 16:52:08 +0900
+Subject: [bugfix] notification center timelabel fix
+
+ - Set child of secondaryBin to null instead of removing child.
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index f4421e5..61e6594 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -371,7 +371,7 @@ const NotificationCenter = new LangClass({
+             message._bodyStack.style_class = 'notification-center-bodystack';
+             let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
+             let timelabel = message._secondaryBin.child;
+-            message._secondaryBin.remove_child(timelabel);
++            message._secondaryBin.child = null;
+             contentBox.add_child(timelabel);
+             message.setExpandedLines(3);
+             message.expand();
+@@ -631,7 +631,7 @@ const NotificationCenter = new LangClass({
+             message._bodyStack.style_class = 'notification-center-bodystack';
+             let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
+             let timelabel = message._secondaryBin.child;
+-            message._secondaryBin.remove_child(timelabel);
++            message._secondaryBin.child = null;
+             contentBox.add_child(timelabel);
+             message.setExpandedLines(3);
+             message.expand();

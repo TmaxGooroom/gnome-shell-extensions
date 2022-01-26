@@ -1,0 +1,116 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 30 Sep 2021 18:04:45 +0900
+Subject: [feat] primary monitor change with local previlige
+
+- instead of using xorg.conf, save settings in user home directory
+- run xrandr with settings when extension enabled
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 60 +++++++++++++++-----------
+ 1 file changed, 34 insertions(+), 26 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index 0a65f05..a3fa217 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -4,34 +4,37 @@ const { Gio, GLib } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ 
+-var sysconfdir = '/usr/share/X11/xorg.conf.d/';
+-// var confdir = '/etc/X11/xorg.conf.d/';
+-var filename = '10-primary.conf';
+-var confFile = Gio.File.new_for_path(GLib.build_filenamev([sysconfdir, filename]));
++var filename = `${GLib.get_home_dir()}/.config/monitorsettings`;
++var confFile = Gio.File.new_for_path(filename);
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+-    this._primaryMonitorId = Main.layoutManager.connect('monitor-changed', () => {
+-        savePrimary();
++    let ok, cmdLine;
++
++    // check settings saved before
++    if (confFile.query_exists(null))
++        [ok, cmdLine] = confFile.load_contents(null);
++
++    // if settings are loaded and with multi-monitor environment, apply primary monitor setting
++    if (Main.layoutManager.monitors.length >= 2 && ok)
++        runXrandr(ByteArray.toString(cmdLine));
++
++    this._primaryMonitorId = Main.layoutManager.connect('monitors-changed', () => {
++        saveSettings();
+     });
+-    savePrimary();
++    saveSettings();
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+     Main.layoutManager.disconnect(this._primaryMonitorId);
+ }
+ 
+-function savePrimary() {
+-    if (Main.layoutManager.monitors.length < 2) {
+-        // only single monitor, no need to save settings
+-        deletePrimary();
+-        return;
+-    }
++function runXrandr(cmdLine) {
+     let success, stdout, status;
+     try {
+-        [success, stdout,, status] = GLib.spawn_command_line_sync('xrandr');
++        [success, stdout,, status] = GLib.spawn_command_line_sync(`xrandr ${cmdLine}`);
+     } catch (e) {
+         log('xrandr is not available');
+         return;
+@@ -40,21 +43,26 @@ function savePrimary() {
+     if (!success || status)
+         return;
+ 
+-    writeConf(xrandrGetPrimary(stdout));
++    return stdout;
+ }
+ 
+-function writeConf(primary) {
+-    let outputStream = confFile.replace('', false, 0, null);
+-
+-    outputStream.write('Section "Monitor"\n', null);
+-    outputStream.write(`  Identifier "${primary}"\n`, null);
+-    outputStream.write('  Option "Primary" "true"\n', null);
+-    outputStream.write('EndSection\n', null);
++function saveSettings() {
++    // only single monitor, no need to select primary monitor
++    if (Main.layoutManager.monitors.length < 2)
++        return;
+ 
++    let outputStream = confFile.replace('', false, 0, null);
+     outputStream.close(null);
++
++    let primaryMonitor = xrandrGetPrimary(runXrandr(''));
++    if (primaryMonitor)
++        writePrimary(primaryMonitor);
+ }
+ 
+ function xrandrGetPrimary(stdout) {
++    if (!stdout)
++        return;
++
+     let ret;
+     let str = ByteArray.toString(stdout).split('\n');
+     str.forEach(line => {
+@@ -64,8 +72,8 @@ function xrandrGetPrimary(stdout) {
+     return ret;
+ }
+ 
+-function deletePrimary() {
+-    if (!confFile.query_exists(null))
+-        return;
+-    confFile.delete(null);
++function writePrimary(monitor) {
++    let outputStream = confFile.append_to(0, null);
++    outputStream.write(`--output ${monitor} --primary `, null);
++    outputStream.close(null);
+ }

@@ -1,0 +1,263 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 25 May 2021 14:07:21 +0900
+Subject: [feat] tos-hotkey : add Korean translations
+
+ - added po directory and meson.build configuration for translations
+ - added korean translation
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/altF4.js         | 15 ++++----
+ extensions/tos-hotkey/extension.js     |  6 ++++
+ extensions/tos-hotkey/meson.build      |  1 +
+ extensions/tos-hotkey/metadata.json.in |  1 +
+ extensions/tos-hotkey/po/LINGUAS       |  1 +
+ extensions/tos-hotkey/po/POTFILES.in   |  5 +++
+ extensions/tos-hotkey/po/ko.po         | 62 ++++++++++++++++++++++++++++++++++
+ extensions/tos-hotkey/po/meson.build   |  1 +
+ extensions/tos-hotkey/switchMonitor.js | 14 ++++----
+ extensions/tos-hotkey/utils.js         |  2 ++
+ 10 files changed, 94 insertions(+), 14 deletions(-)
+ create mode 100644 extensions/tos-hotkey/po/LINGUAS
+ create mode 100644 extensions/tos-hotkey/po/POTFILES.in
+ create mode 100644 extensions/tos-hotkey/po/ko.po
+ create mode 100644 extensions/tos-hotkey/po/meson.build
+
+diff --git a/extensions/tos-hotkey/altF4.js b/extensions/tos-hotkey/altF4.js
+index fef4a34..2b087e4 100644
+--- a/extensions/tos-hotkey/altF4.js
++++ b/extensions/tos-hotkey/altF4.js
+@@ -1,11 +1,11 @@
+ const { GObject } = imports.gi;
+ 
+-const _ = imports.gettext.gettext;
+ 
+ const SystemActions = imports.misc.systemActions;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const BaseWidget = Me.imports.baseWidget;
++const Utils = Me.imports.utils;
+ 
+ const LOGOUT_IMG_FILE_PATH = '/assets/tos_desktop_ic_windowf4_logout.svg';
+ const USER_SWITCH_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_user.svg';
+@@ -13,12 +13,13 @@ const SLEEP_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_sleep.svg';
+ const RESTART_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_restart.svg';
+ const POWEROFF_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_power.svg';
+ 
+-const LOGOUT_LABEL_TEXT = _('로그아웃');
+-const USER_SWITCH_LABEL_TEXT = _('사용자 전환');
+-const SLEEP_LABEL_TEXT = _('잠자기');
+-const RESTART_LABEL_TEXT = _('다시 시작');
+-const POWEROFF_LABEL_TEXT = _('시스템 종료');
++const _ = imports.gettext.domain(Utils.TRANSLATION_DOMAIN).gettext;
+ 
++const LOGOUT_LABEL_TEXT = _('Log Out');
++const USER_SWITCH_LABEL_TEXT = _('Switch User');
++const SLEEP_LABEL_TEXT = _('Sleep');
++const RESTART_LABEL_TEXT = _('Restart');
++const POWEROFF_LABEL_TEXT = _('Shut Down');
+ 
+ var SystemWidget = GObject.registerClass(// eslint-disable-line no-unused-vars
+ class SystemWidget extends BaseWidget.BaseWidget {
+@@ -26,7 +27,7 @@ class SystemWidget extends BaseWidget.BaseWidget {
+         super._init();
+         this.systemActions = SystemActions.getDefault();
+         this._setTitle({ style_class: 'system-widget-title',
+-            text: _('원하는 작업을 선택해 주세요.') });
++            text: _('Please select an action that you want to perform.') });
+         this._addActionToButtons();
+     }
+ 
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+index 81bdbeb..a2df277 100644
+--- a/extensions/tos-hotkey/extension.js
++++ b/extensions/tos-hotkey/extension.js
+@@ -1,11 +1,16 @@
+ const { Clutter, Gio, Meta, Shell } = imports.gi;
+ 
++const Gettext = imports.gettext;
++
+ const Main = imports.ui.main;
++const Config = imports.misc.config;
+ 
+ const ExtensionUtils = imports.misc.extensionUtils;
++
+ const Me = ExtensionUtils.getCurrentExtension();
+ const AltF4 = Me.imports.altF4;
+ const SwitchMonitor = Me.imports.switchMonitor;
++const Utils = Me.imports.utils;
+ 
+ // const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
+ // const WM_KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
+@@ -50,6 +55,7 @@ function _handleAltF4(display, window) {
+ }
+ 
+ function init() { // eslint-disable-line no-unused-vars
++    Gettext.bindtextdomain(Utils.TRANSLATION_DOMAIN, Config.LOCALEDIR);
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+diff --git a/extensions/tos-hotkey/meson.build b/extensions/tos-hotkey/meson.build
+index 079da40..a9b39b5 100644
+--- a/extensions/tos-hotkey/meson.build
++++ b/extensions/tos-hotkey/meson.build
+@@ -16,3 +16,4 @@ extension_dir = join_paths(extensiondir, uuid)
+ install_subdir('assets', install_dir : extension_dir)
+ schema_data_dir = 'schemas'
+ subdir(schema_data_dir)
++subdir('po')
+diff --git a/extensions/tos-hotkey/metadata.json.in b/extensions/tos-hotkey/metadata.json.in
+index 3fc4a40..f6fadca 100644
+--- a/extensions/tos-hotkey/metadata.json.in
++++ b/extensions/tos-hotkey/metadata.json.in
+@@ -2,6 +2,7 @@
+     "uuid": "tos-hotkey@tmax-shell-extensions",
+     "name": "tos hotkey",
+     "description": "To support TOS specific hotkeys",
++    "gettext-domain": "tos-hotkey",
+     "version": 1,
+     "shell-version": [ "3.38" ]
+ }
+diff --git a/extensions/tos-hotkey/po/LINGUAS b/extensions/tos-hotkey/po/LINGUAS
+new file mode 100644
+index 0000000..d031295
+--- /dev/null
++++ b/extensions/tos-hotkey/po/LINGUAS
+@@ -0,0 +1 @@
++ko
+diff --git a/extensions/tos-hotkey/po/POTFILES.in b/extensions/tos-hotkey/po/POTFILES.in
+new file mode 100644
+index 0000000..2f76a48
+--- /dev/null
++++ b/extensions/tos-hotkey/po/POTFILES.in
+@@ -0,0 +1,5 @@
++altF4.js
++baseWidget.js
++extensions.js
++switchMonitor.js
++schemas/org.gnome.shell.extensions.tos-hotkey.gschema.xml
+diff --git a/extensions/tos-hotkey/po/ko.po b/extensions/tos-hotkey/po/ko.po
+new file mode 100644
+index 0000000..53f3783
+--- /dev/null
++++ b/extensions/tos-hotkey/po/ko.po
+@@ -0,0 +1,62 @@
++# SOME DESCRIPTIVE TITLE.
++# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
++# This file is distributed under the same license as the PACKAGE package.
++# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
++#
++#, fuzzy
++msgid ""
++msgstr ""
++"Project-Id-Version: PACKAGE VERSION\n"
++"Report-Msgid-Bugs-To: \n"
++"POT-Creation-Date: 2021-05-25 13:47+0900\n"
++"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
++"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
++"Language-Team: LANGUAGE <LL@li.org>\n"
++"Language: ko\n"
++"MIME-Version: 1.0\n"
++"Content-Type: text/plain; charset=UTF-8\n"
++"Content-Transfer-Encoding: 8bit\n"
++
++#: altF4.js:16
++msgid "Log Out"
++msgstr "로그아웃"
++
++#: altF4.js:17
++msgid "Switch User"
++msgstr "사용자 전환"
++
++#: altF4.js:18
++msgid "Sleep"
++msgstr "잠자기"
++
++#: altF4.js:19
++msgid "Restart"
++msgstr "다시 시작"
++
++#: altF4.js:20
++msgid "Shut Down"
++msgstr "시스템 종료"
++
++#: altF4.js:28
++msgid "Please select an action that you want to perform."
++msgstr "원하는 작업을 선택해 주세요."
++
++#: switchMonitor.js:16
++msgid "Screen 1 only"
++msgstr "1번 화면만"
++
++#: switchMonitor.js:17
++msgid "Duplicate"
++msgstr "복제"
++
++#: switchMonitor.js:18
++msgid "Expand"
++msgstr "확장"
++
++#: switchMonitor.js:19
++msgid "Screen 2 only"
++msgstr "2번 화면만"
++
++#: switchMonitor.js:268
++msgid "select a display mode."
++msgstr "디스플레이 방식을 선택해 주세요"
+diff --git a/extensions/tos-hotkey/po/meson.build b/extensions/tos-hotkey/po/meson.build
+new file mode 100644
+index 0000000..12092cb
+--- /dev/null
++++ b/extensions/tos-hotkey/po/meson.build
+@@ -0,0 +1 @@
++i18n.gettext ('tos-hotkey', preset: 'glib')
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index c58ca4a..0406ef5 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -1,7 +1,5 @@
+ const { GObject, GLib, Meta } = imports.gi;
+ 
+-const _ = imports.gettext.gettext;
+-
+ const SystemActions = imports.misc.systemActions;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+@@ -13,10 +11,12 @@ const MIRROR_MODE_FILE_PATH = '/assets/tos_img_dualmonitor02.svg';
+ const JOIN_MODE_FILE_PATH = '/assets/tos_img_dualmonitor03.svg';
+ const SECONDARY_ONLY_FILE_PATH = '/assets/tos_img_dualmonitor04.svg';
+ 
+-const PRIMARY_ONLY_LABEL_TEXT = _('1번 화면만');
+-const MIRROR_MODE_LABEL_TEXT = _('복제');
+-const JOIN_MODE_LABEL_TEXT = _('확장');
+-const SECONDARY_MODE_LABEL_TEXT = _('2번 화면만');
++const _ = imports.gettext.domain(Utils.TRANSLATION_DOMAIN).gettext;
++
++const PRIMARY_ONLY_LABEL_TEXT = _('Screen 1 only');
++const MIRROR_MODE_LABEL_TEXT = _('Duplicate');
++const JOIN_MODE_LABEL_TEXT = _('Expand');
++const SECONDARY_MODE_LABEL_TEXT = _('Screen 2 only');
+ 
+ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+     constructor() {
+@@ -102,7 +102,7 @@ var SwitchMonitorWidget = GObject.registerClass({ // eslint-disable-line no-unus
+         super._init({ style_class: 'switch-monitor-widget' });
+         this.systemActions = SystemActions.getDefault();
+         this._setTitle({ style_class: 'system-widget-title',
+-            text: _('디스플레이 방식을 선택해 주세요') });
++            text: _('select a display mode.') });
+ 
+         this._monitorManager = new SwitchMonitorManager();
+         this._canSwitchConfig = this._monitorManager.canSwitchConfig();
+diff --git a/extensions/tos-hotkey/utils.js b/extensions/tos-hotkey/utils.js
+index 7ff9a9f..8709345 100644
+--- a/extensions/tos-hotkey/utils.js
++++ b/extensions/tos-hotkey/utils.js
+@@ -1,5 +1,7 @@
+ const { Gio, GLib } = imports.gi;
+ 
++var TRANSLATION_DOMAIN = imports.misc.extensionUtils.getCurrentExtension().metadata['gettext-domain'];  // eslint-disable-line no-unused-vars
++
+ const MutterDisplayConfigIface = `
+ <node>
+ <interface name="org.gnome.Mutter.DisplayConfig">

@@ -1,0 +1,39 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 11 May 2021 08:52:57 +0900
+Subject: [feat] tos-hotkey : put widget on center of the display
+
+ - put widget on center of the display when dual monitors are set
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/baseWidget.js | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/tos-hotkey/baseWidget.js b/extensions/tos-hotkey/baseWidget.js
+index 5992e9c..a8279a0 100644
+--- a/extensions/tos-hotkey/baseWidget.js
++++ b/extensions/tos-hotkey/baseWidget.js
+@@ -122,20 +122,16 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+ 
+         Main.uiGroup.add_actor(this);
+ 
+-        let constraint = new Clutter.BindConstraint({ source: global.stage,
+-            coordinate: Clutter.BindCoordinate.ALL });
+-        this.add_constraint(constraint);
+-
+         this.backgroundStack = new St.Widget({
+             layout_manager: new Clutter.BinLayout(),
+-            x_expand: false,
+-            y_expand: false,
++            x_expand: true,
++            y_expand: true,
+         });
+ 
+         // transparent background
+         this._backgroundBin = new St.Bin({ child: this.backgroundStack });
+         this._monitorConstraint = new Layout.MonitorConstraint();
+-        this._backgroundBin.add_constraint(this._monitorConstraint);
++        this.add_constraint(this._monitorConstraint);
+         this.add_actor(this._backgroundBin);
+ 
+         this.box = new St.Widget({

@@ -1,0 +1,92 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 7 Oct 2021 11:14:30 +0900
+Subject: [feat] monitor-settings-saver: get monitor rate
+
+- added getting monitor rate feature
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 37 ++++++++++++++++----------
+ 1 file changed, 23 insertions(+), 14 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index e4e920c..838a4f5 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -45,34 +45,33 @@ function xrandrParse() {
+     let monitors = [];
+     let lines = ByteArray.toString(monitorProps).split('\n');
+     for (let i = 0; i < lines.length; i++) {
++    // find connector line
+         if (lines[i].includes(' connected')) {
+             let monitor = new monitorInfo();
+-
+             // monitor info parsing
+-            let tok = lines[i].split(' ');
+-            monitor.connector = `${tok[0]}`;
+-            if (tok[2] === 'primary') {
++            let infoline = lines[i].split(' ');
++            monitor.connector = `${infoline[0]}`;
++            if (infoline[2] === 'primary') {
+                 monitor.isPrimary = true;
+-                tok.splice(2, 1);
++                infoline.splice(2, 1);
+             } else {
+                 monitor.isPrimary = false;
+             }
+-            let pos = tok[2].split('+');
++            let pos = infoline[2].split('+');
+             monitor.x = `${pos[1]}`;
+             monitor.y = `${pos[2]}`;
+             let res = pos[0].split('x');
+             monitor.width = `${res[0]}`;
+             monitor.height = `${res[1]}`;
+-            if (tok[3] !== '(normal')
+-                monitor.transform = `${tok[4]} `;
++            if (infoline[3] !== '(normal')
++                monitor.transform = `${infoline[4]} `;
+ 
+-            // EDID parsing
+             for (let j = i + 1; j < lines.length; j++) {
++                // EDID parsing
+                 if (lines[j].includes('EDID:')) {
+                     let edid = '';
+                     for (let k = 1; k <= 8; k++)
+                         edid += lines[j + k].replace('\n', '').replace('\t\t', '');
+-
+                     // vendor
+                     let vendor = '';
+                     let bin = parseInt(edid.substr(16, 4), 16).toString(2).padStart(16, '0');
+@@ -96,13 +95,13 @@ function xrandrParse() {
+                             monitor.product = product;
+                         }
+                     }
++                } else if (lines[j].includes(`${monitor.width}x${monitor.height}`)) { // rate parsing
++                    let rateline = lines[j].split(' ').filter(word => word.length > 1);
++                    monitor.rate = rateline.find(element => element.includes('*+')).split('*')[0];
++                } else if (lines[j].includes('connected')) { // another connector, end
+                     break;
+                 }
+             }
+-
+-            // rate parsing
+-
+-
+             monitors.push(monitor);
+         }
+     }
+@@ -139,4 +138,14 @@ function writeXml(monitors) {
+ 
+ function readXml() {
+     // read xml
++    let [res, text] = GLib.file_get_contents(monitorsXml);
++    if (!res)
++        return;
++
++    if (text instanceof Uint8Array)
++        text = ByteArray.toString(text);
++    // let parsed = parseXML(text);
++    // print(JSON.stringify(parsed, null, 2));
++
++    // return parsed;
+ }

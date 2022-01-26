@@ -1,0 +1,30 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 21 May 2021 17:17:20 +0900
+Subject: [feat] tos-hotkey : launch default file manager when pressing win +
+ e
+
+ - changed the app which are launched when pressing win + e from nautilus to system's default app
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/extension.js | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+index 39a39ea..81bdbeb 100644
+--- a/extensions/tos-hotkey/extension.js
++++ b/extensions/tos-hotkey/extension.js
+@@ -57,7 +57,12 @@ function enable() { // eslint-disable-line no-unused-vars
+         SHELL_EXTENSIONS_TOS_HOTKEY,
+         Meta.KeyBindingFlags.NONE,
+         Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+-        _launchApp.bind(null, 'org.gnome.Nautilus.desktop'));
++        () => {
++            let defaultApp = Gio.AppInfo.get_default_for_type('inode/directory', false);
++            let defaultFileManager = defaultApp.get_id();
++
++            _launchApp(defaultFileManager);
++        });
+ 
+     _addKeybinding('open-terminal',
+         SHELL_EXTENSIONS_TOS_HOTKEY,

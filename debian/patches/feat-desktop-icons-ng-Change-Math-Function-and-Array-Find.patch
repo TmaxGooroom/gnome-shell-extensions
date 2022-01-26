@@ -1,0 +1,42 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 8 Jun 2021 13:58:11 +0900
+Subject: [feat] desktop-icons-ng : Change Math Function and Array Find
+
+- Change Math Function and Array Find
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/selectionCalculator.js | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/selectionCalculator.js b/extensions/desktop-icons-ng/selectionCalculator.js
+index 62265c2..4df8f0a 100644
+--- a/extensions/desktop-icons-ng/selectionCalculator.js
++++ b/extensions/desktop-icons-ng/selectionCalculator.js
+@@ -30,7 +30,7 @@ class selectionCalculator {
+     _getDistance(x1, x2, y1, y2) {
+         let distanceX = x1 - x2;
+         let distanceY = y1 - y2;
+-        return distanceX ** 2 + distanceY ** 2;
++        return Math.hypot(distanceX, distanceY);
+     }
+ 
+     _getNearestItemFromOrigin(fileList) {
+@@ -58,16 +58,9 @@ class selectionCalculator {
+     }
+ 
+     getNextSelection(selectedItems, fileList, direction) {
+-        let focusedItem;
+         let itemIndex = -1;
+         let nextSelection = [];
+-        for (let i = 0; i < fileList.length; i++) {
+-            if (fileList[i].actor.has_focus) {
+-                focusedItem = fileList[i];
+-                break;
+-            }
+-
+-        }
++        let focusedItem = fileList.find(item => item.actor.has_focus === true);
+ 
+         if (!this._pivotToShiftSelection) {
+             // set focused item as pivot for shift selection when it's null

@@ -1,0 +1,154 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Mon, 31 May 2021 15:27:16 +0900
+Subject: [feat] desktop-icons-ng : Apply Item Selection Changed By Keyboard
+ Event
+
+- Apply Item Selection Changed By Keyboard Event
+- Calculate the nearest item and change selection to it
+
+[IMS] 262089
+---
+ extensions/desktop-icons-ng/desktopManager.js | 25 ++++++++++
+ extensions/desktop-icons-ng/meson.build       |  3 +-
+ extensions/desktop-icons-ng/utils.js          | 70 +++++++++++++++++++++++++++
+ 3 files changed, 97 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/desktop-icons-ng/utils.js
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index f9cebe3..e7a5b39 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -35,6 +35,7 @@ const AskConfirmPopup = imports.askConfirmPopup;
+ const ShowErrorPopup = imports.showErrorPopup;
+ const TemplateManager = imports.templateManager;
+ const Constants = imports.constants;
++const Utils = imports.utils;
+ 
+ const Gettext = imports.gettext.domain('ding');
+ 
+@@ -557,6 +558,9 @@ var DesktopManager = class {
+         } else if (isCtrl && (symbol === Gdk.KEY_H || symbol === Gdk.KEY_h)) {
+             Prefs.gtkSettings.set_boolean('show-hidden', !this._showHidden);
+             return true;
++        } else if (symbol === Gdk.KEY_Left || symbol === Gdk.KEY_Right || symbol === Gdk.KEY_Up || symbol === Gdk.KEY_Down) {
++            this._calculateNextSelectedItem(symbol);
++            return true;
+         }
+         return false;
+     }
+@@ -1519,4 +1523,25 @@ var DesktopManager = class {
+             );
+         }
+     }
++
++    _calculateNextSelectedItem(symbol) {
++        let selectedItem = this.getCurrentSelection(false);
++        let nextSelectedIndex = -1;
++        if (!selectedItem) {
++            nextSelectedIndex = Utils.getNearestItemFromOrigin(this._fileList);
++        } else {
++            nextSelectedIndex =
++        Utils.getNextSelectedItem(selectedItem[0], this._fileList, symbol);
++        }
++
++        if (nextSelectedIndex === -1) {
++        // No more room to move
++            return;
++        }
++
++        for (let item of this._fileList)
++            item.unsetSelected();
++
++        this._fileList[nextSelectedIndex].setSelected();
++    }
+ };
+diff --git a/extensions/desktop-icons-ng/meson.build b/extensions/desktop-icons-ng/meson.build
+index 36cbffa..ea83daa 100644
+--- a/extensions/desktop-icons-ng/meson.build
++++ b/extensions/desktop-icons-ng/meson.build
+@@ -22,7 +22,8 @@ extension_sources += files(
+     'prefs.js',
+     'preferences.js',
+     'showErrorPopup.js',
+-    'templateManager.js'
++    'templateManager.js',
++    'utils.js'
+ )
+ 
+ subdir('po')
+diff --git a/extensions/desktop-icons-ng/utils.js b/extensions/desktop-icons-ng/utils.js
+new file mode 100644
+index 0000000..1b0dd8a
+--- /dev/null
++++ b/extensions/desktop-icons-ng/utils.js
+@@ -0,0 +1,70 @@
++/* exported getNextSelectedItem getNearestItemFromOrigin */
++
++const Gdk = imports.gi.Gdk;
++
++function getCompareFunc(direction) {
++    if (direction === Gdk.KEY_Up) {
++        return (unusedX1, unusedX2, y1, y2) => {
++            return y2 < y1;
++        };
++    } else if (direction === Gdk.KEY_Down)  {
++        return (unusedX1, unusedX2, y1, y2) => {
++            return y2 > y1;
++        };
++    }  else if (direction === Gdk.KEY_Right) {
++        return (x1, x2, unusedY1, unusedY2) => {
++            return x2 > x1;
++        };
++    } else {
++        return (x1, x2, unusedY1, unusedY2) => {
++            return x2 < x1;
++        };
++    }
++}
++
++function getDistance(x1, x2, y1, y2) {
++    let distanceX = x1 - x2;
++    let distanceY = y1 - y2;
++    return distanceX ** 2 + distanceY ** 2;
++}
++
++function getNextSelectedItem(pivot, fileList, direction) {
++    let [x1, y1, endX1_, endY1_, grid_] = pivot.getCoordinates();
++    let minimumDistance = Number.MAX_VALUE;
++    let itemIndex = -1;
++
++    let compareFunc = getCompareFunc(direction);
++
++    for (let i = 0; i < fileList.length; i++) {
++        let [x2, y2, endX2_, endY2_, grid2_] = fileList[i].getCoordinates();
++        if (!compareFunc(x1, x2, y1, y2))
++            continue;
++
++
++        let distance = getDistance(x1, x2, y1, y2);
++        if (distance > minimumDistance)
++            continue;
++
++
++        minimumDistance = distance;
++        itemIndex = i;
++    }
++    return itemIndex;
++}
++
++function getNearestItemFromOrigin(fileList) {
++    let minimumDistance = Number.MAX_VALUE;
++    let itemIndex = -1;
++
++    for (let i = 0; i < fileList.length; i++) {
++        let [x, y, endX_, endY_, grid_] = fileList[i].getCoordinates();
++        let distance = getDistance(0, x, 0, y);
++        if (distance > minimumDistance)
++            continue;
++
++
++        minimumDistance = distance;
++        itemIndex = i;
++    }
++    return itemIndex;
++}

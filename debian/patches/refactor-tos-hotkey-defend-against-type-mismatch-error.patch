@@ -1,0 +1,35 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 1 Sep 2021 16:23:58 +0900
+Subject: [refactor] tos-hotkey : defend against type mismatch error
+
+ - must check if there is possibility that functions can return null value
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 01d5049..9946f76 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -170,6 +170,7 @@ class DisplayConfig {
+     _gatherMirrorModes() {
+         if (this._outputs.length < 2)
+             return null;
++
+         let modesInCommon = [];
+         for (let mode of this.primaryOutput.possibleModes) {
+             let [width, height, refreshRate] = [mode.width, mode.height, mode.refreshRate];
+@@ -200,7 +201,10 @@ class DisplayConfig {
+         // currentMode > preferredMode > the first element of modes in common.
+         // Remember that this is just the most resonable option at this point, so can be modified.
+         let modesInCommon = this._gatherMirrorModes();
+-        let best = modesInCommon[0];
++        if (!modesInCommon)
++            return null;
++
++        let best = modesInCommon[0] || null;
+ 
+         for (let mode of modesInCommon) {
+             if (mode.modeID === this.primaryOutput.currentMode)

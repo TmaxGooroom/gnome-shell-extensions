@@ -1,0 +1,24 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 22 Dec 2021 15:42:04 +0900
+Subject: [feat] dash-to-panel : modify panel default opacity to 0.6
+
+ - Same as above
+
+[IMS] 274731
+---
+ extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index 5651b55..dd5781c 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -14,7 +14,7 @@ appicon-padding = 8
+ appicon-margin = 3
+ trans-use-custom-bg = true
+ trans-use-custom-opacity = true
+-trans-panel-opacity = 1.0
++trans-panel-opacity = 0.6
+ show-apps-icon-side-padding = 0
+ click-action = 'TOGGLE-SHOWPREVIEW'
+ isolate-workspaces = true

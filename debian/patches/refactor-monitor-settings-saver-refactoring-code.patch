@@ -1,0 +1,645 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 15 Oct 2021 17:09:22 +0900
+Subject: [refactor] monitor-settings-saver: refactoring code
+
+- using array with index less
+- changed xml.js, xrandr.js filename
+- added comments about file's role
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js    |   8 +-
+ extensions/monitor-settings-saver/meson.build     |   4 +-
+ extensions/monitor-settings-saver/xml.js          | 152 ---------------
+ extensions/monitor-settings-saver/xmlWriter.js    | 215 ++++++++++++++++++++++
+ extensions/monitor-settings-saver/xrandr.js       |  92 ---------
+ extensions/monitor-settings-saver/xrandrParser.js | 102 ++++++++++
+ 6 files changed, 323 insertions(+), 250 deletions(-)
+ delete mode 100644 extensions/monitor-settings-saver/xml.js
+ create mode 100644 extensions/monitor-settings-saver/xmlWriter.js
+ delete mode 100644 extensions/monitor-settings-saver/xrandr.js
+ create mode 100644 extensions/monitor-settings-saver/xrandrParser.js
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index e65d679..de29ed9 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -3,8 +3,8 @@ const Main = imports.ui.main;
+ 
+ const ExtensionUtils = imports.misc.extensionUtils;
+ const Me = ExtensionUtils.getCurrentExtension();
+-const Xrandr = Me.imports.xrandr;
+-const Xml = Me.imports.xml;
++const XrandrParser = Me.imports.xrandrParser;
++const XmlWriter = Me.imports.xmlWriter;
+ 
+ var monitorManager = Meta.MonitorManager.get();
+ 
+@@ -34,7 +34,7 @@ function saveSettings() {
+     if (Main.layoutManager.monitors.length < 2)
+         return;
+ 
+-    let monitorInfo = Xrandr.xrandrParse();
++    let monitorInfo = XrandrParser.xrandrParse();
+     if (monitorInfo)
+-        Xml.writeXml(monitorInfo);
++        XmlWriter.writeXml(monitorInfo);
+ }
+diff --git a/extensions/monitor-settings-saver/meson.build b/extensions/monitor-settings-saver/meson.build
+index 8d84f8c..e96ed91 100644
+--- a/extensions/monitor-settings-saver/meson.build
++++ b/extensions/monitor-settings-saver/meson.build
+@@ -4,6 +4,6 @@ extension_data += configure_file(
+   configuration: metadata_conf
+ )
+ extension_sources += files(
+-		'xml.js',
+-		'xrandr.js'
++		'xmlWriter.js',
++		'xrandrParser.js'
+ 		)
+diff --git a/extensions/monitor-settings-saver/xml.js b/extensions/monitor-settings-saver/xml.js
+deleted file mode 100644
+index a837078..0000000
+--- a/extensions/monitor-settings-saver/xml.js
++++ /dev/null
+@@ -1,152 +0,0 @@
+-/* exported writeXml */
+-
+-const ByteArray = imports.byteArray;
+-const { Gio, GLib } = imports.gi;
+-
+-var monitorsXml = `${GLib.get_home_dir()}/.config/monitors.xml`;
+-var xmlFile = Gio.File.new_for_path(`${monitorsXml}`);
+-
+-function writeXml(monitors) {
+-
+-    let [savedConf, savedSpec] = readMonitorSpec();
+-
+-    if (savedConf) {
+-    // if monitor.xml already has valid config, then exit
+-        if (compareSpec(savedSpec, monitors))
+-            return;
+-
+-        let outputStream = xmlFile.replace('', false, 0, null);
+-        let savedConfLines = ByteArray.toString(savedConf).split('\n');
+-
+-        savedConfLines.forEach((line, i) => {
+-            // append configuration
+-            if (i === 1)
+-                writeConf(outputStream, monitors);
+-            outputStream.write(`${line}\n`, null);
+-        });
+-
+-        outputStream.close(null);
+-
+-    } else {
+-    // write configuration from scratch
+-        let outputStream = xmlFile.replace('', false, 0, null);
+-
+-        outputStream.write('<monitors version="2">\n', null);
+-        writeConf(outputStream, monitors);
+-        outputStream.write('</monitors>\n', null);
+-
+-        outputStream.close(null);
+-
+-    }
+-}
+-
+-function readMonitorSpec() {
+-    if (!xmlFile.query_exists(null))
+-        return [null, null];
+-
+-    let [res, contents] = xmlFile.load_contents(null);
+-
+-    if (!res)
+-        return [null, null];
+-
+-    // get monitorspec info from xml
+-    let configurations = [];
+-    let lines = ByteArray.toString(contents).split('\n').filter(word => word.length > 0);
+-
+-    if (lines[0].includes('<monitors version="') && lines[lines.length - 1].includes('</monitors>')) {
+-
+-        for (let i = 1; i < lines.length - 1; i++) {
+-            if (lines[i].includes('<configuration>')) {
+-                let monitors = [];
+-
+-                for (let j = i + 1; j < lines.length; j++) {
+-                    if (lines[j].includes('<logicalmonitor>')) {
+-                        let monitor = new class {}();
+-
+-                        for (let k = j + 1; k < lines.length; k++) {
+-                            if (lines[k].includes('<monitorspec>')) {
+-                                monitor.connector = lines[k + 1].trim().replace('<connector>', '').replace('</connector>', '');
+-                                monitor.vendor = lines[k + 2].trim().replace('<vendor>', '').replace('</vendor>', '');
+-                                monitor.product = lines[k + 3].trim().replace('<product>', '').replace('</product>', '');
+-                                monitor.serial = lines[k + 4].trim().replace('<serial>', '').replace('</serial>', '');
+-                            } else if (lines[k].includes('</logicalmonitor>')) {
+-                                break;
+-                            }
+-                        }
+-                        if (monitor.connector && monitor.vendor && monitor.product && monitor.serial)
+-                            monitors.push(monitor);
+-                    } else if (lines[j].includes('</configuration>')) {
+-                        break;
+-                    }
+-                }
+-
+-                if (monitors.length > 0)
+-                    configurations.push(monitors);
+-
+-            }
+-        }
+-
+-        return [contents, configurations];
+-    }
+-
+-    return [null, null];
+-}
+-
+-function compareSpec(configurations, monitors) {
+-    for (let i = 0; i < configurations.length; i++) {
+-        if (configurations[i].length !== monitors.length)
+-            return false;
+-        for (let j = 0; j < monitors.length; j++) {
+-            let specDiff = configurations[i][j].connector === monitors[i].connector &&
+-        configurations[i][j].vendor === monitors[i].vendor &&
+-        configurations[i][j].product === monitors[i].product &&
+-        configurations[i][j].serial === monitors[i].serial;
+-            return specDiff;
+-        }
+-    }
+-    return false;
+-}
+-
+-function writeConf(outputStream, monitors) {
+-    outputStream.write('  <configuration>\n', null);
+-    monitors.forEach(monitor => {
+-        writeLogicalMonitor(outputStream, monitor);
+-    });
+-    outputStream.write('  </configuration>\n', null);
+-}
+-
+-function writeLogicalMonitor(outputStream, monitor) {
+-    outputStream.write('    <logicalmonitor>\n', null);
+-    outputStream.write(`      <x>${monitor.x}</x>\n`, null);
+-    outputStream.write(`      <y>${monitor.y}</y>\n`, null);
+-    outputStream.write('      <scale>1</scale>\n', null);
+-    if (monitor.isPrimary)
+-        outputStream.write('      <primary>yes</primary>\n', null);
+-    if (monitor.rotation)
+-        writeTransform(outputStream, monitor);
+-    writeMonitor(outputStream, monitor);
+-    outputStream.write('    </logicalmonitor>\n', null);
+-}
+-
+-function writeTransform(outputStream, monitor) {
+-    outputStream.write('      <transform>\n', null);
+-    outputStream.write(`        <rotation>${monitor.rotation}</rotation>\n`, null);
+-    outputStream.write('        <flipped>no</flipped>\n', null);
+-    outputStream.write('      </transform>\n', null);
+-}
+-
+-function writeMonitor(outputStream, monitor) {
+-    outputStream.write('      <monitor>\n', null);
+-    outputStream.write('        <monitorspec>\n', null);
+-    outputStream.write(`          <connector>${monitor.connector}</connector>\n`, null);
+-    outputStream.write(`          <vendor>${monitor.vendor}</vendor>\n`, null);
+-    outputStream.write(`          <product>${monitor.product}</product>\n`, null);
+-    outputStream.write(`          <serial>${monitor.serial}</serial>\n`, null);
+-    outputStream.write('        </monitorspec>\n', null);
+-    outputStream.write('        <mode>\n', null);
+-    outputStream.write(`          <width>${monitor.width}</width>\n`, null);
+-    outputStream.write(`          <height>${monitor.height}</height>\n`, null);
+-    outputStream.write(`          <rate>${monitor.rate}</rate>\n`, null);
+-    outputStream.write('        </mode>\n', null);
+-    outputStream.write('      </monitor>\n', null);
+-}
+diff --git a/extensions/monitor-settings-saver/xmlWriter.js b/extensions/monitor-settings-saver/xmlWriter.js
+new file mode 100644
+index 0000000..9383261
+--- /dev/null
++++ b/extensions/monitor-settings-saver/xmlWriter.js
+@@ -0,0 +1,215 @@
++/* exported writeXml */
++
++/* parse and write monitors.xml like below
++ * Example configuration:
++ *
++ * <monitors version="2">
++ *   <configuration>
++ *     <logicalmonitor>
++ *       <x>0</x>
++ *       <y>0</y>
++ *       <scale>1</scale>
++ *       <monitor>
++ *         <monitorspec>
++ *           <connector>LVDS1</connector>
++ *           <vendor>Vendor A</vendor>
++ *           <product>Product A</product>
++ *           <serial>Serial A</serial>
++ *         </monitorspec>
++ *         <mode>
++ *           <width>1920</width>
++ *           <height>1080</height>
++ *           <rate>60.049972534179688</rate>
++ *           <flag>interlace</flag>
++ *         </mode>
++ *       </monitor>
++ *       <transform>
++ *         <rotation>right</rotation>
++ *         <flipped>no</flipped>
++ *       </transform>
++ *       <primary>yes</primary>
++ *       <presentation>no</presentation>
++ *     </logicalmonitor>
++ *     <logicalmonitor>
++ *       <x>1920</x>
++ *       <y>1080</y>
++ *       <monitor>
++ *         <monitorspec>
++ *           <connector>LVDS2</connector>
++ *           <vendor>Vendor B</vendor>
++ *           <product>Product B</product>
++ *           <serial>Serial B</serial>
++ *         </monitorspec>
++ *         <mode>
++ *           <width>1920</width>
++ *           <height>1080</height>
++ *           <rate>60.049972534179688</rate>
++ *         </mode>
++ *         <underscanning>yes</underscanning>
++ *       </monitor>
++ *       <presentation>yes</presentation>
++ *     </logicalmonitor>
++ *     <disabled>
++ *       <monitorspec>
++ *         <connector>LVDS3</connector>
++ *         <vendor>Vendor C</vendor>
++ *         <product>Product C</product>
++ *         <serial>Serial C</serial>
++ *       </monitorspec>
++ *     </disabled>
++ *   </configuration>
++ * </monitors>
++ *
++ */
++
++
++const ByteArray = imports.byteArray;
++const { Gio, GLib } = imports.gi;
++
++var monitorsXml = `${GLib.get_home_dir()}/.config/monitors.xml`;
++var xmlFile = Gio.File.new_for_path(`${monitorsXml}`);
++
++function writeXml(monitors) {
++
++    let [savedConf, savedSpec] = readMonitorSpec();
++
++    if (savedConf) {
++    // if monitor.xml already has valid config, then exit
++        if (compareSpec(savedSpec, monitors))
++            return;
++
++        let outputStream = xmlFile.replace('', false, 0, null);
++        let savedConfLines = ByteArray.toString(savedConf).split('\n');
++
++        savedConfLines.forEach((line, i) => {
++            // append configuration
++            if (i === 1)
++                writeConf(outputStream, monitors);
++            outputStream.write(`${line}\n`, null);
++        });
++
++        outputStream.close(null);
++
++    } else {
++    // write configuration from scratch
++        let outputStream = xmlFile.replace('', false, 0, null);
++
++        outputStream.write('<monitors version="2">\n', null);
++        writeConf(outputStream, monitors);
++        outputStream.write('</monitors>\n', null);
++
++        outputStream.close(null);
++
++    }
++}
++
++function readMonitorSpec() {
++    if (!xmlFile.query_exists(null))
++        return [null, null];
++
++    let [res, contents] = xmlFile.load_contents(null);
++
++    if (!res)
++        return [null, null];
++
++    // get monitorspec info from xml
++    let configurations = [];
++    let lines = ByteArray.toString(contents).split('\n').filter(word => word.length > 0);
++
++    if (lines[0].includes('<monitors version="') && lines[lines.length - 1].includes('</monitors>')) {
++
++        for (let i = 1; i < lines.length - 1; i++) {
++            if (lines[i].includes('<configuration>')) {
++                let monitors = [];
++
++                for (let j = i + 1; j < lines.length; j++) {
++                    if (lines[j].includes('<logicalmonitor>')) {
++                        let monitor = new class {}();
++
++                        for (let k = j + 1; k < lines.length; k++) {
++                            if (lines[k].includes('<monitorspec>')) {
++                                monitor.connector = lines[k + 1].trim().replace('<connector>', '').replace('</connector>', '');
++                                monitor.vendor = lines[k + 2].trim().replace('<vendor>', '').replace('</vendor>', '');
++                                monitor.product = lines[k + 3].trim().replace('<product>', '').replace('</product>', '');
++                                monitor.serial = lines[k + 4].trim().replace('<serial>', '').replace('</serial>', '');
++                            } else if (lines[k].includes('</logicalmonitor>')) {
++                                break;
++                            }
++                        }
++                        if (monitor.connector && monitor.vendor && monitor.product && monitor.serial)
++                            monitors.push(monitor);
++                    } else if (lines[j].includes('</configuration>')) {
++                        break;
++                    }
++                }
++
++                if (monitors.length > 0)
++                    configurations.push(monitors);
++
++            }
++        }
++
++        return [contents, configurations];
++    }
++
++    return [null, null];
++}
++
++function compareSpec(configurations, monitors) {
++    for (let i = 0; i < configurations.length; i++) {
++        if (configurations[i].length !== monitors.length)
++            return false;
++        for (let j = 0; j < monitors.length; j++) {
++            let specDiff = configurations[i][j].connector === monitors[i].connector &&
++        configurations[i][j].vendor === monitors[i].vendor &&
++        configurations[i][j].product === monitors[i].product &&
++        configurations[i][j].serial === monitors[i].serial;
++            return specDiff;
++        }
++    }
++    return false;
++}
++
++function writeConf(outputStream, monitors) {
++    outputStream.write('  <configuration>\n', null);
++    monitors.forEach(monitor => {
++        writeLogicalMonitor(outputStream, monitor);
++    });
++    outputStream.write('  </configuration>\n', null);
++}
++
++function writeLogicalMonitor(outputStream, monitor) {
++    outputStream.write('    <logicalmonitor>\n', null);
++    outputStream.write(`      <x>${monitor.x}</x>\n`, null);
++    outputStream.write(`      <y>${monitor.y}</y>\n`, null);
++    outputStream.write('      <scale>1</scale>\n', null);
++    if (monitor.isPrimary)
++        outputStream.write('      <primary>yes</primary>\n', null);
++    if (monitor.rotation)
++        writeTransform(outputStream, monitor);
++    writeMonitor(outputStream, monitor);
++    outputStream.write('    </logicalmonitor>\n', null);
++}
++
++function writeTransform(outputStream, monitor) {
++    outputStream.write('      <transform>\n', null);
++    outputStream.write(`        <rotation>${monitor.rotation}</rotation>\n`, null);
++    outputStream.write('        <flipped>no</flipped>\n', null);
++    outputStream.write('      </transform>\n', null);
++}
++
++function writeMonitor(outputStream, monitor) {
++    outputStream.write('      <monitor>\n', null);
++    outputStream.write('        <monitorspec>\n', null);
++    outputStream.write(`          <connector>${monitor.connector}</connector>\n`, null);
++    outputStream.write(`          <vendor>${monitor.vendor}</vendor>\n`, null);
++    outputStream.write(`          <product>${monitor.product}</product>\n`, null);
++    outputStream.write(`          <serial>${monitor.serial}</serial>\n`, null);
++    outputStream.write('        </monitorspec>\n', null);
++    outputStream.write('        <mode>\n', null);
++    outputStream.write(`          <width>${monitor.width}</width>\n`, null);
++    outputStream.write(`          <height>${monitor.height}</height>\n`, null);
++    outputStream.write(`          <rate>${monitor.rate}</rate>\n`, null);
++    outputStream.write('        </mode>\n', null);
++    outputStream.write('      </monitor>\n', null);
++}
+diff --git a/extensions/monitor-settings-saver/xrandr.js b/extensions/monitor-settings-saver/xrandr.js
+deleted file mode 100644
+index be6b14e..0000000
+--- a/extensions/monitor-settings-saver/xrandr.js
++++ /dev/null
+@@ -1,92 +0,0 @@
+-/* exported xrandrParse */
+-
+-const ByteArray = imports.byteArray;
+-const GLib = imports.gi.GLib;
+-
+-function xrandrParse() {
+-    let monitorProps = runXrandr();
+-    if (!monitorProps)
+-        return;
+-
+-    let monitors = [];
+-    let lines = ByteArray.toString(monitorProps).split('\n');
+-    for (let i = 0; i < lines.length; i++) {
+-    // find connector line
+-        if (lines[i].includes(' connected')) {
+-            let monitor = new class {}();
+-            // monitor info parsing
+-            let infoline = lines[i].split(' ');
+-            monitor.connector = `${infoline[0]}`;
+-            if (infoline[2] === 'primary') {
+-                monitor.isPrimary = true;
+-                infoline.splice(2, 1);
+-            } else {
+-                monitor.isPrimary = false;
+-            }
+-            let pos = infoline[2].split('+');
+-            monitor.x = `${pos[1]}`;
+-            monitor.y = `${pos[2]}`;
+-            let res = pos[0].split('x');
+-            monitor.width = `${res[0]}`;
+-            monitor.height = `${res[1]}`;
+-            if (infoline[4] !== 'normal') {
+-                if (infoline[4] === 'inverted')
+-                    monitor.rotation = 'upside_down';
+-                else
+-                    monitor.rotation = `${infoline[4]}`;
+-            }
+-
+-            for (let j = i + 1; j < lines.length; j++) {
+-                // EDID parsing
+-                if (lines[j].includes('EDID:')) {
+-                    let edid = '';
+-                    for (let k = 1; k <= 8; k++)
+-                        edid += lines[j + k].replace('\n', '').replace('\t\t', '');
+-                    // vendor
+-                    let vendor = '';
+-                    let bin = parseInt(edid.substr(16, 4), 16).toString(2).padStart(16, '0');
+-                    vendor += String.fromCharCode(64 + parseInt(bin.substr(1, 5), 2));
+-                    vendor += String.fromCharCode(64 + parseInt(bin.substr(6, 5), 2));
+-                    vendor += String.fromCharCode(64 + parseInt(bin.substr(11, 5), 2));
+-                    monitor.vendor = vendor;
+-                    // serial, product
+-                    for (let k = 0; k < 4; k++) {
+-                        let descriptor = edid.substr(108 + 36 * k, 36);
+-                        if (descriptor.substr(0, 10) === '000000ff00') {
+-                            let serial = '';
+-                            for (let l = 10; l < descriptor.length; l += 2)
+-                                serial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+-                            monitor.serial = serial.trim();
+-                        }
+-                        if (descriptor.substr(0, 10) === '000000fc00') {
+-                            let product = '';
+-                            for (let l = 10; l < descriptor.length; l += 2)
+-                                product += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+-                            monitor.product = product.trim();
+-                        }
+-                    }
+-                } else if (lines[j].includes('*current')) {
+-                    // rate parsing, rate = pixel clock / ( total height pixel * total width pixel)
+-                    let pixelClock = Number(lines[j].split(' ').filter(word => word.length > 1)[2].split('MHz')[0]);
+-                    let totalHeightPixel = Number(lines[j + 1].split(' ').filter(word => word.length > 1)[8]);
+-                    let totalWidthPixel = Number(lines[j + 2].split(' ').filter(word => word.length > 1)[8]);
+-                    monitor.rate = String(pixelClock * 1000000 / totalHeightPixel / totalWidthPixel);
+-                } else if (lines[j].includes('connected')) { // another connector, end
+-                    break;
+-                }
+-            }
+-            monitors.push(monitor);
+-        }
+-    }
+-    return monitors;
+-}
+-
+-function runXrandr() {
+-    let success, stdout, status;
+-    [success, stdout,, status] = GLib.spawn_command_line_sync('xrandr --verbose');
+-
+-    if (!success || status)
+-        return;
+-
+-    return stdout;
+-}
+diff --git a/extensions/monitor-settings-saver/xrandrParser.js b/extensions/monitor-settings-saver/xrandrParser.js
+new file mode 100644
+index 0000000..64872d9
+--- /dev/null
++++ b/extensions/monitor-settings-saver/xrandrParser.js
+@@ -0,0 +1,102 @@
++/* exported xrandrParse */
++/* parse xrandr --verbose, parse EDID, calculate refresh rate
++ * see details from xrandr manpage */
++
++const ByteArray = imports.byteArray;
++const GLib = imports.gi.GLib;
++
++function xrandrParse() {
++    let monitorProps = runXrandr();
++    if (!monitorProps)
++        return;
++
++    let monitors = [];
++    let lines = ByteArray.toString(monitorProps).split('\n');
++    for (let i = 0; i < lines.length; i++) {
++    // find connector line
++        if (lines[i].includes(' connected')) {
++            let monitor = new class {}();
++            // monitor info parsing
++            let infoline = lines[i].split(' ');
++            monitor.connector = `${infoline[0]}`;
++            if (infoline.includes('primary')) {
++                monitor.isPrimary = true;
++                let pos = infoline.find(e => e.includes('+') && e.includes('x')).split('+');
++                monitor.x = `${pos[1]}`;
++                monitor.y = `${pos[2]}`;
++                let res = pos[0].split('x');
++                monitor.width = `${res[0]}`;
++                monitor.height = `${res[1]}`;
++                // parsing transform option - not necessary
++            /* if (infoline[5] === 'left' || infoline[5] === 'right')
++                    monitor.rotation = `${infoline[5]}`;
++              if (infoline[5] === 'inverted')
++                    monitor.rotation = 'upside_down';*/
++            } else {
++                monitor.isPrimary = false;
++                let pos = infoline.find(e => e.includes('+') && e.includes('x')).split('+');
++                monitor.x = `${pos[1]}`;
++                monitor.y = `${pos[2]}`;
++                let res = pos[0].split('x');
++                monitor.width = `${res[0]}`;
++                monitor.height = `${res[1]}`;
++            /* if (infoline[4] === 'left' || infoline[4] === 'right')
++                    monitor.rotation = `${infoline[4]}`;
++              if (infoline[4] === 'inverted')
++                    monitor.rotation = 'upside_down';*/
++            }
++
++            for (let j = i + 1; j < lines.length; j++) {
++                // EDID parsing
++                if (lines[j].includes('EDID:')) {
++                    let edid = '';
++                    for (let k = 1; k <= 8; k++)
++                        edid += lines[j + k].replace('\n', '').replace('\t\t', '');
++                    // vendor
++                    let vendor = '';
++                    let bin = parseInt(edid.substr(16, 4), 16).toString(2).padStart(16, '0');
++                    vendor += String.fromCharCode(64 + parseInt(bin.substr(1, 5), 2));
++                    vendor += String.fromCharCode(64 + parseInt(bin.substr(6, 5), 2));
++                    vendor += String.fromCharCode(64 + parseInt(bin.substr(11, 5), 2));
++                    monitor.vendor = vendor;
++                    // serial, product
++                    for (let k = 0; k < 4; k++) {
++                        let descriptor = edid.substr(108 + 36 * k, 36);
++                        if (descriptor.substr(0, 10) === '000000ff00') {
++                            let serial = '';
++                            for (let l = 10; l < descriptor.length; l += 2)
++                                serial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
++                            monitor.serial = serial.trim();
++                        }
++                        if (descriptor.substr(0, 10) === '000000fc00') {
++                            let product = '';
++                            for (let l = 10; l < descriptor.length; l += 2)
++                                product += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
++                            monitor.product = product.trim();
++                        }
++                    }
++                } else if (lines[j].includes('*current')) {
++                    // rate parsing, rate = pixel clock / ( total height pixel * total width pixel)
++                    let pixelClock = Number(lines[j].split(' ').filter(word => word.length > 1)[2].split('MHz')[0]);
++                    let totalHeightPixel = Number(lines[j + 1].split(' ').filter(word => word.length > 1)[8]);
++                    let totalWidthPixel = Number(lines[j + 2].split(' ').filter(word => word.length > 1)[8]);
++                    monitor.rate = String(pixelClock * 1000000 / totalHeightPixel / totalWidthPixel);
++                } else if (lines[j].includes('connected')) { // another connector, end
++                    break;
++                }
++            }
++            monitors.push(monitor);
++        }
++    }
++    return monitors;
++}
++
++function runXrandr() {
++    let success, stdout, status;
++    [success, stdout,, status] = GLib.spawn_command_line_sync('xrandr --verbose');
++
++    if (!success || status)
++        return;
++
++    return stdout;
++}

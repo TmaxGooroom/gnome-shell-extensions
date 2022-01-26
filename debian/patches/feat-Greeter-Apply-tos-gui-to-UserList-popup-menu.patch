@@ -1,0 +1,181 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 5 Aug 2021 13:54:21 +0900
+Subject: [feat] Greeter: Apply tos gui to UserList popup menu
+
+- Apply tos gui to UserList popup menu
+
+[IMS] N/A
+---
+ extensions/greeter/loginDialog.js | 88 +++++++++++++++++++++++++++++++++++++++
+ extensions/greeter/stylesheet.css | 41 ++++++++++++++++++
+ extensions/greeter/userWidget.js  |  2 +
+ 3 files changed, 131 insertions(+)
+
+diff --git a/extensions/greeter/loginDialog.js b/extensions/greeter/loginDialog.js
+index dbde2d8..b1c1034 100644
+--- a/extensions/greeter/loginDialog.js
++++ b/extensions/greeter/loginDialog.js
+@@ -31,6 +31,88 @@ const Constants = Me.imports.constants;
+ const Gettext = imports.gettext;
+ const _ = Gettext.gettext;
+ 
++var UserListItem = GObject.registerClass(class UserListItem extends GnomeLoginDialog.UserListItem {
++    _init(user) {
++        super._init(user);
++
++        this._customize();
++    }
++
++    _customize() {
++        this.add_style_class_name('user-list-item');
++
++        this._userWidget.y_align = Clutter.ActorAlign.CENTER;
++        this._userWidget.y_expand = true;
++
++        let avatar = this._userWidget._avatar;
++        avatar.remove_style_class_name('user-icon');
++        avatar.add_style_class_name('user-avatar');
++        avatar._iconSize = 42;
++        avatar.update();
++
++        let label = this._userWidget._label._realNameLabel;
++        label.add_style_class_name('user-list-item-label');
++
++    }
++
++    vfunc_key_focus_in() {
++        if (this.actor.hover)
++            return;
++
++        super.vfunc_key_focus_in();
++        this.add_style_class_name('focus');
++    }
++
++    vfunc_key_focus_out() {
++        if (this.actor.hover)
++            return;
++
++        super.vfunc_key_focus_out();
++        this.remove_style_class_name('focus');
++    }
++});
++
++var UserList = GObject.registerClass(class UserList extends GnomeLoginDialog.UserList {
++    _init() {
++        super._init();
++        this.overlay_scrollbars = true;
++
++        this._box.add_style_class_name('user-list-box');
++    }
++
++    addUser(user) {
++        if (!user.is_loaded)
++            return;
++
++        if (user.is_system_account())
++            return;
++
++        if (user.locked)
++            return;
++
++        let userName = user.get_user_name();
++        if (!userName)
++            return;
++
++        this.removeUser(user);
++
++        let item = new UserListItem(user);
++        this._box.add_child(item);
++
++        this._items[userName] = item;
++
++        item.connect('activate', this._onItemActivated.bind(this));
++
++        // Try to keep the focused item front-and-center
++        item.connect('key-focus-in', () => this.scrollToItem(item));
++
++        this._moveFocusToItems();
++
++        this.emit('item-added', item);
++    }
++
++});
++
+ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDialog.LoginDialog {
+     _init(parentActor) {
+         super._init(parentActor);
+@@ -42,6 +124,12 @@ var LoginDialog = GObject.registerClass(class LoginDialog extends GnomeLoginDial
+ 
+         this._addCustomizedAuthPrompt();
+ 
++        this._userList.destroy();
++        this._userList = new UserList();
++        this._userList.connect('activate', (userList, item) => {
++            this._onUserListActivated(item);
++        });
++
+         this._user = null;
+ 
+         // notListedButton
+diff --git a/extensions/greeter/stylesheet.css b/extensions/greeter/stylesheet.css
+index cfd5ed3..09cf7d5 100644
+--- a/extensions/greeter/stylesheet.css
++++ b/extensions/greeter/stylesheet.css
+@@ -92,3 +92,44 @@ color: rgb(140, 138, 139);
+ font-weight: bold;
+ font-size: 12pt;
+ }
++
++.user-list-item {
++height: 48px;
++padding-left: 12px;
++padding-right: 12px;
++}
++.user-list-item:hover {
++background-color:rgb(224, 233, 255);
++}
++.user-list-item:active {
++background-color:rgb(204, 220, 255);
++}
++.user-list-item:focus {
++background-color:white;
++box-shadow: 0 0 0 2px rgb(153, 153, 153) inset;
++}
++
++.user-list-item-label {
++color:rgb(0, 0, 0);
++font-size: 15pt;
++font-weight: normal;
++}
++
++.user-list-box {
++background-color: white;
++padding: 5px;
++border-radius: 10px;
++spacing: 0px;
++}
++
++.user-list-menu-actor {
++-arrow-rise: 0px;
++max-height: 420px;
++width: 320px;
++}
++
++.user-list-menu-box {
++background-color:white;
++border-radius: 10px;
++padding: 0px;
++}
+diff --git a/extensions/greeter/userWidget.js b/extensions/greeter/userWidget.js
+index d5f8c1a..1ee50b9 100644
+--- a/extensions/greeter/userWidget.js
++++ b/extensions/greeter/userWidget.js
+@@ -149,6 +149,8 @@ class UserWidget extends St.BoxLayout {
+ 
+     _createUserListMenu() {
+         this._userListMenu = new PopupMenu.PopupMenu(this._labelButton, 0.5, St.Side.TOP);
++        this._userListMenu.actor.style_class = 'user-list-menu-actor';
++        this._userListMenu.box.style_class = 'user-list-menu-box';
+         this._userListMenuSection = new PopupMenu.PopupMenuSection();
+         this._userListMenu.addMenuItem(this._userListMenuSection);
+         this._userListMenu.actor.hide();

@@ -1,0 +1,64 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 15 Apr 2021 11:17:35 +0900
+Subject: [feat] search : restore original focusSearch function when disabled
+
+ - inject new focusSearch at controller and restore it when search is disabled
+ - fixed arc-menu error on type comparison
+ - fixed arc-menu onMainBoxKeyPress to work only for unicode keys
+
+[IMS] N/A
+---
+ extensions/arc-menu/baseMenuLayout.js | 7 +++++--
+ extensions/search/controller.js       | 5 +++++
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/arc-menu/baseMenuLayout.js b/extensions/arc-menu/baseMenuLayout.js
+index 14cb674..27a42b7 100644
+--- a/extensions/arc-menu/baseMenuLayout.js
++++ b/extensions/arc-menu/baseMenuLayout.js
+@@ -87,7 +87,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         let appsScrollBoxAdj = this.applicationsScrollBox.get_vscroll_bar().get_adjustment();
+         appsScrollBoxAdj.set_value(0);
+ 
+-        if (this.vertSep !== null)
++        if (this.vertSep !== undefined)
+             this.vertSep.queue_repaint();
+     }
+ 
+@@ -599,9 +599,12 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         case Clutter.KEY_KP_Enter:
+         case Clutter.KEY_Return:
+         case Clutter.KEY_Escape:
++        case Clutter.KEY_Delete:
+             return Clutter.EVENT_PROPAGATE;
+         default:
+-            Main.overview.focusSearch(event);
++            if (event.get_key_unicode())
++                Main.overview.focusSearch(event);
++
+         }
+         return Clutter.EVENT_PROPAGATE;
+     }
+diff --git a/extensions/search/controller.js b/extensions/search/controller.js
+index 1e475fa..38507d7 100644
+--- a/extensions/search/controller.js
++++ b/extensions/search/controller.js
+@@ -38,6 +38,8 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+         this._activitiesButton = Main.panel.statusArea.activities;
+ 
+         this._menuButton = new MenuButton.MenuButton(settings, panel);
++        this._oldFocusSearch = Main.overview['focusSearch'];
++
+ 
+         this._settingsControllers = settingsControllers;
+     }
+@@ -152,6 +154,9 @@ var MenuSettingsController = class { // eslint-disable-line no-unused-vars
+         this._removeMenuButtonFromMainPanel();
+         this._addActivitiesButtonToMainPanel();
+         this._menuButton.destroy();
++
++
++        Main.overview['focusSearch'] = this._oldFocusSearch;
+     }
+ 
+     _isButtonEnabled() {

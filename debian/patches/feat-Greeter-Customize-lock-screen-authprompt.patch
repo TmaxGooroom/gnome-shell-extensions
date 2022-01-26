@@ -1,0 +1,125 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 7 Sep 2021 13:49:06 +0900
+Subject: [feat] Greeter: Customize lock screen authprompt
+
+- Display customized password authentication screen on the lock screen.
+- Authprompt being used on the login screen was also used on the lockscreen.
+
+[IMS] N/A
+---
+ extensions/greeter/extension.js    | 41 ++++++++++++++++++++++++++++----------
+ extensions/greeter/meson.build     |  1 +
+ extensions/greeter/unlockDialog.js | 27 +++++++++++++++++++++++++
+ 3 files changed, 58 insertions(+), 11 deletions(-)
+ create mode 100644 extensions/greeter/unlockDialog.js
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index b6999d7..3a28986 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -21,6 +21,8 @@ const Main = imports.ui.main;
+ const LoginManager = imports.misc.loginManager;
+ const _ = imports.gettext.gettext;
+ 
++const SessionMode = imports.ui.sessionMode;
++
+ function init(/* metadata*/) { // eslint-disable-line no-unused-vars
+ }
+ 
+@@ -42,23 +44,40 @@ function _enableNetworkSettings() {
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+-    if (!Main.sessionMode.isGreeter)
+-        return;
+-
+     if (!LoginManager.canLock())
+         return;
+ 
+-    Main.sessionMode.unlockDialog = Me.imports.loginDialog.LoginDialog;
++    if (Main.sessionMode.isGreeter) {
++        Main.sessionMode.unlockDialog = Me.imports.loginDialog.LoginDialog;
++
++        let screenShieldGroup = Main.screenShield.actor;
++        Main.layoutManager.removeChrome(screenShieldGroup);
++        Main.layoutManager._backgroundGroup.add_child(screenShieldGroup);
++
++        Main.screenShield._becomeModal = () => {
++            return true;
++        };
++
++        _enableNetworkSettings();
++    } else {
++        // unlock dialog mode settings
++        let params = SessionMode._modes['unlock-dialog'];
++        params.allowExtensions = true;
++        params.enabledExtensions = ['greeter@tmax-shell-extensions'];
+ 
+-    let screenShieldGroup = Main.screenShield.actor;
+-    Main.layoutManager.removeChrome(screenShieldGroup);
+-    Main.layoutManager._backgroundGroup.add_child(screenShieldGroup);
++        // When logging in from the lock screen,
++        // all session mode parameters(including unlockDialog) are initialized.
++        // Therefore, if session mode is tos, the unlockDialog must be reset.
++        Main.sessionMode.connect('updated', () => {
++            let currentMode = Main.sessionMode.currentMode;
++            if (currentMode !== 'tos')
++                return;
+ 
+-    Main.screenShield._becomeModal = () => {
+-        return true;
+-    };
++            Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
++        });
+ 
+-    _enableNetworkSettings();
++        Main.sessionMode.unlockDialog = Me.imports.unlockDialog.UnlockDialog;
++    }
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+index bd2c3ef..eabf11d 100644
+--- a/extensions/greeter/meson.build
++++ b/extensions/greeter/meson.build
+@@ -6,6 +6,7 @@ extension_data += configure_file(
+ 
+ extension_sources += files(
+     'loginDialog.js',
++    'unlockDialog.js',
+     'authPrompt.js',
+     'userProfile.js',
+     'userVerifier.js',
+diff --git a/extensions/greeter/unlockDialog.js b/extensions/greeter/unlockDialog.js
+new file mode 100644
+index 0000000..1437f52
+--- /dev/null
++++ b/extensions/greeter/unlockDialog.js
+@@ -0,0 +1,27 @@
++/* exported UnlockDialog */
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const { GObject } = imports.gi;
++
++const GnomeUnlockDialog = imports.ui.unlockDialog;
++const GnomeAuthPrompt = imports.gdm.authPrompt;
++
++const AuthPrompt = Me.imports.authPrompt;
++
++var UnlockDialog = GObject.registerClass(class UnlockDialog extends GnomeUnlockDialog.UnlockDialog {
++    _ensureAuthPrompt() {
++        if (this._authPrompt)
++            return;
++
++        this._authPrompt = new AuthPrompt.AuthPrompt(this._gdmClient,
++            GnomeAuthPrompt.AuthPromptMode.UNLOCK_ONLY);
++        this._authPrompt.connect('failed', this._fail.bind(this));
++        this._authPrompt.connect('cancelled', this._fail.bind(this));
++        this._authPrompt.connect('reset', this._onReset.bind(this));
++
++        this._promptBox.add_child(this._authPrompt);
++
++        this._authPrompt.reset();
++        this._authPrompt.updateSensitivity(true);
++    }
++});

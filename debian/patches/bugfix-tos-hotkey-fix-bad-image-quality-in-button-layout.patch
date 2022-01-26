@@ -1,0 +1,58 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 11 May 2021 15:35:24 +0900
+Subject: [bugfix] tos-hotkey : fix bad image quality in button layout
+
+ - fix bad image quality in button layout
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/baseWidget.js  | 9 +++++----
+ extensions/tos-hotkey/stylesheet.css | 6 ++++--
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/tos-hotkey/baseWidget.js b/extensions/tos-hotkey/baseWidget.js
+index a8279a0..79fb463 100644
+--- a/extensions/tos-hotkey/baseWidget.js
++++ b/extensions/tos-hotkey/baseWidget.js
+@@ -154,10 +154,11 @@ var BaseWidget = GObject.registerClass({ // eslint-disable-line no-unused-vars
+         });
+         this.baseLayout.add_actor(this.contentLayout);
+ 
+-        this.buttonLayout = new St.Widget({
+-            layout_manager: new Clutter.BoxLayout({ homogeneous: true }),
+-            style_class: `${params.style_class}-button-box`,
+-        });
++        //        this.buttonLayout = new St.Widget({
++        //            layout_manager: new Clutter.BoxLayout({ homogeneous: true }),
++        //            style_class: `${params.style_class}-button-box`,
++        //        });
++        this.buttonLayout = new St.BoxLayout({ style_class: `${params.style_class}-button-box` });
+         this.baseLayout.add_actor(this.buttonLayout);
+ 
+         this._grabHelper = new GrabHelper.GrabHelper(this);
+diff --git a/extensions/tos-hotkey/stylesheet.css b/extensions/tos-hotkey/stylesheet.css
+index 1b3ae29..4d87f80 100644
+--- a/extensions/tos-hotkey/stylesheet.css
++++ b/extensions/tos-hotkey/stylesheet.css
+@@ -84,8 +84,10 @@
+ }
+ 
+ .switch-monitor-widget-button-box {
++  width: 490px;
+   height: 100px;
+-  margin: 20px 20px 0px 20px;
++  margin: 20px 30px 0px 30px;
++  spacing: 10px;
+ }
+ 
+ .switch-monitor-widget-button {
+@@ -99,8 +101,8 @@
+   text-align: center;
+   line-height: 19px;
+ 
+-  width: 110px;
+   height: 100px;
++  width: 110px;
+ }
+ 
+ .switch-monitor-widget-button:focus, .switch-monitor-widget-button:hover  {

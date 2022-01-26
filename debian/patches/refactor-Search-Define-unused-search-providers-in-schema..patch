@@ -1,0 +1,94 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 29 Apr 2021 17:34:11 +0900
+Subject: [refactor] Search : Define unused search providers in schema.xml
+
+- Add unused-search-providers in schema.xml
+- Providers of this list are not included in search results.
+- Receive a signal when changing unused-search-providers schema value, and reload search providers.
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js                         |  1 +
+ .../schemas/org.gnome.shell.extensions.search.gschema.xml   |  5 +++++
+ extensions/search/search.js                                 | 13 +++++++++----
+ 3 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 70c9419..9db48ef 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -33,6 +33,7 @@ const Utils =  Me.imports.utils;
+ var BaseLayout = class { // eslint-disable-line no-unused-vars
+     constructor(menuButton) {
+         this.menuButton = menuButton;
++        this._settings = menuButton._settings;
+         this.mainBox = menuButton.mainBox;
+         this.contextMenuManager = menuButton.contextMenuManager;
+         this.searchMenu = menuButton.searchMenu;
+diff --git a/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml b/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
+index efd37e4..7caecd4 100644
+--- a/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
++++ b/extensions/search/schemas/org.gnome.shell.extensions.search.gschema.xml
+@@ -16,5 +16,10 @@
+       <summary>Menu position in Dash To Panel</summary>
+       <description>Menu position in Dash To Panel</description>
+     </key>
++    <key name="unused-search-providers" type="as">
++      <default>['org.gnome.clocks.desktop', 'org.gnome.Characters.desktop']</default>
++      <summary>List to store id of unused search providers</summary>
++      <description>List to store id of unused search providers</description>
++    </key>
+   </schema>
+ </schemalist>
+diff --git a/extensions/search/search.js b/extensions/search/search.js
+index d1f484d..7b2df69 100644
+--- a/extensions/search/search.js
++++ b/extensions/search/search.js
+@@ -39,9 +39,6 @@ var MAX_LIST_SEARCH_RESULTS_ROWS = 6;
+ var MAX_APPS_SEARCH_RESULTS_ROWS = 6;
+ var RESULT_ICON_SIZE = 27;
+ 
+-// not used search providers
+-var PREVENTED_SEARCH_PROVIDERS = ['org.gnome.clocks.desktop', 'org.gnome.Characters.desktop'];
+-
+ var ListSearchResult = class ListSearchResult {
+     constructor(provider, metaInfo, resultsView, terms) {
+         this._menuLayout = resultsView._menuLayout;
+@@ -430,6 +427,7 @@ Signals.addSignalMethods(AppSearchResults.prototype);
+ var SearchResults = class SearchResults {
+     constructor(menuLayout) {
+         this._menuLayout = menuLayout;
++        this._settings = this._menuLayout._settings;
+ 
+         this.actor = new St.BoxLayout({
+             vertical: true,
+@@ -475,6 +473,8 @@ var SearchResults = class SearchResults {
+         this.enabledID =  this._searchSettings.connect('changed::enabled', this._reloadRemoteProviders.bind(this));
+         this.disablExternalID = this._searchSettings.connect('changed::disable-external', this._reloadRemoteProviders.bind(this));
+         this.sortOrderID = this._searchSettings.connect('changed::sort-order', this._reloadRemoteProviders.bind(this));
++        this.unusedSearchProvidersChangedID =
++            this._settings.connect('changed::unused-search-providers', this._reloadRemoteProviders.bind(this));
+ 
+         this._searchTimeoutId = 0;
+         this._cancellable = new Gio.Cancellable();
+@@ -522,6 +522,10 @@ var SearchResults = class SearchResults {
+             appSys.disconnect(this.installChangedID);
+             this.installChangedID = 0;
+         }
++        if (this.unusedSearchProvidersChangedID > 0) {
++            this._settings.disconnect(this.unusedSearchProvidersChangedID);
++            this.unusedSearchProvidersChangedID = 0;
++        }
+         this._providers.forEach(provider => {
+             provider.display.clear();
+             provider.display.destroy();
+@@ -541,7 +545,8 @@ var SearchResults = class SearchResults {
+     }
+ 
+     _registerProvider(provider) {
+-        var res = PREVENTED_SEARCH_PROVIDERS.some(element => {
++        let unusedSearchProviders = this._settings.get_strv('unused-search-providers');
++        var res = unusedSearchProviders.some(element => {
+             return element === provider.id;
+         });
+ 

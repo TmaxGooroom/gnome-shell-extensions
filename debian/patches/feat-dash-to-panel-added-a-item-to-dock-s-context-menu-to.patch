@@ -1,0 +1,68 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 23 Aug 2021 11:30:37 +0900
+Subject: [feat] dash-to-panel : added a item to dock's context menu to create
+ a desktop shortcut
+
+ - add new string to po
+ - make executable .desktop file in user's Desktop directory so that
+   user can double click the icon and launch the app
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/appIcons.js | 28 ++++++++++++++++++++++++++++
+ extensions/dash-to-panel/po/ko.po    |  3 +++
+ 2 files changed, 31 insertions(+)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index b110dc0..c86887e 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1495,6 +1495,34 @@ var taskbarSecondaryMenu = Utils.defineClass({
+ 
+         this._appendSeparator();
+ 
++        if (app.app_info) {
++            this.addAction(_('Create Desktop Shortcut'),
++                () => {
++                    let name = app.app_info.get_display_name();
++
++                    // NOTE : gvfs change the desktop file's mime type from application/x-destkop to text/plain
++                    // if the file name does not contain .desktop at the end of its name.
++                    let desktopDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
++                    let shortcutFile = Gio.File.new_for_path(`${desktopDir}/${name}.desktop`);
++                    let originalDesktopFile = Gio.File.new_for_path(`${app.app_info.get_filename()}`);
++
++                    let copyFlag = Gio.FileCopyFlags.OVERWRITE;
++                    if (!originalDesktopFile.copy(shortcutFile, copyFlag, null, null))
++                        return;
++
++
++                    // Change the file's permission to make the file executable in ding(desktop-icons-ng)
++                    // See FileItem._doOpenContext() for more detail.
++                    let fileInfo = shortcutFile.query_info('unix::mode', Gio.FileQueryInfoFlags.NONE, null);
++                    let mode = fileInfo.get_attribute_uint32('unix::mode');
++                    const S_IXUSR = 0o00100;
++                    const S_IWOTH = 0o00002;
++                    mode |= S_IXUSR;
++                    mode &= ~S_IWOTH;
++                    fileInfo.set_attribute_uint32('unix::mode', mode);
++                    shortcutFile.set_attributes_from_info(fileInfo, Gio.FileQueryInfoFlags.NONE, null);
++                }, 'computer-symbolic');
++        }
+         // 'Add to favorites' / 'Remove from favorites' button
+         let canFavorite = appInfo ? global.settings.is_writable('favorite-apps') &&
+                           this._parentalControlsManager.shouldShowApp(appInfo) : false;
+diff --git a/extensions/dash-to-panel/po/ko.po b/extensions/dash-to-panel/po/ko.po
+index 75dc384..ab23a48 100644
+--- a/extensions/dash-to-panel/po/ko.po
++++ b/extensions/dash-to-panel/po/ko.po
+@@ -1320,6 +1320,9 @@ msgstr "비활성화 시, 헤더 바 크기에 창 미리보기 아이콘 크기
+ msgid "Quit %d windows"
+ msgstr "%d개 창 끝내기"
+ 
++msgid "Create Desktop Shortcut"
++msgstr "바탕화면에 바로가기 만들기"
++
+ msgid "Add to Dock"
+ msgstr "Dock 에 추가"
+ 

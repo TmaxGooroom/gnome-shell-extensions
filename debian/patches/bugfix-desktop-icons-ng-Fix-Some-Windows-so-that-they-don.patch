@@ -1,0 +1,166 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 25 May 2021 18:46:21 +0900
+Subject: [bugfix] desktop-icons-ng : Fix Some Windows so that they don't
+ appear in the taskbar
+
+- Set AskNamePopup, Preference, AppChooser window's skip-taskbar-hint property true
+- Set Parent Widget
+
+[IMS] 261620
+---
+ extensions/desktop-icons-ng/askNamePopup.js   | 40 +++++++++++++++------------
+ extensions/desktop-icons-ng/desktopManager.js | 20 ++++++++++++--
+ extensions/desktop-icons-ng/fileItem.js       |  2 +-
+ extensions/desktop-icons-ng/preferences.js    |  4 ++-
+ 4 files changed, 43 insertions(+), 23 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/askNamePopup.js b/extensions/desktop-icons-ng/askNamePopup.js
+index 547ea01..2d665e8 100644
+--- a/extensions/desktop-icons-ng/askNamePopup.js
++++ b/extensions/desktop-icons-ng/askNamePopup.js
+@@ -1,3 +1,5 @@
++/* exported AskNamePopup */
++
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -28,24 +30,26 @@ var AskNamePopup = class {
+     constructor(filename, title, parentWindow) {
+ 
+         this._desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+-        this._window = new Gtk.Dialog({use_header_bar: true,
+-                                       window_position: Gtk.WindowPosition.CENTER_ON_PARENT,
+-                                       transient_for: parentWindow,
+-                                       resizable: false});
+-        this._button = this._window.add_button(_("OK"), Gtk.ResponseType.OK);
+-        this._window.add_button(_("Cancel"), Gtk.ResponseType.CANCEL);
++        this._window = new Gtk.Dialog({ use_header_bar: true,
++            window_position: Gtk.WindowPosition.CENTER_ON_PARENT,
++            transient_for: parentWindow,
++            resizable: false,
++            skip_taskbar_hint: true });
++
++        this._button = this._window.add_button(_('OK'), Gtk.ResponseType.OK);
++        this._window.add_button(_('Cancel'), Gtk.ResponseType.CANCEL);
+         this._window.set_modal(true);
+         this._window.set_title(title);
+         let contentArea = this._window.get_content_area();
+         this._textArea = new Gtk.Entry();
+-        if (filename) {
++        if (filename)
+             this._textArea.text = filename;
+-        }
++
+         contentArea.pack_start(this._textArea, true, true, 5);
+         this._textArea.connect('activate', () => {
+-            if (this._button.sensitive) {
++            if (this._button.sensitive)
+                 this._window.response(Gtk.ResponseType.OK);
+-            }
++
+         });
+         this._textArea.connect('changed', () => {
+             this._validate();
+@@ -55,23 +59,23 @@ var AskNamePopup = class {
+ 
+     _validate() {
+         let text = this._textArea.text;
+-        let final_path = this._desktopPath + '/' + text;
+-        let final_file = Gio.File.new_for_commandline_arg(final_path);
+-        if ((text == '') || (-1 != text.indexOf('/')) || final_file.query_exists(null)) {
++        let finalPath = `${this._desktopPath}/${text}`;
++        let finalFile = Gio.File.new_for_commandline_arg(finalPath);
++        if (text === '' || text.indexOf('/') !== -1 || finalFile.query_exists(null))
+             this._button.sensitive = false;
+-        } else {
++        else
+             this._button.sensitive = true;
+-        }
++
+     }
+ 
+     run() {
+         this._window.show_all();
+         let retval = this._window.run();
+         this._window.hide();
+-        if (retval == Gtk.ResponseType.OK) {
++        if (retval === Gtk.ResponseType.OK)
+             return this._textArea.text;
+-        } else {
++        else
+             return null;
+-        }
++
+     }
+ };
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 2774c3e..4a2a0f2 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -1333,13 +1333,21 @@ var DesktopManager = class {
+         this._renameWindow = new AskRenamePopup.AskRenamePopup(fileItem);
+     }
+ 
+-    doOpenWith() {
++    doOpenWith(fileItem) {
++        let parentWindow;
++        let [x, y, unusedA, unusedB, unusedC] = fileItem.getCoordinates();
++        for (let desktop of this._desktops) {
++            if (desktop._coordinatesBelongToThisGrid(x, y))
++                parentWindow = desktop._window;
++        }
++
+         let fileItems = this.getCurrentSelection(false);
+         if (fileItems) {
+             let mimetype = Gio.content_type_guess(fileItems[0].fileName, null)[0];
+-            let chooser = Gtk.AppChooserDialog.new_for_content_type(null,
++            let chooser = Gtk.AppChooserDialog.new_for_content_type(parentWindow,
+                 Gtk.DialogFlags.MODAL + Gtk.DialogFlags.USE_HEADER_BAR,
+                 mimetype);
++            chooser.set_skip_taskbar_hint(true);
+             chooser.show_all();
+             let retval = chooser.run();
+             chooser.hide();
+@@ -1368,7 +1376,13 @@ var DesktopManager = class {
+         for (let fileItem of this._fileList)
+             fileItem.unsetSelected();
+ 
+-        let newFolderWindow = new AskNamePopup.AskNamePopup(null, _('New folder'), null);
++        let parentWindow;
++        for (let desktop of this._desktops) {
++            if (desktop._coordinatesBelongToThisGrid(X, Y))
++                parentWindow = desktop._window;
++        }
++
++        let newFolderWindow = new AskNamePopup.AskNamePopup(null, _('New folder'), parentWindow);
+         let newName = newFolderWindow.run();
+         if (newName) {
+             let dir = DesktopIconsUtil.getDesktopDir().get_child(newName);
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 4f953f6..be4f823 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -769,7 +769,7 @@ var FileItem = class {
+         case Enums.FileType.NONE:
+             if (!this._isDirectory) {
+                 this._actionOpenWith = new Gtk.MenuItem({ label: this._selectedItemsNum > 1 ? _('Open All With Other Application...') : _('Open With Other Application') });
+-                this._actionOpenWith.connect('activate', () => this._desktopManager.doOpenWith());
++                this._actionOpenWith.connect('activate', () => this._desktopManager.doOpenWith(this));
+                 this._menu.add(this._actionOpenWith);
+                 if (DBusUtils.discreteGpuAvailable && this.trustedDesktopFile) {
+                     this._actionDedicatedGPU = new Gtk.MenuItem({ label: _('Launch using Dedicated Graphics Card') });
+diff --git a/extensions/desktop-icons-ng/preferences.js b/extensions/desktop-icons-ng/preferences.js
+index bc6157e..95c9418 100644
+--- a/extensions/desktop-icons-ng/preferences.js
++++ b/extensions/desktop-icons-ng/preferences.js
+@@ -86,7 +86,9 @@ function getSchema(schema) {
+ function showPreferences() {
+ 
+     let window = new Gtk.Window({ resizable: false,
+-        window_position: Gtk.WindowPosition.CENTER });
++        window_position: Gtk.WindowPosition.CENTER,
++        skip_taskbar_hint: true });
++
+     window.set_title(_('Settings'));
+     let frame = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+     window.add(frame);

@@ -1,0 +1,70 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 17 Sep 2021 17:17:54 +0900
+Subject: [feat] Calibrator : Modify calibrate call only when changing
+ resolution
+
+- Modify calibrate call only when need to calibrate
+- fix meson.build for add calibrator.js
+
+[IMS] N/A
+---
+ extensions/calibrator/extension.js | 14 ++++++++++++--
+ extensions/calibrator/meson.build  |  2 ++
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/calibrator/extension.js b/extensions/calibrator/extension.js
+index a178939..7244630 100644
+--- a/extensions/calibrator/extension.js
++++ b/extensions/calibrator/extension.js
+@@ -3,6 +3,7 @@ const ByteArray = imports.byteArray;
+ const { Clutter, Gio, GLib, GObject } = imports.gi;
+ 
+ const WindowManager = imports.ui.windowManager;
++const Main = imports.ui.main;
+ 
+ const ExtensionUtils = imports.misc.extensionUtils;
+ const Me = ExtensionUtils.getCurrentExtension();
+@@ -11,6 +12,10 @@ const Calibrator = Me.imports.calibrator;
+ 
+ const IdentityMatrix = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+ 
++var HEIGHT = -1;
++
++var WIDTH = -1;
++
+ /* After Display changed at gnome-control-center, Gnome-shell pop up DisplayChangeDialog to confirm
+  * user's decison.
+  * After user's confirm decision, Calibrator should be called to calibrate touch setting.
+@@ -38,7 +43,11 @@ var TmaxDisplayChangeDialog = GObject.registerClass(
+         onSuccess() {
+             this._wm.complete_display_change(true);
+             this.close();
+-            _asyncCalibrate();
++            if (WIDTH !== Main.layoutManager.primaryMonitor.width || HEIGHT !== Main.layoutManager.primaryMonitor.height) {
++                WIDTH = Main.layoutManager.primaryMonitor.width;
++                HEIGHT = Main.layoutManager.primaryMonitor.height;
++                _asyncCalibrate();
++            }
+         }
+     });
+ 
+@@ -51,7 +60,8 @@ function enable() { // eslint-disable-line no-unused-vars
+     // Of course, when 'monitors-changed' signal is emitted, DeviceId array will be refreshed. but maybe need it later.
+     OldDisplayChangeDialog = WindowManager.DisplayChangeDialog;
+     WindowManager.DisplayChangeDialog = TmaxDisplayChangeDialog;
+-
++    WIDTH = Main.layoutManager.primaryMonitor.width;
++    HEIGHT = Main.layoutManager.primaryMonitor.height;
+     let logFile = Gio.File.new_for_path(`${global.userdatadir}/calibration`);
+     if (!logFile.query_exists(null)) {
+         global.log('There are no log files, stop loading calibration');
+diff --git a/extensions/calibrator/meson.build b/extensions/calibrator/meson.build
+index 48504f6..0f957c5 100644
+--- a/extensions/calibrator/meson.build
++++ b/extensions/calibrator/meson.build
+@@ -3,3 +3,5 @@ extension_data += configure_file(
+   output: metadata_name,
+   configuration: metadata_conf
+ )
++
++extension_sources += files('calibrator.js')

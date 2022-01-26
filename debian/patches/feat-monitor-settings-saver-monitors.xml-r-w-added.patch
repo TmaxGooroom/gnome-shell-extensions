@@ -1,0 +1,184 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 8 Oct 2021 18:38:59 +0900
+Subject: [feat] monitor-settings-saver: monitors.xml r/w added
+
+- read monitorspecs from HOME_DIR/.config/monitors.xml
+- if there is no monitor config for current monitor environment, write monitors.xml
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js | 122 +++++++++++++++++++++----
+ 1 file changed, 103 insertions(+), 19 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+index 838a4f5..080b4b4 100644
+--- a/extensions/monitor-settings-saver/extension.js
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -6,7 +6,8 @@ const Main = imports.ui.main;
+ 
+ var monitorManager = Meta.MonitorManager.get();
+ var monitorsXml = `${GLib.get_home_dir()}/.config/monitors.xml`;
+-var xmlFile = Gio.File.new_for_path(monitorsXml);
++// var xmlFile = Gio.File.new_for_path(monitorsXml);
++var xmlFile1 = Gio.File.new_for_path(`${monitorsXml}1`);
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
+ }
+@@ -63,8 +64,12 @@ function xrandrParse() {
+             let res = pos[0].split('x');
+             monitor.width = `${res[0]}`;
+             monitor.height = `${res[1]}`;
+-            if (infoline[3] !== '(normal')
+-                monitor.transform = `${infoline[4]} `;
++            if (infoline[3] !== '(normal') {
++                if (infoline[3] === 'inverted')
++                    monitor.rotation = 'upside_down';
++                else
++                    monitor.rotation = `${infoline[3]}`;
++            }
+ 
+             for (let j = i + 1; j < lines.length; j++) {
+                 // EDID parsing
+@@ -86,18 +91,18 @@ function xrandrParse() {
+                             let serial = '';
+                             for (let l = 10; l < descriptor.length; l += 2)
+                                 serial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+-                            monitor.serial = serial;
++                            monitor.serial = serial.trim();
+                         }
+                         if (descriptor.substr(0, 10) === '000000fc00') {
+                             let product = '';
+                             for (let l = 10; l < descriptor.length; l += 2)
+                                 product += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+-                            monitor.product = product;
++                            monitor.product = product.trim();
+                         }
+                     }
+                 } else if (lines[j].includes(`${monitor.width}x${monitor.height}`)) { // rate parsing
+                     let rateline = lines[j].split(' ').filter(word => word.length > 1);
+-                    monitor.rate = rateline.find(element => element.includes('*+')).split('*')[0];
++                    monitor.rate = rateline.find(element => element.includes('*')).split('*')[0];
+                 } else if (lines[j].includes('connected')) { // another connector, end
+                     break;
+                 }
+@@ -124,28 +129,107 @@ function runXrandr() {
+ }
+ 
+ function writeXml(monitors) {
+-    if (xmlFile.query_exists(null)) {
+-        readXml();
+-        // add compare monitorspec
++    let savedConfigurations = getSavedconf(monitorsXml);
++    // if monitor.xml already has config, then exit
++    // if (compareSpec(savedConfigurations, monitors))
++    if (!compareSpec(savedConfigurations, monitors))
+         return;
+-    }
+ 
+     // write configuration
+-    let outputStream = xmlFile.replace('', false, 0, null);
+-    outputStream.write(monitors, null);
++    let outputStream = xmlFile1.replace('', false, 0, null);
++
++    outputStream.write('<monitors version="2">\n', null);
++    outputStream.write('  <configuration>\n', null);
++
++    monitors.forEach(monitor => {
++        outputStream.write('    <logicalmonitor>\n', null);
++        outputStream.write(`      <x>${monitor.x}</x>\n`, null);
++        outputStream.write(`      <y>${monitor.y}</y>\n`, null);
++        outputStream.write('      <scale>1</scale>\n', null);
++        if (monitor.isPrimary)
++            outputStream.write('      <primary>yes</primary>\n', null);
++
++        if (monitor.rotation) {
++            outputStream.write('      <transform>\n', null);
++            outputStream.write(`        <rotation>${monitor.rotation}</rotation>\n`, null);
++            outputStream.write('        <flipped>no</flipped>\n', null);
++            outputStream.write('      </transform>\n', null);
++        }
++        outputStream.write('      <monitor>\n', null);
++        outputStream.write('        <monitorspec>\n', null);
++        outputStream.write(`          <connector>${monitor.connector}</connector>\n`, null);
++        outputStream.write(`          <vendor>${monitor.vendor}</vendor>\n`, null);
++        outputStream.write(`          <product>${monitor.product}</product>\n`, null);
++        outputStream.write(`          <serial>${monitor.serial}</serial>\n`, null);
++        outputStream.write('        </monitorspec>\n', null);
++        outputStream.write('        <mode>\n', null);
++        outputStream.write(`          <width>${monitor.width}</width>\n`, null);
++        outputStream.write(`          <height>${monitor.height}</height>\n`, null);
++        outputStream.write(`          <rate>${monitor.rate}</rate>\n`, null);
++        outputStream.write('        </mode>\n', null);
++        outputStream.write('      </monitor>\n', null);
++
++        outputStream.write('    </logicalmonitor>\n', null);
++    });
++
++    outputStream.write('  </configuration>\n', null);
++    outputStream.write('</monitors>\n', null);
++
+     outputStream.close(null);
+ }
+ 
+-function readXml() {
++function getSavedconf(file) {
+     // read xml
+-    let [res, text] = GLib.file_get_contents(monitorsXml);
++    let [res, content] = GLib.file_get_contents(file);
+     if (!res)
+         return;
+ 
+-    if (text instanceof Uint8Array)
+-        text = ByteArray.toString(text);
+-    // let parsed = parseXML(text);
+-    // print(JSON.stringify(parsed, null, 2));
++    // get monitorspec info from xml
++    let configurations = [];
++    let lines = ByteArray.toString(content).split('\n');
++    for (let i = 0; i < lines.length; i++) {
++        if (lines[i].includes('<configuration>')) {
++            let monitors = [];
++            for (let j = i + 1; j < lines.length; j++) {
++                if (lines[j].includes('<logicalmonitor>')) {
++                    let monitor = new monitorInfo();
++                    for (let k = j + 1; k < lines.length; k++) {
++                        if (lines[k].includes('<connector>'))
++                            monitor.x = lines[k].replace('<connector>').replace('</connector>');
++                        if (lines[k].includes('<vendor>'))
++                            monitor.x = lines[k].replace('<vendor>').replace('</vendor>');
++                        if (lines[k].includes('<product>'))
++                            monitor.x = lines[k].replace('<product>').replace('</product>');
++                        if (lines[k].includes('<serial>'))
++                            monitor.x = lines[k].replace('<serial>').replace('</serial>');
++                    }
++                    monitors.push(monitor);
++                } else if (lines[j].includes('</configuration>')) {
++                    break;
++                }
++            }
++            configurations.push(monitors);
++        }
++    }
++
++    return configurations;
++}
+ 
+-    // return parsed;
++function compareSpec(configurations, monitors) {
++    if (!configurations || !monitors)
++        return false;
++
++    configurations.forEach(configuration => {
++        if (configuration.length !== monitors.length)
++            return false;
++        for (let i = 0; i < monitors.length; i++) {
++            let specDiff = configuration[i].connector !== monitors[i].connector ||
++        configuration[i].vendor !== monitors[i].vendor ||
++        configuration[i].product !== monitors[i].product ||
++        configuration[i].serial !== monitors[i].serial;
++            if (specDiff)
++                return false;
++        }
++    });
++    return true;
+ }

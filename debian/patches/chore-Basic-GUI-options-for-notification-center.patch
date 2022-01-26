@@ -1,0 +1,229 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Tue, 20 Apr 2021 13:59:13 +0900
+Subject: [chore] Basic GUI options for notification center
+
+ - Implement a white notification view with a size suitable for the resolution
+ - Show empty image and empty label when there are no new notifications
+ - Title Label at the top
+ - Button box layout at the bottom(Now only dndItem)
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js        | 39 +++++++++++++++++-
+ extensions/notification-center/meson.build         |  4 +-
+ extensions/notification-center/schemas/meson.build |  8 ----
+ extensions/notification-center/stylesheet.css      | 47 ++++++++++++++++++++++
+ 4 files changed, 87 insertions(+), 11 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 7994525..be8f29b 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -93,10 +93,14 @@ const NotificationCenter = new LangClass({
+         this.eventsIcon        = new St.Icon({ style_class: 'system-status-icon', visible: false, icon_name: 'x-office-calendar-symbolic' });
+         this.mediaIcon         = new St.Icon({ style_class: 'system-status-icon', visible: false, icon_name: 'audio-x-generic-symbolic'  });
+         this.notificationIcon  = new St.Icon({ style_class: 'system-status-icon', visible: false });
++        this.emptyIcon         = new St.Icon({ style_class: 'notification-center-empty-icon', icon_name: 'tos_img_alarm_none', icon_size: 142, x_align: Clutter.ActorAlign.CENTER, visible: false });
++        this.emptyLabel        = new St.Label({ style_class: 'notification-center-empty-label', text: 'No New Notifications', x_align: Clutter.ActorAlign.CENTER, visible: false });
++        this.titleLabel        = new St.Label({ style_class: 'notification-center-title-label', text: 'Notification Center' });
+         this.eventsLabel       = new St.Label({ text: '• ', visible: false });
+         this.notificationLabel = new St.Label({ text: '• ', visible: false });
+         this._indicator        = new St.BoxLayout({ style_class: 'panel-status-menu-box', style: 'spacing:0.0em' });
+         this.box               = new St.BoxLayout({ style_class: 'notification-center-message-list', vertical: true });
++        this.buttonBox         = new St.BoxLayout({ style_class: 'notification-center-button-box', vertical: true, y_align: Clutter.ActorAlign.END, y_expand: true });
+         this.clearButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Clear'), can_focus: true, visible: false });
+         this.dndItem           = new PopupMenu.PopupSwitchMenuItem(this._messageList._dndButton.label_actor.text, true, {});
+ 
+@@ -106,6 +110,8 @@ const NotificationCenter = new LangClass({
+         this.add_style_class_name('notification-center-panel-button');
+         this.notificationIcon.set_pivot_point(0.5, 0);
+ 
++        this.menu.actor.style_class = 'notification-center-actor';
++
+     },
+ 
+     animateOnNewNotification(times, op = 254, angle = 3) {
+@@ -354,6 +360,12 @@ const NotificationCenter = new LangClass({
+             break;
+         }
+         this.resetIndicator();
++        this.notificationSection._messages.forEach(message => {
++            message.add_style_class_name('notification-center-message');
++            message._closeButton.style = 'color:rgb(0,0,0); size:11px;';
++            message.bodyLabel.style = 'color:rgba(0,0,0,153); font-size:13px; font-weight:lighter;';
++            message._secondaryBin.child.style = 'color:rgba(0,0,0,102); font-size:13px; font-weight:lighter';
++        });
+ 
+     },
+ 
+@@ -394,6 +406,8 @@ const NotificationCenter = new LangClass({
+ 
+         this.manageAutohide();
+         this.clearButton.visible = this.notificationSection._canClear && this.notificationSectionToBeShown;
++        this.emptyIcon.visible = !this.clearButton.visible;
++        this.emptyLabel.visible = !this.clearButton.visible;
+         this.eventsCount = this.eventsCount * this.includeEventsCount;
+ 
+         if (this.isDndOff)
+@@ -422,6 +436,8 @@ const NotificationCenter = new LangClass({
+         this.seenEvents = true;
+         this.resetIndicator();
+ 
++        this.menu.actor.height = 0.9 * Main.layoutManager.monitors[0].height;
++
+     },
+ 
+     setNotificationIconName() {
+@@ -460,6 +476,7 @@ const NotificationCenter = new LangClass({
+         this._indicator.add_child(this.mediaIcon);
+         this._indicator.add_child(this.notificationIcon);
+         this._indicator.add_child(this.notificationLabel);
++        this.menu.box.add_child(this.titleLabel);
+ 
+         this.setNotificationIconName();
+         this.iconThemeChangeSig = this.textureCache.connect('icon-theme-changed', this.iconThemeChanged.bind(this));
+@@ -499,14 +516,21 @@ const NotificationCenter = new LangClass({
+         });
+         this.clearButton.set_x_align(1 + this.prefs.get_enum('clear-button-alignment'));
+         this.menu.box.add_child(this.clearButton);
++        this.menu.box.add_child(this.emptyIcon);
++        this.menu.box.add_child(this.emptyLabel);
+ 
+         if (this.dndPos > 0) {
+             this.dndItem._delegate = this;
+             this.dndItem.connect('toggled', () => this.dndToggle());
+             this._messageList._dndSwitch.hide();
+             this._messageList._dndButton.label_actor.hide();
+-            this.menu.box.insert_child_at_index(this.dndItem,  this.dndPos === 1 ? 0 : 2);
+-            this.menu.box.insert_child_at_index(new PopupMenu.PopupSeparatorMenuItem(), this.dndPos);
++
++            this.menu.box.add_actor(this.buttonBox);
++            this.buttonBox.add_actor(this.dndItem);
++            this.menu.box.style = 'padding-bottom: 0px;';
++
++            //            this.menu.box.insert_child_at_index(this.dndItem,  this.dndPos === 1 ? 0 : 2);
++            //            this.menu.box.insert_child_at_index(new PopupMenu.PopupSeparatorMenuItem(), this.dndPos);
+         }
+ 
+         this.loadDndStatus();
+@@ -591,6 +615,13 @@ const NotificationCenter = new LangClass({
+         this.defaultDateVisibility = Main.panel.statusArea.dateMenu._date.visible;
+         Main.panel.statusArea.dateMenu._date.visible =  !this.prefs.get_boolean('hide-date-section') && this.defaultDateVisibility;
+ 
++        this.notificationSection._messages.forEach(message => {
++            message.add_style_class_name('notification-center-message');
++            message._closeButton.style = 'color:rgb(0,0,0); size:11px;';
++            message.bodyLabel.style = 'color:rgba(0,0,0,153); font-size:13px; font-weight:lighter;';
++            message._secondaryBin.child.style = 'color:rgba(0,0,0,102); font-size:13px; font-weight:lighter';
++        });
++
+     },
+ 
+     undoChanges() {
+@@ -681,6 +712,10 @@ const NotificationCenter = new LangClass({
+         this.clearButton.destroy();
+         this.box.destroy();
+         this.scrollView.destroy();
++        this.emptyIcon.destroy();
++        this.emptyLabel.destroy();
++        this.titleLabel.destroy();
++        this.buttonBox.destroy();
+ 
+         this.prefs.disconnect(this.reloadSignal);
+         this.prefs.disconnect(this.reloadProfilesSignal);
+diff --git a/extensions/notification-center/meson.build b/extensions/notification-center/meson.build
+index 5627a61..10b56db 100644
+--- a/extensions/notification-center/meson.build
++++ b/extensions/notification-center/meson.build
+@@ -9,7 +9,9 @@ extension_sources += files(
+   'prefs.js'
+ )
+ 
+-install_subdir('locale', install_dir : join_paths(extensiondir, uuid))
++extension_dir = join_paths(extensiondir, uuid)
++install_subdir('locale', install_dir : extension_dir)
++install_subdir('img', install_dir : extension_dir)
+ 
+ schema_data_dir = 'schemas'
+ subdir(schema_data_dir)
+diff --git a/extensions/notification-center/schemas/meson.build b/extensions/notification-center/schemas/meson.build
+index 16cc4e9..ee9fc17 100644
+--- a/extensions/notification-center/schemas/meson.build
++++ b/extensions/notification-center/schemas/meson.build
+@@ -2,14 +2,6 @@ schema_name = metadata_conf.get('gschemaname')  + '.gschema.xml'
+ 
+ r = run_command('glib-compile-schemas', meson.current_source_dir())
+ 
+-install_data([
+-    'gschemas.compiled',
+-    schema_name,
+-    '10_notification-center.gschema.override'
+-  ],
+-  install_dir : join_paths(extensiondir, uuid, schema_data_dir)
+-)
+-
+ install_data([
+   '10_notification-center.gschema.override'
+   ],
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index 2ac5a1f..98a5e80 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -2,6 +2,15 @@
+   padding: 8px 8px 0 20px
+ }
+ 
++.notification-center-message {
++  background-color: rgb(237, 237, 242);
++  border-radius: 16px;
++  border-width: 0px;
++  color: rgb(27, 27, 27);
++  font-size: 14px;
++  font-weight: bold
++}
++
+ .notification-center-clear-button {
+ 
+   margin: 8px 26px 0 26px;
+@@ -10,3 +19,41 @@
+ .notification-center-message-list-section {
+   padding-bottom: 6px;
+ }
++
++.notification-center-actor {
++  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px;
++  background-color: rgba(255,255,255,255);
++  width: 328px;
++  border-radius: 16px;
++}
++
++.notification-center-button-box {
++  background-color: rgba(41, 41, 41, 255);
++  width: 328px;
++  height: 92px;
++  border-radius: 16px;
++}
++
++.notification-center-empty-icon {
++  padding-top: 200px;
++}
++
++.notification-center-title-label {
++  color: rgb(0,0,0);
++  padding-top: 14px;
++  padding-left: 20px;
++  font-size: 18px;
++  font-weight: bold;
++}
++
++.notification-center-empty-label {
++  color: rgb(128, 128, 128);
++  padding-top: 16px;
++  font-size: 16px;
++  font-weight: bold;
++}
++
++.notification-center-dnd-label {
++  color: rgb(255,255,255);
++  font-weight: bold;
++}

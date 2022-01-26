@@ -1,0 +1,94 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 17 Jun 2021 14:10:58 +0900
+Subject: [feat] dash-to-panel : set visible property of power and brightness
+ icon by using dbus
+
+ - set power icon visible if org.freedesktop.UPower is enabled
+ - set brightness icon visible if the brightness value is same or bigger than 0
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 49 +++++++++++++++++++++++++---------------
+ 1 file changed, 31 insertions(+), 18 deletions(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 7cf421d..16e42f3 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -1,9 +1,15 @@
+ /* exported Tray */
+-const { Clutter } = imports.gi;
++const { Clutter, Gio } = imports.gi;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Utils = Me.imports.utils;
+ 
++const { loadInterfaceXML } = imports.misc.fileUtils;
++const DisplayDeviceInterface = loadInterfaceXML('org.freedesktop.UPower.Device');
++const PowerManagerProxy = Gio.DBusProxy.makeProxyWrapper(DisplayDeviceInterface);
++const BrightnessInterface = loadInterfaceXML('org.gnome.SettingsDaemon.Power.Screen');
++const BrightnessProxy = Gio.DBusProxy.makeProxyWrapper(BrightnessInterface);
++
+ class Tray {
+     enable(aggregateMenu) {
+         this._originalTray = aggregateMenu;
+@@ -25,23 +31,32 @@ class Tray {
+         this._indicators.add_child(brightness);
+         this._indicators.set_child_at_index(brightness, 0);
+ 
+-        brightness._oldSync = brightness._sync;
+-        brightness._sync = () => {
+-            brightness._oldSync();
+-            brightness.visible = brightness._item.visible;
+-        };
+-
+-        brightness._sync();
++        new BrightnessProxy(
++            Gio.DBus.session,
++            'org.gnome.SettingsDaemon.Power',
++            '/org/gnome/SettingsDaemon/Power',
++            (proxy, error) => {
++                if (error) {
++                    log('error connecting to org.gnome.SettingsDaemon.Power');
++                    return;
++                }
++                brightness.visible = proxy.Brightness >= 0;
++            }
++        );
+ 
+-        // make synchronize the visibility of menu item with icon
+         let power = this._originalTray._power;
+-        power._oldSync = power._sync;
+-        power._sync = () => {
+-            power._oldSync();
+-            power.visible = power._item.visible;
+-        };
+-
+-        power._sync();
++        new PowerManagerProxy(
++            Gio.DBus.system,
++            'org.freedesktop.UPower',
++            '/org/freedesktop/UPower/devices/DisplayDevice',
++            (proxy, error) => {
++                if (error) {
++                    log('error connecting to org.freedesktop.UPower');
++                    return;
++                }
++                power.visible = proxy.IsPresent;
++            }
++        );
+ 
+         let indicators = this._indicators.get_children();
+ 
+@@ -62,11 +77,9 @@ class Tray {
+         this._indicators.get_last_child().visible = true;
+ 
+         let power = this._originalTray._power;
+-        power._sync = power._oldSync;
+         power.visible = true;
+ 
+         let brightness = this._originalTray._brightness;
+-        brightness._sync = brightness._oldSync;
+         brightness._indicator.destroy();
+         brightness._indicator = null;
+         brightness.visible = false;

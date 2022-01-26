@@ -1,0 +1,91 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 26 Jul 2021 18:26:55 +0900
+Subject: [feat] Greeter: Modify processing logic when the fail count is
+ reached
+
+- Keep the user who is currently trying to login when the fail count is reached.
+- Remove existing reset processing
+- Add customized UserVerifier class
+
+[IMS] N/A
+---
+ extensions/greeter/authPrompt.js   | 18 ++++++++++++++++++
+ extensions/greeter/meson.build     |  3 ++-
+ extensions/greeter/userVerifier.js | 20 ++++++++++++++++++++
+ 3 files changed, 40 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/greeter/userVerifier.js
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index c076e41..2517df8 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -22,6 +22,7 @@ const { GObject } = imports.gi;
+ const GnomeAuthPrompt = imports.gdm.authPrompt;
+ 
+ const UserWidget = Me.imports.userWidget;
++const UserVerifier = Me.imports.userVerifier;
+ 
+ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.AuthPrompt { // eslint-disable-line no-unused-vars
+     _init(gdmClient, mode) {
+@@ -29,6 +30,23 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+ 
+         this._userWidget = new UserWidget.UserWidget(null);
+         this._userWell.set_child(this._userWidget);
++
++        let reauthenticationOnly;
++        if (this._mode === GnomeAuthPrompt.AuthPromptMode.UNLOCK_ONLY)
++            reauthenticationOnly = true;
++        else if (this._mode === GnomeAuthPrompt.AuthPromptMode.UNLOCK_OR_LOG_IN)
++            reauthenticationOnly = false;
++
++        this._userVerifier = null;
++        this._userVerifier = new UserVerifier.ShellUserVerifier(this._gdmClient, { reauthenticationOnly });
++        this._userVerifier.connect('ask-question', this._onAskQuestion.bind(this));
++        this._userVerifier.connect('show-message', this._onShowMessage.bind(this));
++        this._userVerifier.connect('verification-failed', this._onVerificationFailed.bind(this));
++        this._userVerifier.connect('verification-complete', this._onVerificationComplete.bind(this));
++        this._userVerifier.connect('reset', this._onReset.bind(this));
++        this._userVerifier.connect('smartcard-status-changed', this._onSmartcardStatusChanged.bind(this));
++        this._userVerifier.connect('credential-manager-authenticated', this._onCredentialManagerAuthenticated.bind(this));
++        this.smartcardDetected = this._userVerifier.smartcardDetected;
+     }
+ 
+     setUser(user) {
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+index 9369561..5064058 100644
+--- a/extensions/greeter/meson.build
++++ b/extensions/greeter/meson.build
+@@ -7,5 +7,6 @@ extension_data += configure_file(
+ extension_sources += files(
+     'loginDialog.js',
+     'authPrompt.js',
+-    'userWidget.js'
++    'userWidget.js',
++    'userVerifier.js'
+ )
+diff --git a/extensions/greeter/userVerifier.js b/extensions/greeter/userVerifier.js
+new file mode 100644
+index 0000000..6a51cfc
+--- /dev/null
++++ b/extensions/greeter/userVerifier.js
+@@ -0,0 +1,20 @@
++// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++
++const GdmUtil = imports.gdm.util;
++
++var ShellUserVerifier = class ShellUserVerifier extends GdmUtil.ShellUserVerifier { // eslint-disable-line no-unused-vars
++    _verificationFailed(/* retry */) {
++        let canRetry = true;
++        if (!this.hasPendingMessages) {
++            this._retry();
++        } else {
++            let signalId = this.connect('no-more-messages', () => {
++                this.disconnect(signalId);
++                if (this._cancellable && !this._cancellable.is_cancelled())
++                    this._retry();
++            });
++        }
++
++        this.emit('verification-failed', canRetry);
++    }
++};

@@ -1,0 +1,228 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Mon, 3 May 2021 10:59:16 +0900
+Subject: [refactor] Hover & active style of buttons in Noti Center
+
+ - Implementation of hover & active style of buttons.
+ - Moved clear button to top part of the notification center.
+ - Moved time label to the bottom of the notifications.
+ - Expanded body label.
+ - Added korean string for "Clear" button.
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js   | 35 ++++++++++----
+ extensions/notification-center/locale/ko.po   |  2 +-
+ extensions/notification-center/stylesheet.css | 68 ++++++++++++++++++++++++---
+ 3 files changed, 88 insertions(+), 17 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 580da8c..6c19654 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -105,8 +105,9 @@ const NotificationCenter = new LangClass({
+         this.notificationLabel = new St.Label({ text: '• ', visible: false });
+         this._indicator        = new St.BoxLayout({ style_class: 'panel-status-menu-box', style: 'spacing:0.0em' });
+         this.box               = new St.BoxLayout({ style_class: 'notification-center-message-list', vertical: true });
++        this.titleBox          = new St.BoxLayout({ style_class: 'notification-center-title-box', vertical: false, y_align: Clutter.ActorAlign.START, x_expand: true });
+         this.buttonBox         = new St.BoxLayout({ style_class: 'notification-center-button-box', vertical: true, y_align: Clutter.ActorAlign.END, y_expand: true });
+-        this.clearButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Clear'), can_focus: true, visible: false });
++        this.clearButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Clear'), can_focus: true, visible: false, x_expand: true });
+         this.dndItem           = new PopupMenu.PopupSwitchMenuItem(this._messageList._dndButton.label_actor.text, true, {});
+ 
+         let scaleFactor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+@@ -367,9 +368,15 @@ const NotificationCenter = new LangClass({
+         this.resetIndicator();
+         this.notificationSection._messages.forEach(message => {
+             message.add_style_class_name('notification-center-message');
+-            message._closeButton.style = 'color:rgb(0,0,0); size:11px;';
+-            message.bodyLabel.style = 'color:rgba(0,0,0,153); font-size:13px; font-weight:lighter;';
+-            message._secondaryBin.child.style = 'color:rgba(0,0,0,102); font-size:13px; font-weight:lighter';
++            message._closeButton.style_class = 'notification-center-close-button';
++            message._bodyStack.style_class = 'notification-center-bodystack';
++            let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
++            let timelabel = message._secondaryBin.child;
++            timelabel.style_class = 'notification-center-time-label';
++            message._secondaryBin.remove_child(timelabel);
++            contentBox.add_child(timelabel);
++            message.setExpandedLines(3);
++            message.expand();
+         });
+ 
+     },
+@@ -481,7 +488,7 @@ const NotificationCenter = new LangClass({
+         this._indicator.add_child(this.mediaIcon);
+         this._indicator.add_child(this.notificationIcon);
+         this._indicator.add_child(this.notificationLabel);
+-        this.menu.box.add_child(this.titleLabel);
++        this.menu.box.add_actor(this.titleBox);
+ 
+         this.setNotificationIconName();
+         this.iconThemeChangeSig = this.textureCache.connect('icon-theme-changed', this.iconThemeChanged.bind(this));
+@@ -519,10 +526,11 @@ const NotificationCenter = new LangClass({
+         this.clearButton.connect('clicked', () => {
+             this.notificationSection.clear();
+         });
+-        this.clearButton.set_x_align(1 + this.prefs.get_enum('clear-button-alignment'));
+-        this.menu.box.add_child(this.clearButton);
++        //        this.clearButton.set_x_align(1 + this.prefs.get_enum('clear-button-alignment'));
+         this.menu.box.add_child(this.emptyIcon);
+         this.menu.box.add_child(this.emptyLabel);
++        this.titleBox.add_actor(this.titleLabel);
++        this.titleBox.add_actor(this.clearButton);
+ 
+         if (this.dndPos > 0) {
+             this.dndItem._delegate = this;
+@@ -622,9 +630,15 @@ const NotificationCenter = new LangClass({
+ 
+         this.notificationSection._messages.forEach(message => {
+             message.add_style_class_name('notification-center-message');
+-            message._closeButton.style = 'color:rgb(0,0,0); size:11px;';
+-            message.bodyLabel.style = 'color:rgba(0,0,0,153); font-size:13px; font-weight:lighter;';
+-            message._secondaryBin.child.style = 'color:rgba(0,0,0,102); font-size:13px; font-weight:lighter';
++            message._closeButton.style_class = 'notification-center-close-button';
++            message._bodyStack.style_class = 'notification-center-bodystack';
++            let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
++            let timelabel = message._secondaryBin.child;
++            timelabel.style_class = 'notification-center-time-label';
++            message._secondaryBin.remove_child(timelabel);
++            contentBox.add_child(timelabel);
++            message.setExpandedLines(3);
++            message.expand();
+         });
+ 
+     },
+@@ -721,6 +735,7 @@ const NotificationCenter = new LangClass({
+         this.emptyLabel.destroy();
+         this.titleLabel.destroy();
+         this.buttonBox.destroy();
++        this.titleBox.destroy();
+ 
+         this.prefs.disconnect(this.reloadSignal);
+         this.prefs.disconnect(this.reloadProfilesSignal);
+diff --git a/extensions/notification-center/locale/ko.po b/extensions/notification-center/locale/ko.po
+index df7af4e..c3177e5 100644
+--- a/extensions/notification-center/locale/ko.po
++++ b/extensions/notification-center/locale/ko.po
+@@ -27,7 +27,7 @@ msgstr "알림 센터"
+ 
+ #: notification-center@Selenium-H/extension.js:103
+ msgid "Clear"
+-msgstr ""
++msgstr "모두 비우기"
+ 
+ #: notification-center@Selenium-H/extension.js:458
+ msgid "No Events"
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index 98a5e80..4612d66 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -1,5 +1,5 @@
+ .notification-center-message-list {
+-  padding: 8px 8px 0 20px
++  padding: 8px 8px 0 20px;
+ }
+ 
+ .notification-center-message {
+@@ -11,9 +11,29 @@
+   font-weight: bold
+ }
+ 
++.notification-center-message:hover {
++  background-color: rgba(0, 79, 255, 0.12);
++}
++
++.notification-center-message:active {
++  background-color: rgba(0, 79, 255, 0.2);
++}
++
+ .notification-center-clear-button {
++  margin: 14px 19px 0 125px;
++  padding: 0 10px 0 10px;
++  color: rgba(0,0,0,0.6);
++  background-color: rgb(255,255,255);
++  border-radius: 12px;
++  font-size: 13px;
++}
+ 
+-  margin: 8px 26px 0 26px;
++.notification-center-clear-button:hover {
++  background-color: rgba(203, 206, 216, 0.5);
++}
++
++.notification-center-clear-button:active {
++  background-color: rgb(203, 206, 216);
+ }
+ 
+ .notification-center-message-list-section {
+@@ -27,6 +47,13 @@
+   border-radius: 16px;
+ }
+ 
++.notification-center-title-box {
++  background-color: rgb(255,255,255);
++  width: 328px;
++  height: 38px;
++  border-radius: 16px;
++}
++
+ .notification-center-button-box {
+   background-color: rgba(41, 41, 41, 255);
+   width: 328px;
+@@ -35,20 +62,19 @@
+ }
+ 
+ .notification-center-empty-icon {
+-  padding-top: 200px;
++  margin-top: 200px;
+ }
+ 
+ .notification-center-title-label {
++  margin: 14px 0 0 20px;
+   color: rgb(0,0,0);
+-  padding-top: 14px;
+-  padding-left: 20px;
+   font-size: 18px;
+   font-weight: bold;
+ }
+ 
+ .notification-center-empty-label {
+   color: rgb(128, 128, 128);
+-  padding-top: 16px;
++  margin-top: 16px;
+   font-size: 16px;
+   font-weight: bold;
+ }
+@@ -57,3 +83,33 @@
+   color: rgb(255,255,255);
+   font-weight: bold;
+ }
++
++.notification-center-close-button {
++  color: rgb(0,0,0);
++  width: 20px;
++  height: 20px;
++  size: 11px;
++}
++
++.notification-center-close-button:hover {
++  background-color: rgba(203, 206, 216, 0.5);
++  border-radius: 10px;
++}
++
++.notification-center-close-button:active {
++  background-color: rgb(203, 206, 216);
++  border-radius: 10px;
++}
++
++.notification-center-bodystack {
++  color: rgba(0,0,0,0.6);
++  font-size: 13px;
++  font-weight: lighter;
++}
++
++.notification-center-time-label {
++  margin-top: 4px;
++  color: rgba(0,0,0,0.4);
++  font-size: 13px;
++  font-weight: lighter;
++}

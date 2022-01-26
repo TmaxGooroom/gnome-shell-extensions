@@ -1,0 +1,194 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 11 May 2021 16:30:23 +0900
+Subject: [refactor] AlternateTab : apply code review
+
+  - Move Up & Down Arrow state update logic
+  - Change scaling opacity logic to show() & hide()
+  - Merge object initialize code
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 77 ++++++++++++++++++------------------
+ 1 file changed, 39 insertions(+), 38 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 8535048..b9d66fd 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -229,21 +229,20 @@ class WindowIcon extends St.BoxLayout {
+         this.add_child(this.preview);
+ 
+         // Label is window name
+-        this.label = new St.Label({ text: window.get_title(), style_class: 'tos-text-label' });
+-        this.label.x_expand = true;
++        this.label = new St.Label({ text: window.get_title(), style_class: 'tos-text-label', x_expand: true });
+ 
+         // closeIcon is from media directory(svg directory)
+         let iconPath = `${Me.path + IMAGE_PATH}close_button.svg`;
+         this.closeIcon = new St.Icon({
+             gicon: Gio.icon_new_for_string(iconPath),
+             icon_size: APP_ICON_SIZE_SMALL,
++            x_align: Clutter.ActorAlign.END,
+         });
+-        this.closeIcon.x_align = Clutter.ActorAlign.END;
+ 
+         // closeButton is used to close window by mouse click
+         this.closeButton = new St.Button({ reactive: true });
+         this.closeButton.set_child(this.closeIcon);
+-        this.closeButton.opacity = 0;
++        this.closeButton.hide();
+ 
+         let tracker = Shell.WindowTracker.get_default();
+         this.app = tracker.get_window_app(window);
+@@ -276,6 +275,7 @@ class WindowIcon extends St.BoxLayout {
+         case AppIconMode.APP_ICON_ONLY:
+             size = APP_ICON_SIZE;
+             this.preview.add_child(this._createAppIcon(this.app, size));
++            break;
+         }
+ 
+         // Set window name and CloseButton on title row
+@@ -335,11 +335,6 @@ var WindowSwitcher = GObject.registerClass({
+         });
+         this._bottomArrow.set_size(ARROW_WIDTH, ARROW_HEIGHT);
+ 
+-        this._scrollableDown = true;
+-        this._scrollableUp = false;
+-
+-        this._removeFlag = false;
+-
+         this._rootList.add_child(this._topArrow);
+         this._rootList.add_child(this._scrollView);
+         this._rootList.add_child(this._bottomArrow);
+@@ -371,7 +366,8 @@ var WindowSwitcher = GObject.registerClass({
+             let icon = new WindowIcon(win, mode);
+             let rowWidth = this.precalculateRowWidth(this._rows);
+ 
+-            icon.closeButton.connect('clicked', () => this._onItemClickedClose(icon));
++            icon.closeButton.connect('clicked', () => this._itemClosed(this.icons.indexOf(icon)));
++
+ 
+             if (rowWidth + icon.preview.get_width() > this._maxWidth) {
+                 this._rows++;
+@@ -393,6 +389,11 @@ var WindowSwitcher = GObject.registerClass({
+             });
+         }
+         this.connect('destroy', this._onDestroy.bind(this));
++
++        let adjustment = this._scrollView.vscroll.adjustment;
++
++        adjustment.connect('changed', this._updateBottomArrowAfterRemove.bind(this));
++
+     }
+ 
+     _onDestroy() {
+@@ -429,14 +430,6 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         let verticalScrollable = this._rows >= this.visibleRows;
+ 
+-        if (this._removeFlag) {
+-            let adjustment = this._scrollView.vscroll.adjustment;
+-            let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+-            if (upper - pageSize <= value)
+-                this._scrollableDown = false;
+-            this._removeFlag = false;
+-        }
+-
+         this._scrollView.set_height(Math.min(this._rows, this.visibleRows) * this._list.get_height());
+ 
+         if (verticalScrollable) {
+@@ -446,13 +439,6 @@ var WindowSwitcher = GObject.registerClass({
+             this._topArrow.hide();
+             this._bottomArrow.hide();
+         }
+-
+-        let topArrowPath = this._scrollableUp ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg`;
+-        let bottomArrowPath = this._scrollableDown ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg`;
+-
+-        this._topArrow.set_gicon(Gio.icon_new_for_string(topArrowPath));
+-        this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
+-
+     }
+ 
+     getTopArrowHeight() {
+@@ -599,13 +585,15 @@ var WindowSwitcher = GObject.registerClass({
+         else if (list.allocation.y2 > value + pageSize)
+             value = list.allocation.y1;
+ 
+-        this._scrollableDown = true;
++        this._changeBottomArrowState(true);
++
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
+                 if (rowIndex === 0)
+-                    this._scrollableUp = false;
++                    this._changeTopArrowState(false);
++
+                 this.queue_relayout();
+             },
+         });
+@@ -623,31 +611,26 @@ var WindowSwitcher = GObject.registerClass({
+         else if (list.allocation.y2 > value + pageSize)
+             value = list.allocation.y1;
+ 
+-        this._scrollableUp = true;
++        this._changeTopArrowState(true);
+ 
+         adjustment.ease(value, {
+             progress_mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+             duration: POPUP_SCROLL_TIME,
+             onComplete: () => {
+                 if (this._findRowIndexFromItem(index) + this.visibleRows > this._rows)
+-                    this._scrollableDown = false;
++                    this._changeBottomArrowState(false);
++
+                 this.queue_relayout();
+             },
+         });
+-
+-    }
+-
+-
+-    _onItemClickedClose(icon) {
+-        this._itemClosed(this.icons.indexOf(icon));
+     }
+ 
+     _onItemEntered(bbox) {
+-        bbox.get_child().closeButton.opacity = 255;
++        bbox.get_child().closeButton.show();
+     }
+ 
+     _onItemLeaved(bbox) {
+-        bbox.get_child().closeButton.opacity = 0;
++        bbox.get_child().closeButton.hide();
+     }
+ 
+     _onItemPress(item) {
+@@ -697,6 +680,24 @@ var WindowSwitcher = GObject.registerClass({
+                 break;
+             }
+         }
+-        this._removeFlag = true;
++    }
++
++    _changeBottomArrowState(isEnabled) {
++        let bottomArrowPath = isEnabled ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg`;
++        this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
++    }
++
++    _changeTopArrowState(isEnabled) {
++        let topArrowPath = isEnabled ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg`;
++        this._topArrow.set_gicon(Gio.icon_new_for_string(topArrowPath));
++    }
++
++    _updateBottomArrowAfterRemove() {
++        let adjustment = this._scrollView.vscroll.adjustment;
++        let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
++        if (upper - pageSize <= value &&  value !== 0) {
++            let bottomArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg`;
++            this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
++        }
+     }
+ });

@@ -1,0 +1,43 @@
+From: jungrae kim <jungrae_kim@tmax.co.kr>
+Date: Wed, 7 Apr 2021 13:47:35 +0900
+Subject: [bugfix] dash-to-panel : misc error fix
+
+ - fix-typo in schema override file
+ - modify default click action to show preview
+ - modify schema not to isolate monitor
+ - add version in metadata
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/metadata.json.in                          | 3 ++-
+ extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/dash-to-panel/metadata.json.in b/extensions/dash-to-panel/metadata.json.in
+index 47d532d..46ed339 100644
+--- a/extensions/dash-to-panel/metadata.json.in
++++ b/extensions/dash-to-panel/metadata.json.in
+@@ -7,5 +7,6 @@
+ "description": "An icon taskbar for the Gnome Shell. This extension moves the dash into the gnome main panel so that the application launchers and system tray are combined into a single     panel, similar to that found in KDE Plasma and Windows 7+. A separate dock is no longer needed for easy access to running and favorited applications.\n\nFor a more traditional experien    ce, you may also want to use Tweak Tool to enable Windows > Titlebar Buttons > Minimize & Maximize.\n\nFor the best support, please report any issues on Github. Dash-to-panel is develop    ed and maintained by @jderose9 and @charlesg99.",
+ "original-authors": [  "jderose9", "charlesg99" ],
+ "shell-version": [ "@shell_current@" ],
+-"url": "@url@"
++"url": "@url@",
++"version": 9999
+ }
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index b90355e..c66c35f 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -11,9 +11,9 @@ trans-use-custom-bg = true
+ trans-use-custom-opacity = true
+ trans-panel-opacity = 1.0
+ show-apps-icon-side-padding = 0
+-isolate-workspace = true
++click-action = 'TOGGLE-SHOWPREVIEW'
++isolate-workspaces = true
+ overview-click-to-exit = true
+-isolate-monitors = true
+ scroll-panel-show-ws-popup = false
+ scroll-icon-action = 'NOTHING'
+ panel-element-positions = '{"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'

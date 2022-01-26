@@ -1,0 +1,160 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 2 Jun 2021 13:08:16 +0900
+Subject: [refactor] dash-to-panel : removed redundant logics
+
+- Changed monitor-changed callback functions
+- Removed changed::primary-monitor signal connect
+
+[IMS] 261706
+---
+ extensions/dash-to-panel/panelManager.js | 12 +++++-------
+ extensions/dash-to-panel/po/ko.po        |  6 +++---
+ extensions/dash-to-panel/prefs.js        | 18 +++++++++---------
+ 3 files changed, 17 insertions(+), 19 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index 6be0e9e..96ae252 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -233,7 +233,6 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             [
+                 Me.settings,
+                 [
+-                    'changed::primary-monitor',
+                     'changed::multi-monitors',
+                     'changed::isolate-monitors',
+                     'changed::panel-positions',
+@@ -255,19 +254,18 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+                 Utils.DisplayWrapper.getMonitorManager(),
+                 'monitors-changed',
+                 () => {
++                    if (!Main.layoutManager.primaryMonitor)
++                        return;
+                     // Update main dock position if primary monitor changed
+                     if (Me.settings.get_int('primary-monitor') !== Main.layoutManager.primaryIndex)
+                         Me.settings.set_int('primary-monitor', Main.layoutManager.primaryIndex);
++                    this._saveMonitors();
++                    this._reset();
+ 
+-                    if (Main.layoutManager.primaryMonitor) {
+-                        this._saveMonitors();
+-                        this._reset();
+-                    }
+                 },
+-            ],
++            ]
+         );
+ 
+-
+         Panel.panelBoxes.forEach(c => this._signalsHandler.add(
+             [Main.panel[c], 'actor-added', (parent, child) => this._adjustPanelMenuButton(this._getPanelMenuButton(child), this.primaryPanel.monitor, this.primaryPanel.getPosition())]
+         ));
+diff --git a/extensions/dash-to-panel/po/ko.po b/extensions/dash-to-panel/po/ko.po
+index 0b3f532..53199c4 100644
+--- a/extensions/dash-to-panel/po/ko.po
++++ b/extensions/dash-to-panel/po/ko.po
+@@ -519,7 +519,7 @@ msgstr "설정에 따라 패널을 숨기거나 표시합니다"
+ 
+ #: Settings.ui.h:149
+ msgid "Order and positions on monitor"
+-msgstr "모니터의 순서와 위치"
++msgstr "모니터상의 순서와 위치"
+ 
+ #: Settings.ui.h:150
+ msgid "Apply changes to all monitors"
+@@ -1087,8 +1087,8 @@ msgid "Primary monitor"
+ msgstr "주 모니터"
+ 
+ #: prefs.js:732
+-msgid "Monitor "
+-msgstr "모니터 "
++msgid "Sub Monitor "
++msgstr "보조 모니터 "
+ 
+ #: prefs.js:887
+ msgid "Dynamic opacity options"
+diff --git a/extensions/dash-to-panel/prefs.js b/extensions/dash-to-panel/prefs.js
+index 64088a4..58d5b8c 100644
+--- a/extensions/dash-to-panel/prefs.js
++++ b/extensions/dash-to-panel/prefs.js
+@@ -722,7 +722,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+ 
+         for (let i = 0; i < this.monitors.length; ++i) {
+             // the primary index is the first one in the "available-monitors" setting
+-            let label = !i ? _('Primary monitor') : _('Monitor ') + (i + 1);
++            let label = !i ? _('Primary monitor') : _('Sub Monitor ') + i;
+ 
+             this._builder.get_object('taskbar_position_monitor_combo').append_text(label);
+         }
+@@ -2065,7 +2065,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._panel_size_timeout > 0)
+                 GLib.source_remove(this._panel_size_timeout);
+ 
+-            this._panel_size_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._panel_size_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('panel-size', scale.get_value());
+                 this._panel_size_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2081,7 +2081,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._tray_size_timeout > 0)
+                 GLib.source_remove(this._tray_size_timeout);
+ 
+-            this._tray_size_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._tray_size_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('tray-size', scale.get_value());
+                 this._tray_size_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2097,7 +2097,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._leftbox_size_timeout > 0)
+                 GLib.source_remove(this._leftbox_size_timeout);
+ 
+-            this._leftbox_size_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._leftbox_size_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('leftbox-size', scale.get_value());
+                 this._leftbox_size_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2113,7 +2113,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._appicon_margin_timeout > 0)
+                 GLib.source_remove(this._appicon_margin_timeout);
+ 
+-            this._appicon_margin_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._appicon_margin_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('appicon-margin', scale.get_value());
+                 this._appicon_margin_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2129,7 +2129,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._appicon_padding_timeout > 0)
+                 GLib.source_remove(this._appicon_padding_timeout);
+ 
+-            this._appicon_padding_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._appicon_padding_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('appicon-padding', scale.get_value());
+                 this._appicon_padding_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2145,7 +2145,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._tray_padding_timeout > 0)
+                 GLib.source_remove(this._tray_padding_timeout);
+ 
+-            this._tray_padding_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._tray_padding_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('tray-padding', scale.get_value());
+                 this._tray_padding_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2161,7 +2161,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._statusicon_padding_timeout > 0)
+                 GLib.source_remove(this._statusicon_padding_timeout);
+ 
+-            this._statusicon_padding_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._statusicon_padding_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('status-icon-padding', scale.get_value());
+                 this._statusicon_padding_timeout = 0;
+                 return GLib.SOURCE_REMOVE;
+@@ -2177,7 +2177,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+             if (this._leftbox_padding_timeout > 0)
+                 GLib.source_remove(this._leftbox_padding_timeout);
+ 
+-            this._leftbox_padding_timeout = GLib.timeout_add(0, SCALE_UPDATE_TIMEOUT, () => {
++            this._leftbox_padding_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
+                 this._settings.set_int('leftbox-padding', scale.get_value());
+                 this._leftbox_padding_timeout = 0;
+                 return GLib.SOURCE_REMOVE;

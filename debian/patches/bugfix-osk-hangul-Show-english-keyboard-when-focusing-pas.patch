@@ -1,0 +1,37 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 14 Jul 2021 17:11:40 +0900
+Subject: [bugfix] osk-hangul : Show english keyboard when focusing password
+ text entry.
+
+ - show only the English keyboard when focusing password text entry
+
+[IMS] 266043
+---
+ extensions/osk-hangul/extension.js | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 3535210..5267f71 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -2,7 +2,7 @@
+  * extension descripttion. TBD.
+  */
+ 
+-const { IBus } = imports.gi;
++const { Clutter, IBus } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ 
+@@ -141,6 +141,11 @@ function _enable() {
+         if (!newGroupname)
+             newGroupname = oldGroupName;
+ 
++        // if current purpose is password, show english keyboard only
++        if (Main.inputMethod._purpose === Clutter.InputContentPurpose.PASSWORD)
++            newGroupname = 'us';
++
++
+         controller._currentSource.xkbId = newGroupname;
+ 
+         _originalSetActiveLayer.call(keyboard, activeLevel);

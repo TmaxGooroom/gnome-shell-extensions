@@ -1,0 +1,65 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 18 May 2021 16:54:23 +0900
+Subject: [chore] Arc Menu : Add msgid of recently installed app in po file
+
+- Add msgid in po file and apply it
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuLayout.js  |  2 +-
+ extensions/arc-menu/menuWidgets.js |  4 ++--
+ extensions/arc-menu/po/ko_KR.po    | 14 +++++++++++---
+ 3 files changed, 14 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index 39ef2ee..89da353 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -288,7 +288,7 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+     }
+ 
+     createRecentLabel() {
+-        let frequentAppsLabel = new PopupMenu.PopupMenuItem(_('Frequent'), {
++        let frequentAppsLabel = new PopupMenu.PopupMenuItem(_('Recently Installed App'), {
+             hover: false,
+             can_focus: false,
+         });
+diff --git a/extensions/arc-menu/menuWidgets.js b/extensions/arc-menu/menuWidgets.js
+index f13c39b..125d662 100644
+--- a/extensions/arc-menu/menuWidgets.js
++++ b/extensions/arc-menu/menuWidgets.js
+@@ -1676,10 +1676,10 @@ var ExpandButton = GObject.registerClass(class ArcMenuExpandButton extends ArcMe
+     updateLabel(toggled) {
+         if (toggled) {
+             this.label.style = 'color: rgb(57, 97, 202);';
+-            this.label.set_text('축소');
++            this.label.set_text(_('Collapse'));
+         } else {
+             this.label.style = 'color: rgb(0,0,0);';
+-            this.label.set_text('확장');
++            this.label.set_text(_('Expand'));
+         }
+     }
+ });
+diff --git a/extensions/arc-menu/po/ko_KR.po b/extensions/arc-menu/po/ko_KR.po
+index 3fa5774..5adb619 100644
+--- a/extensions/arc-menu/po/ko_KR.po
++++ b/extensions/arc-menu/po/ko_KR.po
+@@ -189,6 +189,14 @@ msgstr "재시작"
+ msgid "Power Off..."
+ msgstr "시스템 종료"
+ 
+-#: menuLayout.js:219
+-msgid "Frequent"
+-msgstr "자주 사용하는 앱"
++#: menuLayout.js:279
++msgid "Recently Installed App"
++msgstr "최근 설치한 앱"
++
++#: menuWidget.js:1682
++msgid "Expand"
++msgstr "확장"
++
++#: menuWidgets.js:1679
++msgid "Collapse"
++msgstr "축소"

@@ -1,0 +1,24 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 30 Sep 2021 16:29:47 +0900
+Subject: [feat] Greeter : add osk-hangul to enabled extension list
+
+ - add osk-hangul to enabled extension list of unlock-dialog
+
+[IMS] 267874
+---
+ extensions/greeter/extension.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index 3a28986..0d16cee 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -63,7 +63,7 @@ function enable() { // eslint-disable-line no-unused-vars
+         // unlock dialog mode settings
+         let params = SessionMode._modes['unlock-dialog'];
+         params.allowExtensions = true;
+-        params.enabledExtensions = ['greeter@tmax-shell-extensions'];
++        params.enabledExtensions = ['greeter@tmax-shell-extensions', 'osk-hangul@tmax-shell-extensions'];
+ 
+         // When logging in from the lock screen,
+         // all session mode parameters(including unlockDialog) are initialized.

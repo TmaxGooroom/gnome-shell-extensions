@@ -1,0 +1,638 @@
+From: tos <tos@localhost.localdomain>
+Date: Thu, 13 May 2021 15:27:50 +0900
+Subject: [refactor] Applied ESlint
+
+- Applied eslint
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/panel.js | 216 +++++++++++++++++++-------------------
+ 1 file changed, 106 insertions(+), 110 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index abffb00..f13931a 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -30,29 +30,22 @@
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Clutter = imports.gi.Clutter;
+ const Config = imports.misc.config;
+-const Gtk = imports.gi.Gtk;
+-const Gi = imports._gi;
+ const AppIcons = Me.imports.appIcons;
+ const Utils = Me.imports.utils;
+ const Taskbar = Me.imports.taskbar;
+ const Pos = Me.imports.panelPositions;
+ const PanelStyle = Me.imports.panelStyle;
+-const Lang = imports.lang;
+ const Main = imports.ui.main;
+-const Mainloop = imports.mainloop;
+ const Dash = imports.ui.dash;
+ const CtrlAltTab = imports.ui.ctrlAltTab;
+ const Panel = imports.ui.panel;
+ const PanelMenu = imports.ui.panelMenu;
+ const St = imports.gi.St;
+-const GLib = imports.gi.GLib;
+ const Meta = imports.gi.Meta;
+ const Pango = imports.gi.Pango;
+ const DND = imports.ui.dnd;
+ const Shell = imports.gi.Shell;
+ const PopupMenu = imports.ui.popupMenu;
+-const IconGrid = imports.ui.iconGrid;
+-const ViewSelector = imports.ui.viewSelector;
+ const DateMenu = imports.ui.dateMenu;
+ const Volume = imports.ui.status.volume;
+ const Progress = Me.imports.progress;
+@@ -65,9 +58,9 @@ let tracker = Shell.WindowTracker.get_default();
+ var panelBoxes = ['_leftBox', '_centerBox', '_rightBox'];
+ 
+ // timeout names
+-const T1 = 'startDynamicTransparencyTimeout';
++const T1 = 'startDynamicTransparencyTimeout'; // eslint-disable-line no-unused-vars
+ const T2 = 'startIntellihideTimeout';
+-const T3 = 'allocationThrottleTimeout';
++const T3 = 'allocationThrottleTimeout'; // eslint-disable-line no-unused-vars
+ const T4 = 'showDesktopTimeout';
+ const T5 = 'trackerFocusAppTimeout';
+ const T6 = 'scrollPanelDelayTimeout';
+@@ -87,7 +80,7 @@ function setMenuArrow(arrowIcon, side) {
+     parent.add_child(arrowIcon);
+ }
+ 
+-var dtpPanel = Utils.defineClass({
++var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+     Name: 'DashToPanel-Panel',
+     Extends: St.Widget,
+ 
+@@ -108,7 +101,7 @@ var dtpPanel = Utils.defineClass({
+         // might be different from the system's primary monitor.
+         this.isStandalone = isStandalone;
+         this.isPrimary = !isStandalone || Me.settings.get_boolean('stockgs-keep-top-panel') &&
+-      monitor == panelManager.dtpPrimaryMonitor;
++      monitor === panelManager.dtpPrimaryMonitor;
+ 
+         this._sessionStyle = null;
+         this._unmappedButtons = [];
+@@ -124,12 +117,12 @@ var dtpPanel = Utils.defineClass({
+             Utils.wrapActor(this.panel);
+ 
+             // next 3 functions are needed by other extensions to add elements to the secondary panel
+-            this.panel.addToStatusArea = function (role, indicator, position, box) {
+-                return Main.panel.addToStatusArea.call(this, role, indicator, position, box);
++            this.panel.addToStatusArea = function (role, indicator, pos, box) {
++                return Main.panel.addToStatusArea.call(this, role, indicator, pos, box);
+             };
+ 
+-            this.panel._addToPanelBox = function (role, indicator, position, box) {
+-                Main.panel._addToPanelBox.call(this, role, indicator, position, box);
++            this.panel._addToPanelBox = function (role, indicator, pos, box) {
++                Main.panel._addToPanelBox.call(this, role, indicator, pos, box);
+             };
+ 
+             this.panel._onMenuSet = function (indicator) {
+@@ -160,7 +153,7 @@ var dtpPanel = Utils.defineClass({
+ 
+             setMenuArrow(this.statusArea.aggregateMenu._indicators.get_last_child(), position);
+ 
+-            panelBoxes.forEach(p => this[p] = Main.panel[p]);
++            panelBoxes.forEach(p => (this[p] = Main.panel[p]));
+ 
+ 
+             // Add NotificationCenter to panel actor when NotificationCenter loaded earlier than dtpPanel
+@@ -171,7 +164,8 @@ var dtpPanel = Utils.defineClass({
+                 let parent = container.get_parent();
+ 
+                 container._dtpOriginalParent = parent;
+-                parent ? parent.remove_child(container) : null;
++                if (parent)
++                    parent.remove_child(container);
+                 this.panel.actor.add_child(container);
+             });
+ 
+@@ -183,9 +177,9 @@ var dtpPanel = Utils.defineClass({
+                 if (container.child.accessible_name !== 'NotificationCenter')
+                     return;
+                 container._dtpOriginalParent = parent;
+-                parent ? parent.remove_child(container) : null;
++                if (parent)
++                    parent.remove_child(container);
+                 this.panel.actor.add_child(container);
+-
+             });
+         }
+ 
+@@ -240,7 +234,7 @@ var dtpPanel = Utils.defineClass({
+             opacity: 0,
+         });
+ 
+-        let isTop = this.geom.position == St.Side.TOP;
++        let isTop = this.geom.position === St.Side.TOP;
+         let cornerFunc = `${isTop ? 'add' : 'remove'}_child`;
+ 
+         if (isTop) {
+@@ -251,9 +245,9 @@ var dtpPanel = Utils.defineClass({
+         } else {
+             let overviewControls = Main.overview._overview._controls || Main.overview._controls;
+ 
+-            if (this.geom.position == St.Side.BOTTOM)
++            if (this.geom.position === St.Side.BOTTOM)
+                 Main.overview._overview.add_actor(this._myPanelGhost);
+-            else if (this.geom.position == St.Side.LEFT)
++            else if (this.geom.position === St.Side.LEFT)
+                 overviewControls._group.insert_child_at_index(this._myPanelGhost, 0);
+             else
+                 overviewControls._group.add_actor(this._myPanelGhost);
+@@ -273,7 +267,8 @@ var dtpPanel = Utils.defineClass({
+         if (!this.isStandalone) {
+             if (this.panel.vfunc_allocate) {
+                 this._panelConnectId = 0;
+-                Utils.hookVfunc(this.panel.__proto__, 'allocate', (box, flags) => this._mainPanelAllocate(0, box, flags));
++                // Utils.hookVfunc(this.panel.__proto__, 'allocate', (box, flags) => this._mainPanelAllocate(0, box, flags));
++                Utils.hookVfunc(Object.getPrototypeOf(this.panel), 'allocate', (box, flags) => this._mainPanelAllocate(0, box, flags));
+             } else {
+                 this._panelConnectId = this.panel.actor.connect('allocate', (actor, box, flags) => this._mainPanelAllocate(actor, box, flags));
+             }
+@@ -336,12 +331,12 @@ var dtpPanel = Utils.defineClass({
+ 
+         // Since Gnome 3.8 dragging an app without having opened the overview before cause the attemp to
+         // animate a null target since some variables are not initialized when the viewSelector is created
+-        if (Main.overview.viewSelector._activePage == null)
++        if (Main.overview.viewSelector._activePage === null)
+             Main.overview.viewSelector._activePage = Main.overview.viewSelector._workspacesPage;
+ 
+         this._setPanelGhostSize();
+ 
+-        this._timeoutsHandler.add([T2, Me.settings.get_int('intellihide-enable-start-delay'), () => this.intellihide = new Intellihide.Intellihide(this)]);
++        this._timeoutsHandler.add([T2, Me.settings.get_int('intellihide-enable-start-delay'), () => (this.intellihide = new Intellihide.Intellihide(this))]);
+ 
+         this._signalsHandler.add(
+             // this is to catch changes to the theme or window scale factor
+@@ -354,9 +349,10 @@ var dtpPanel = Utils.defineClass({
+                 // sync hover after a popupmenu is closed
+                 this.taskbar,
+                 'menu-closed',
+-                Lang.bind(this, function () {
++                () => this.panel.actor.sync_hover(),
++                /* Lang.bind(this, function () {
+                     this.panel.actor.sync_hover();
+-                }),
++                }),*/
+             ],
+             [
+                 Main.overview,
+@@ -380,7 +376,7 @@ var dtpPanel = Utils.defineClass({
+                 this.statusArea.activities.actor,
+                 'captured-event',
+                 (actor, e) => {
+-                    if (e.type() == Clutter.EventType.BUTTON_PRESS || e.type() == Clutter.EventType.TOUCH_BEGIN) {
++                    if (e.type() === Clutter.EventType.BUTTON_PRESS || e.type() === Clutter.EventType.TOUCH_BEGIN) {
+                         // temporarily use as primary the monitor on which the activities btn was clicked
+                         this.panelManager.setFocusedMonitor(this.monitor, true);
+                     }
+@@ -498,7 +494,8 @@ var dtpPanel = Utils.defineClass({
+                     let originalParent = container._dtpOriginalParent;
+ 
+                     this.panel.actor.remove_child(container);
+-                    originalParent ? originalParent.insert_child_at_index(container, b[1]) : null;
++                    if (originalParent)
++                        originalParent.insert_child_at_index(container, b[1]);
+                     delete container._dtpOriginalParent;
+                 });
+ 
+@@ -528,7 +525,8 @@ var dtpPanel = Utils.defineClass({
+             if (this._panelConnectId)
+                 this.panel.actor.disconnect(this._panelConnectId);
+             else
+-                Utils.hookVfunc(this.panel.__proto__, 'allocate', this.panel.__proto__.vfunc_allocate);
++                // Utils.hookVfunc(this.panel.__proto__, 'allocate', this.panel.__proto__.vfunc_allocate);
++                Utils.hookVfunc(Object.getPrototypeOf(this.panel), 'allocate', Object.getPrototypeOf(this.panel).vfunc_allocate);
+ 
+ 
+             this.panel.actor._delegate = this.panel;
+@@ -541,8 +539,8 @@ var dtpPanel = Utils.defineClass({
+         Main.ctrlAltTabManager.removeGroup(this);
+     },
+ 
+-    handleDragOver(source, actor, x, y, time) {
+-        if (source == Main.xdndHandler) {
++    handleDragOver(source, actor, x, y, time) { // eslint-disable-line no-unused-vars
++        if (source === Main.xdndHandler) {
+ 
+             // open overview so they can choose a window for focusing
+             // and ultimately dropping dragged item onto
+@@ -557,11 +555,11 @@ var dtpPanel = Utils.defineClass({
+     // for now, use the previous "global" position setting as default. The 'panel-position' should be deleted in the future
+         let position = this.panelManager.panelPositions[this.monitor.index] || Me.settings.get_string('panel-position');
+ 
+-        if (position == Pos.TOP)
++        if (position === Pos.TOP)
+             return St.Side.TOP;
+-        else if (position == Pos.RIGHT)
++        else if (position === Pos.RIGHT)
+             return St.Side.RIGHT;
+-        else if (position == Pos.BOTTOM)
++        else if (position === Pos.BOTTOM)
+             return St.Side.BOTTOM;
+ 
+ 
+@@ -571,7 +569,7 @@ var dtpPanel = Utils.defineClass({
+     checkIfVertical() {
+         let position = this.getPosition();
+ 
+-        return position == St.Side.LEFT || position == St.Side.RIGHT;
++        return position === St.Side.LEFT || position === St.Side.RIGHT;
+     },
+ 
+     getOrientation() {
+@@ -585,7 +583,7 @@ var dtpPanel = Utils.defineClass({
+ 
+         this._disablePanelCornerSignals();
+ 
+-        if (this.getPosition() == St.Side.TOP) {
++        if (this.getPosition() === St.Side.TOP) {
+             let visibleElements = panelPositions.filter(pp => pp.visible);
+             let connectCorner = (corner, button) => {
+                 corner._button = button;
+@@ -594,11 +592,11 @@ var dtpPanel = Utils.defineClass({
+                 });
+             };
+ 
+-            if (visibleElements[0].element == Pos.ACTIVITIES_BTN)
++            if (visibleElements[0].element === Pos.ACTIVITIES_BTN)
+                 connectCorner(this.panel._leftCorner, this.statusArea.activities);
+ 
+ 
+-            if (visibleElements[visibleElements.length - 1].element == Pos.SYSTEM_MENU)
++            if (visibleElements[visibleElements.length - 1].element === Pos.SYSTEM_MENU)
+                 connectCorner(this.panel._rightCorner, this.statusArea.aggregateMenu);
+ 
+         }
+@@ -627,19 +625,19 @@ var dtpPanel = Utils.defineClass({
+                 let currentPosition = pos.position;
+                 let isCentered = Pos.checkIfCentered(currentPosition);
+ 
+-                if (currentPosition == Pos.STACKED_TL && previousPosition == Pos.STACKED_BR)
++                if (currentPosition === Pos.STACKED_TL && previousPosition === Pos.STACKED_BR)
+                     currentPosition = Pos.STACKED_BR;
+ 
+ 
+                 if (!previousPosition ||
+-          previousPosition == Pos.STACKED_TL && currentPosition != Pos.STACKED_TL ||
+-          previousPosition != Pos.STACKED_BR && currentPosition == Pos.STACKED_BR ||
+-          isCentered && previousPosition != currentPosition && previousPosition != Pos.STACKED_BR) {
++          previousPosition === Pos.STACKED_TL && currentPosition !== Pos.STACKED_TL ||
++          previousPosition !== Pos.STACKED_BR && currentPosition === Pos.STACKED_BR ||
++          isCentered && previousPosition !== currentPosition && previousPosition !== Pos.STACKED_BR) {
+                     this._elementGroups[++currentGroup] = { elements: [], index: this._elementGroups.length, expandableIndex: -1 };
+                     previousCenteredPosition = 0;
+                 }
+ 
+-                if (pos.element == Pos.TASKBAR)
++                if (pos.element === Pos.TASKBAR)
+                     this._elementGroups[currentGroup].expandableIndex = this._elementGroups[currentGroup].elements.length;
+ 
+ 
+@@ -782,7 +780,7 @@ var dtpPanel = Utils.defineClass({
+             // that doesn't natively take into account the size of a side dock, as it is always
+             // centered relatively to the monitor. This looks misaligned, adjust it here so it
+             // is centered like the rest of the overview elements.
+-            let paddingSide = this.getPosition() == St.Side.LEFT ? 'left' : 'right';
++            let paddingSide = this.getPosition() === St.Side.LEFT ? 'left' : 'right';
+             let scaleFactor = Utils.getScaleFactor();
+             let style = offset ? `padding-${paddingSide}:${offset / scaleFactor}px;` : null;
+             let searchEntry = Main.overview._searchEntry || Main.overview._overview._searchEntry;
+@@ -803,7 +801,7 @@ var dtpPanel = Utils.defineClass({
+             this._myPanelGhost[isOverviewFocusedMonitor ? 'show' : 'hide']();
+ 
+             if (isOverviewFocusedMonitor)
+-                Utils.getPanelGhost().set_size(1, this.geom.position == St.Side.TOP ? 0 : 32);
++                Utils.getPanelGhost().set_size(1, this.geom.position === St.Side.TOP ? 0 : 32);
+ 
+         }
+     },
+@@ -839,7 +837,7 @@ var dtpPanel = Utils.defineClass({
+ 
+         this.dtpSize = Me.settings.get_int('panel-size') * scaleFactor;
+ 
+-        if (Me.settings.get_boolean('stockgs-keep-top-panel') && Main.layoutManager.primaryMonitor == this.monitor)
++        if (Me.settings.get_boolean('stockgs-keep-top-panel') && Main.layoutManager.primaryMonitor === this.monitor)
+             gsTopPanelOffset = Main.layoutManager.panelBox.height - topPadding;
+ 
+ 
+@@ -849,7 +847,7 @@ var dtpPanel = Utils.defineClass({
+                 this.dtpSize += Me.settings.get_int('group-apps-label-max-width') + AppIcons.DEFAULT_PADDING_SIZE * 2 / scaleFactor;
+             }
+ 
+-            this.sizeFunc = 'get_preferred_height',
++            this.sizeFunc = 'get_preferred_height', // eslint-disable-line no-unused-expressions
+             this.fixedCoord = { c1: 'x1', c2: 'x2' },
+             this.varCoord = { c1: 'y1', c2: 'y2' };
+ 
+@@ -864,10 +862,10 @@ var dtpPanel = Utils.defineClass({
+             h = this.dtpSize;
+         }
+ 
+-        if (position == St.Side.TOP || position == St.Side.LEFT) {
++        if (position === St.Side.TOP || position === St.Side.LEFT) {
+             x = this.monitor.x;
+             y = this.monitor.y + gsTopPanelOffset;
+-        } else if (position == St.Side.RIGHT) {
++        } else if (position === St.Side.RIGHT) {
+             x = this.monitor.x + this.monitor.width - this.dtpSize - lrPadding;
+             y = this.monitor.y + gsTopPanelOffset;
+         } else { // BOTTOM
+@@ -886,11 +884,11 @@ var dtpPanel = Utils.defineClass({
+ 
+     _setAllocationMap() {
+         this.allocationMap = {};
+-        let setMap = (name, actor, isBox) => this.allocationMap[name] = {
++        let setMap = (name, actor, isBox) => (this.allocationMap[name] = {
+             actor,
+             isBox: isBox || 0,
+             box: new Clutter.ActorBox(),
+-        };
++        });
+ 
+         setMap(Pos.SHOW_APPS_BTN, this.showAppsIconWrapper.realShowAppsIcon);
+         setMap(Pos.ACTIVITIES_BTN, this.statusArea.activities ? this.statusArea.activities.container : 0);
+@@ -912,11 +910,6 @@ var dtpPanel = Utils.defineClass({
+             let container = actor.get_children()[actor.get_children().length - 1];
+             if (container.child.accessible_name !== 'NotificationCenter')
+                 return;
+-            let setMap = (name, actor, isBox) => this.allocationMap[name] = {
+-                actor,
+-                isBox: isBox || 0,
+-                box: new Clutter.ActorBox(),
+-            };
+             setMap(Pos.NOTI_CENTER, this.statusArea.NotificationCenter.container);
+         });
+ 
+@@ -947,7 +940,7 @@ var dtpPanel = Utils.defineClass({
+ 
+                 if (!group.isCentered || Pos.checkIfCentered(element.position)) {
+                     group.size += element.natSize;
+-                } else if (element.position == Pos.STACKED_TL) {
++                } else if (element.position === Pos.STACKED_TL) {
+                     group.tlOffset += element.natSize;
+                 } else { // Pos.STACKED_BR
+                     group.brOffset += element.natSize;
+@@ -971,8 +964,8 @@ var dtpPanel = Utils.defineClass({
+                 let tlSize = 0;
+                 let brSize = 0;
+ 
+-                if (centeredMonitorGroup && (centeredMonitorGroup != group || expandable.position != Pos.CENTERED_MONITOR)) {
+-                    if (centeredMonitorGroup.index < group.index || centeredMonitorGroup == group && expandable.position == Pos.STACKED_TL)
++                if (centeredMonitorGroup && (centeredMonitorGroup !== group || expandable.position !== Pos.CENTERED_MONITOR)) {
++                    if (centeredMonitorGroup.index < group.index || centeredMonitorGroup === group && expandable.position === Pos.STACKED_TL)
+                         i = centeredMonitorGroup.index;
+                     else
+                         l = centeredMonitorGroup.index;
+@@ -1003,7 +996,7 @@ var dtpPanel = Utils.defineClass({
+ 
+             if (group.isCentered)
+                 startPosition = tlLimit + (brLimit - tlLimit - group.size) * .5;
+-            else if (group.position == Pos.STACKED_BR)
++            else if (group.position === Pos.STACKED_BR)
+                 startPosition = brLimit - group.size;
+ 
+ 
+@@ -1033,7 +1026,7 @@ var dtpPanel = Utils.defineClass({
+ 
+             assignGroupSize(group);
+ 
+-            if (group.position == Pos.CENTERED_MONITOR)
++            if (group.position === Pos.CENTERED_MONITOR)
+                 centeredMonitorGroup = group;
+ 
+         });
+@@ -1053,14 +1046,14 @@ var dtpPanel = Utils.defineClass({
+ 
+                 let prevGroup = this._elementGroups[i - 1];
+                 let nextGroup = this._elementGroups[i + 1];
+-                let prevLimit = prevGroup && prevGroup.fixed ? prevGroup[this.varCoord.c2]
+-                    : centeredMonitorGroup && group.index > centeredMonitorGroup.index ? centeredMonitorGroup[this.varCoord.c2] : panelAlloc[this.varCoord.c1];
+-                let nextLimit = nextGroup && nextGroup.fixed ? nextGroup[this.varCoord.c1]
+-                    : centeredMonitorGroup && group.index < centeredMonitorGroup.index ? centeredMonitorGroup[this.varCoord.c1] : panelAlloc[this.varCoord.c2];
++                let ifPrevLimit = centeredMonitorGroup && group.index > centeredMonitorGroup.index ? centeredMonitorGroup[this.varCoord.c2] : panelAlloc[this.varCoord.c1];
++                let prevLimit = prevGroup && prevGroup.fixed ? prevGroup[this.varCoord.c2] : ifPrevLimit;
++                let ifNextLimit = centeredMonitorGroup && group.index < centeredMonitorGroup.index ? centeredMonitorGroup[this.varCoord.c1] : panelAlloc[this.varCoord.c2];
++                let nextLimit = nextGroup && nextGroup.fixed ? nextGroup[this.varCoord.c1] : ifNextLimit;
+ 
+-                if (group.position == Pos.STACKED_TL) {
++                if (group.position === Pos.STACKED_TL) {
+                     allocateGroup(group, panelAlloc[this.varCoord.c1], nextLimit);
+-                } else if (group.position == Pos.STACKED_BR) {
++                } else if (group.position === Pos.STACKED_BR) {
+                     allocateGroup(group, prevLimit, panelAlloc[this.varCoord.c2]);
+                 } else if ((!prevGroup || prevGroup.fixed) && (!nextGroup || nextGroup.fixed)) { // CENTERED
+                     allocateGroup(group, prevLimit, nextLimit);
+@@ -1068,7 +1061,7 @@ var dtpPanel = Utils.defineClass({
+             }
+         }
+ 
+-        if (this.geom.position == St.Side.TOP) {
++        if (this.geom.position === St.Side.TOP) {
+             let childBoxLeftCorner = new Clutter.ActorBox();
+             let childBoxRightCorner = new Clutter.ActorBox();
+             let currentCornerSize = this.cornerSize;
+@@ -1088,7 +1081,7 @@ var dtpPanel = Utils.defineClass({
+             Utils.allocate(this.panel._leftCorner.actor, childBoxLeftCorner, flags);
+             Utils.allocate(this.panel._rightCorner.actor, childBoxRightCorner, flags);
+ 
+-            if (this.cornerSize != currentCornerSize)
++            if (this.cornerSize !== currentCornerSize)
+                 this._setPanelClip();
+ 
+         }
+@@ -1106,7 +1099,7 @@ var dtpPanel = Utils.defineClass({
+         Object.keys(St.Side).forEach(p => {
+             let cssName = `dashtopanel${p.charAt(0)}${p.slice(1).toLowerCase()}`;
+ 
+-            this.panel.actor[`${St.Side[p] == this.geom.position ? 'add' : 'remove'}_style_class_name`](cssName);
++            this.panel.actor[`${St.Side[p] === this.geom.position ? 'add' : 'remove'}_style_class_name`](cssName);
+         });
+ 
+         this._setPanelClip(clipContainer);
+@@ -1122,11 +1115,11 @@ var dtpPanel = Utils.defineClass({
+ 
+     _onButtonPress(actor, event) {
+         let type = event.type();
+-        let isPress = type == Clutter.EventType.BUTTON_PRESS;
++        let isPress = type === Clutter.EventType.BUTTON_PRESS;
+         let button = isPress ? event.get_button() : -1;
+         let [stageX, stageY] = event.get_coords();
+ 
+-        if (button == 3 && global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, stageX, stageY) == this.panel.actor) {
++        if (button === 3 && global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, stageX, stageY) === this.panel.actor) {
+             // right click on an empty part of the panel, temporarily borrow and display the showapps context menu
+             Main.layoutManager.setDummyCursorGeometry(stageX, stageY, 0, 0);
+ 
+@@ -1135,14 +1128,14 @@ var dtpPanel = Utils.defineClass({
+             this.showAppsIconWrapper.popupMenu();
+ 
+             return Clutter.EVENT_STOP;
+-        } else if (Main.modalCount > 0 || event.get_source() != actor ||
+-      !isPress && type != Clutter.EventType.TOUCH_BEGIN ||
+-      isPress && button != 1) {
++        } else if (Main.modalCount > 0 || event.get_source() !== actor ||
++      !isPress && type !== Clutter.EventType.TOUCH_BEGIN ||
++      isPress && button !== 1) {
+             return Clutter.EVENT_PROPAGATE;
+         }
+ 
+         let params = this.checkIfVertical() ? [stageY, 'y', 'height'] : [stageX, 'x', 'width'];
+-        let dragWindow = this._getDraggableWindowForPosition.apply(this, params.concat([`maximized_${this.getOrientation()}ly`]));
++        let dragWindow = this._getDraggableWindowForPosition(params.concat([`maximized_${this.getOrientation()}ly`]));
+ 
+         if (!dragWindow)
+             return Clutter.EVENT_PROPAGATE;
+@@ -1168,9 +1161,9 @@ var dtpPanel = Utils.defineClass({
+         return Utils.find(allWindowsByStacking, metaWindow => {
+             let rect = metaWindow.get_frame_rect();
+ 
+-            return metaWindow.get_monitor() == this.monitor.index &&
++            return metaWindow.get_monitor() === this.monitor.index &&
+         metaWindow.showing_on_its_workspace() &&
+-        metaWindow.get_window_type() != Meta.WindowType.DESKTOP &&
++        metaWindow.get_window_type() !== Meta.WindowType.DESKTOP &&
+         metaWindow[maximizedProp] &&
+         stageCoord > rect[coord] && stageCoord < rect[coord] + rect[dimension];
+         });
+@@ -1189,36 +1182,36 @@ var dtpPanel = Utils.defineClass({
+     },
+ 
+     _setVertical(actor, isVertical) {
+-        let _set = (actor, isVertical) => {
+-            if (!actor || actor instanceof Dash.DashItemContainer)
++        let _set = (setActor, setIsVertical) => {
++            if (!setActor || setActor instanceof Dash.DashItemContainer)
+                 return;
+ 
+ 
+-            if (actor instanceof St.BoxLayout) {
+-                actor.vertical = isVertical;
+-            } else if ((actor._delegate || actor) instanceof PanelMenu.ButtonBox && actor != this.statusArea.appMenu) {
+-                let child = actor.get_first_child();
++            if (setActor instanceof St.BoxLayout) {
++                setActor.vertical = setIsVertical;
++            } else if ((setActor._delegate || setActor) instanceof PanelMenu.ButtonBox && setActor !== this.statusArea.appMenu) {
++                let child = setActor.get_first_child();
+ 
+-                if (isVertical && !actor.visible && !actor._dtpVisibleId) {
+-                    this._unmappedButtons.push(actor);
+-                    actor._dtpVisibleId = actor.connect('notify::visible', () => {
+-                        this._disconnectVisibleId(actor);
++                if (setIsVertical && !setActor.visible && !setActor._dtpVisibleId) {
++                    this._unmappedButtons.push(setActor);
++                    setActor._dtpVisibleId = setActor.connect('notify::visible', () => {
++                        this._disconnectVisibleId(setActor);
+                         this._refreshVerticalAlloc();
+                     });
+-                    actor._dtpDestroyId = actor.connect('destroy', () => this._disconnectVisibleId(actor));
++                    setActor._dtpDestroyId = setActor.connect('destroy', () => this._disconnectVisibleId(setActor));
+                 }
+ 
+                 if (child) {
+-                    let [, natWidth] = actor.get_preferred_width(-1);
++                    let [, natWidth] = setActor.get_preferred_width(-1);
+ 
+-                    child.x_align = Clutter.ActorAlign[isVertical ? 'CENTER' : 'START'];
+-                    actor.set_width(isVertical ? this.dtpSize : -1);
+-                    isVertical = isVertical && natWidth > this.dtpSize;
+-                    actor[`${isVertical ? 'add' : 'remove'}_style_class_name`]('vertical');
++                    child.x_align = Clutter.ActorAlign[setIsVertical ? 'CENTER' : 'START'];
++                    setActor.set_width(setIsVertical ? this.dtpSize : -1);
++                    setIsVertical = setIsVertical && natWidth > this.dtpSize;
++                    setActor[`${setIsVertical ? 'add' : 'remove'}_style_class_name`]('vertical');
+                 }
+             }
+ 
+-            actor.get_children().forEach(c => _set(c, isVertical));
++            setActor.get_children().forEach(c => _set(c, setIsVertical));
+         };
+ 
+         _set(actor, false);
+@@ -1269,7 +1262,7 @@ var dtpPanel = Utils.defineClass({
+                 return !clockText.get_layout().is_ellipsized();
+             };
+ 
+-            if (clockText.ellipsize == Pango.EllipsizeMode.NONE) {
++            if (clockText.ellipsize === Pango.EllipsizeMode.NONE) {
+                 // on gnome-shell 3.36.4, the clockdisplay isn't ellipsize anymore, so set it back
+                 clockText.ellipsize = Pango.EllipsizeMode.END;
+             }
+@@ -1289,8 +1282,8 @@ var dtpPanel = Utils.defineClass({
+                     this._clockFormat = Me.desktopSettings.get_string('clock-format');
+ 
+ 
+-                if (this._clockFormat == '12h')
+-                    timeParts.push.apply(timeParts, timeParts.pop().split(' '));
++                if (this._clockFormat === '12h')
++                    timeParts.push(timeParts.pop().split(' '));
+ 
+ 
+                 setClockText(timeParts);
+@@ -1395,16 +1388,16 @@ var dtpPanel = Utils.defineClass({
+         if (this._restoreWindowList && this._restoreWindowList.length) {
+             this._timeoutsHandler.remove(T4);
+ 
+-            let current_workspace = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
+-            let windows = current_workspace.list_windows();
++            let CurrentWorkspace = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
++            let windows = CurrentWorkspace.list_windows();
+             this._restoreWindowList.forEach(w => {
+                 if (windows.indexOf(w) > -1)
+                     Main.activateWindow(w);
+             });
+             this._restoreWindowList = null;
+         } else {
+-            let current_workspace = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
+-            let windows = current_workspace.list_windows().filter(w => {
++            let CurrentWorkspace = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
++            let windows = CurrentWorkspace.list_windows().filter(w => {
+                 return w.showing_on_its_workspace() && !w.skip_taskbar;
+             });
+             windows = global.display.sort_windows_by_stacking(windows);
+@@ -1420,7 +1413,7 @@ var dtpPanel = Utils.defineClass({
+                 [
+                     tracker,
+                     'notify::focus-app',
+-                    () => this._restoreWindowList = null,
++                    () => (this._restoreWindowList = null),
+                 ]
+             )]);
+         }
+@@ -1438,16 +1431,19 @@ var dtpPanel = Utils.defineClass({
+ 
+                 // adjust for horizontal workspaces
+                 if (Utils.DisplayWrapper.getWorkspaceManager().layout_rows === 1)
+-                    direction = direction == 'up' ? 'left' : 'right';
++                    direction = direction === 'up' ? 'left' : 'right';
+ 
+ 
+                 // gnome-shell < 3.30 needs an additional "screen" param
+-                global.screen ? args.push(global.screen) : 0;
++                if (global.screen)
++                    args.push(global.screen);
+ 
+                 let showWsPopup = Me.settings.get_boolean('scroll-panel-show-ws-popup');
+-                showWsPopup ? 0 : Main.wm._workspaceSwitcherPopup = { display: () => {} };
+-                Main.wm._showWorkspaceSwitcher.apply(Main.wm, args.concat([0, { get_name: () => `switch---${direction}` }]));
+-                showWsPopup ? 0 : Main.wm._workspaceSwitcherPopup = null;
++                if (!showWsPopup)
++                    Main.wm._workspaceSwitcherPopup = { display: () => {} };
++                Main.wm._showWorkspaceSwitcher.apply(Main.wm, args.concat([0, { get_name: () => `switch---${direction}` }])); // eslint-disable-line prefer-spread
++                if (!showWsPopup)
++                    Main.wm._workspaceSwitcherPopup = null;
+             } else if (direction && scrollAction === 'CYCLE_WINDOWS') {
+                 let windows = this.taskbar.getAppInfos().reduce((ws, appInfo) => ws.concat(appInfo.windows), []);
+ 
+@@ -1499,7 +1495,7 @@ var dtpSecondaryAggregateMenu = Utils.defineClass({
+     Extends: PanelMenu.Button,
+ 
+     _init() {
+-        this.callParent('_init', 0.0, C_('System menu in the top bar', 'System'), false);
++        this.callParent('_init', 0.0, C_('System menu in the top bar', 'System'), false); // eslint-disable-line no-undef
+ 
+         Utils.wrapActor(this);
+ 

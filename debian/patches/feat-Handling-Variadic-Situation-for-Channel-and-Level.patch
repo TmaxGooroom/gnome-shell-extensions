@@ -1,0 +1,324 @@
+From: junho_lee3 <junho_lee3>
+Date: Wed, 12 May 2021 16:39:06 +0900
+Subject: [feat] Handling Variadic Situation for Channel and Level
+
+ - Do not force user to provide the channel and level.
+ - The default channel and level are set based on the metadata file
+
+[IMS] N/A
+---
+ logging/README.md  |   5 +-
+ logging/logging.js | 213 +++++++++++++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 187 insertions(+), 31 deletions(-)
+
+diff --git a/logging/README.md b/logging/README.md
+index 7bcaa00..45454ac 100644
+--- a/logging/README.md
++++ b/logging/README.md
+@@ -19,8 +19,9 @@ Before explain the usage of APIs, we introduce the basic notions appeared in API
+ 
+ ### 1.1 Basic notions (Channel, Level, Output)
+ 
+-We should set the channel and level before using the APIs.
+-Currently, we parse the configuration file written in json (i.e. logging.json).
++We recommand to set the channel and level before using the APIs.
++Currently, we parse the `metadata.json` file as a configuration file in default.
++If you need customized specification for logging, we parse the configuration file written in json (i.e. logging.json).
+ 
+ #### 1.1.1 Channel
+ 
+diff --git a/logging/logging.js b/logging/logging.js
+index 778e748..a1d7366 100644
+--- a/logging/logging.js
++++ b/logging/logging.js
+@@ -31,7 +31,7 @@ var Debugger = class {
+     constructor(confFile) {
+         this._breakpoints = 0;
+         this._output = `${GLib.get_home_dir()}/.tos_shell_log.out`;
+-        this._level = Level.NONE;
++        this._level = Level.INFO;
+         this._channel = this._getDefaultChannel();
+ 
+         this._parseConfigFile(confFile);
+@@ -56,7 +56,13 @@ var Debugger = class {
+     }
+ 
+     _getDefaultChannel() {
+-        let metadata = 'metadata.json';
++        let dir = this._getCurrentDir();
++
++        if (dir === undefined)
++            return 'ALL';
++
++
++        let metadata = `${dir}/metadata.json`;
+ 
+         if (!GLib.file_test(metadata, GLib.FileTest.EXISTS))
+             return 'ALL';
+@@ -78,6 +84,21 @@ var Debugger = class {
+         return uuid;
+     }
+ 
++    _getCurrentDir() {
++        let stackLine = new Error().stack.split('\n')[1];
++        if (!stackLine)
++            return undefined;
++
++        let match = new RegExp('@(.+):\\d+').exec(stackLine);
++
++        if (!match)
++            return undefined;
++
++        let file = Gio.File.new_for_path(match[1]);
++
++        return file.get_parent().get_path();
++    }
++
+     _stringToLevel(level) {
+         if (level === 'INFO')
+             return Level.INFO;
+@@ -279,14 +300,42 @@ var Debugger = class {
+      * ...
+      */
+ 
+-    printBacktraceFunction(channel, level, funcName, obj, predicate) {
+-        if (!this._isValid(channel, level))
++    // For handling variadic situation, currently we get the parameters with rest-params.
++    // The original proto-type of function is following:
++
++    // printBacktraceFunction(channel, level, funcName, obj, predicate)
++    printBacktraceFunction(...args) {
++        let channel = this._channel;
++        let level = this._level;
++        let funcName = '';
++        let obj;
++        let predicate = () => {
++            return true;
++        };
++
++        // At least funcName and obj should be provided
++        if (args.length < 2 || args.length > 5)
+             return;
+ 
+-        predicate = typeof predicate !== 'undefined' ? predicate
+-            : () => {
+-                return true;
+-            };
++        let index = args.length - 1;
++
++        if (args[index] instanceof Function)
++            predicate = args[index--];
++
++
++        obj = args[index--];
++        funcName = args[index--];
++
++        for (let i = index; i >= 0; i--) {
++            if (args[i] >= Level.NONE && args[i] <= Level.ERROR)
++                level = args[i];
++            else
++                channel = args[i];
++
++        }
++
++        if (!this._isValid(channel, level))
++            return;
+ 
+         let func = obj[funcName];
+ 
+@@ -334,7 +383,20 @@ var Debugger = class {
+      * function name, javascript file, and location of function.
+      * TODO: Remove the trace of the debugger's calls
+      */
+-    printBacktrace(channel, level) {
++
++
++    // printBacktrace(channel, level)
++    printBacktrace(...args) {
++        let channel = this._channel;
++        let level = this._level;
++
++        for (let i = 0; i < args.length - 1; i++) {
++            if (args[i] >= Level.NONE && args[i] <= Level.ERROR)
++                level = args[i];
++            else
++                channel = args[i];
++        }
++
+         if (!this._isValid(channel, level))
+             return;
+ 
+@@ -377,17 +439,42 @@ var Debugger = class {
+      * loggingFunction(..., () => { return condition(); });
+      * ...
+      */
+-    loggingFunction(channel, level, funcName, obj, predicate) {
++    // loggingFunction(channel, level, funcName, obj, predicate)
++    loggingFunction(...args) {
++        let channel = this._channel;
++        let level = this._level;
++        let funcName = '';
++        let obj;
++        let predicate = () => {
++            return true;
++        };
++
++        // At least funcName and obj should be provided
++        if (args.length < 2 || args.length > 5)
++            return;
++
++        let index = args.length - 1;
++
++        if (args[index] instanceof Function)
++            predicate = args[index--];
++
++
++        obj = args[index--];
++        funcName = args[index--];
++
++        for (let i = index; i >= 0; i--) {
++            if (args[i] >= Level.NONE && args[i] <= Level.ERROR)
++                level = args[i];
++            else
++                channel = args[i];
++
++        }
++
+         if (!this._isValid(channel, level))
+             return;
+ 
+         let func = obj[funcName];
+ 
+-        predicate = typeof predicate !== 'undefined' ? predicate
+-            : () => {
+-                return true;
+-            };
+-
+         if (this._mergePredicate(func, predicate, 'loggingPredicate')) {
+             // if logging predicate was already registered
+             return;
+@@ -447,7 +534,33 @@ var Debugger = class {
+      * For example, we can logging the message only when the predicates are satisfied.
+      */
+ 
+-    logging(channel, level, message, predicate) {
++    // logging(channel, level, message, predicate)
++    logging(...args) {
++        let channel = this._channel;
++        let level = this._level;
++        let message = '';
++        let predicate = () => {
++            return true;
++        };
++
++        if (args.length < 1 || args.length > 4)
++            return;
++
++        let index = args.length - 1;
++
++        if (args[index] instanceof Function)
++            predicate = args[index--];
++
++
++        message = args[index--];
++
++        for (let i = index; i >= 0; i--) {
++            if (args[i] >= Level.NONE && args[i] <= Level.ERROR)
++                level = args[i];
++            else
++                channel = args[i];
++        }
++
+         if (!this._isValid(channel, level))
+             return;
+ 
+@@ -478,17 +591,43 @@ var Debugger = class {
+      * If you does not use below function with debugger, the application get the signal and
+      * will be turned off.
+      */
+-    breakpointFunction(channel, level, funcName, obj, predicate) {
++
++    // breakpointFunction(channel, level, funcName, obj, predicate) {
++    breakpointFunction(...args) {
++        let channel = this._channel;
++        let level = this._level;
++        let funcName = '';
++        let obj;
++        let predicate = () => {
++            return true;
++        };
++
++        // At least funcName and obj should be provided
++        if (args.length < 2 || args.length > 5)
++            return;
++
++        let index = args.length - 1;
++
++        if (args[index] instanceof Function)
++            predicate = args[index--];
++
++
++        obj = args[index--];
++        funcName = args[index--];
++
++        for (let i = index; i >= 0; i--) {
++            if (args[i] >= Level.NONE && args[i] <= Level.ERROR)
++                level = args[i];
++            else
++                channel = args[i];
++
++        }
++
+         if (!this._isValid(channel, level))
+             return;
+ 
+         let func = obj[funcName];
+ 
+-        predicate = typeof predicate !== 'undefined' ? predicate
+-            : () => {
+-                return true;
+-            };
+-
+         if (this._mergePredicate(func, predicate, 'loggingPredicate')) {
+             // if logging predicate was already registered
+             return;
+@@ -528,16 +667,32 @@ var Debugger = class {
+      * If you does not use below function with debugger, the application get the signal and
+      * will be turned off.
+      */
+-    breakpoint(channel, level, predicate) {
++
++    // breakpoint(channel, level, predicate) {
++    breakpoint(...args) {
++        let channel = this._channel;
++        let level = this._level;
++        let predicate = () => {
++            return true;
++        };
++
++        let index = args[index--];
++
++        if (args[index] instanceof Function)
++            predicate = args[index--];
++
++
++        for (let i = index; i >= 0; i--) {
++            if (args[i] >= Level.NONE && args[i] <= Level.ERROR)
++                level = args[i];
++            else
++                channel = args[i];
++        }
++
+         if (!this._isValid(channel, level))
+             return;
+ 
+-        let pred = typeof predicate !== 'undefined' ? predicate
+-            : () => {
+-                return true;
+-            };
+-
+-        if (pred())
++        if (predicate())
+             System.breakpoint();
+ 
+     }

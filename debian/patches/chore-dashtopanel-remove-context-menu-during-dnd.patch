@@ -1,0 +1,43 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 21 Oct 2021 18:28:48 +0900
+Subject: [chore] dashtopanel: remove context menu during dnd
+
+- context menu don't appear during app icon drag and drop
+
+[IMS] 272117
+---
+ extensions/dash-to-panel/appIcons.js | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 6cc8c44..8bd184a 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -272,6 +272,18 @@ var taskbarAppIcon = Utils.defineClass({
+         this._progressIndicator = new Progress.ProgressIndicator(this, panel.progressManager);
+ 
+         this._numberOverlay();
++
++        // replace button press event function
++        this._originalButtonPressEvent = this.vfunc_button_press_event;
++        Utils.hookVfunc(Object.getPrototypeOf(this), 'button_press_event', this.button_press_event);
++
++    },
++
++    button_press_event(buttonEvent) {
++        const ret = this.vfunc_button_press_event(buttonEvent);
++        if (buttonEvent.button === 1)
++            this._removeMenuTimeout();
++        return ret;
+     },
+ 
+     getDragActor() {
+@@ -304,6 +316,8 @@ var taskbarAppIcon = Utils.defineClass({
+     },
+ 
+     _onDestroy() {
++        Utils.hookVfunc(Object.getPrototypeOf(this), 'button_press_event', this._originalButtonPressEvent);
++
+         this.callParent('_onDestroy');
+         this._destroyed = true;
+ 

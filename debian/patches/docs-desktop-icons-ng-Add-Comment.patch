@@ -1,0 +1,35 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 26 May 2021 15:47:45 +0900
+Subject: [docs] desktop-icons-ng : Add Comment
+
+- Add Comment for setting parent window
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 4a2a0f2..2a5d8d1 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -1344,6 +1344,9 @@ var DesktopManager = class {
+         let fileItems = this.getCurrentSelection(false);
+         if (fileItems) {
+             let mimetype = Gio.content_type_guess(fileItems[0].fileName, null)[0];
++            // NOTE(20210526 : jgjeong) : Set parent window because WM determines
++            // whether to skip the dialog to the taskbar with the presence of a parent window
++            // and  hint value.
+             let chooser = Gtk.AppChooserDialog.new_for_content_type(parentWindow,
+                 Gtk.DialogFlags.MODAL + Gtk.DialogFlags.USE_HEADER_BAR,
+                 mimetype);
+@@ -1382,6 +1385,9 @@ var DesktopManager = class {
+                 parentWindow = desktop._window;
+         }
+ 
++        // NOTE(20210526 : jgjeong) : Set parent window because WM determines
++        // whether to skip the dialog to the taskbar with the presence of a parent window
++        // and  hint value.
+         let newFolderWindow = new AskNamePopup.AskNamePopup(null, _('New folder'), parentWindow);
+         let newName = newFolderWindow.run();
+         if (newName) {

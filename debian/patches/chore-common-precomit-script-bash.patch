@@ -1,0 +1,25 @@
+From: jungrae kim <jungrae_kim@tmax.co.kr>
+Date: Thu, 1 Apr 2021 15:41:36 +0900
+Subject: =?utf-8?b?W2Nob3JlXSBjb21tb24gOiBwcmVjb21pdCBzY3JpcHQg7Iuk7ZaJIGJh?=
+ =?utf-8?b?c2gg67OA6rK9?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+ - precomit script 실행 bash로 변경
+
+[IMS] N/A
+---
+ hooks/pre-commit | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hooks/pre-commit b/hooks/pre-commit
+index 5c4edb6..d620c52 100755
+--- a/hooks/pre-commit
++++ b/hooks/pre-commit
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ if git rev-parse --verify HEAD >/dev/null 2>&1
+ then

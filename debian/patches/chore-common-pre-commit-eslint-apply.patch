@@ -1,0 +1,69 @@
+From: jungrae kim <jungrae_kim@tmax.co.kr>
+Date: Thu, 1 Apr 2021 14:09:17 +0900
+Subject: [chore] common : pre-commit eslint apply
+
+ - apply eslint for formating
+
+[IMS] N/A
+---
+ hooks/pre-commit | 47 ++++++++++++++++++++++++++++-------------------
+ 1 file changed, 28 insertions(+), 19 deletions(-)
+
+diff --git a/hooks/pre-commit b/hooks/pre-commit
+index 4a5b240..5c4edb6 100755
+--- a/hooks/pre-commit
++++ b/hooks/pre-commit
+@@ -19,25 +19,34 @@ fi
+ RED="\e[0;31m"
+ END="\e[0m"
+ 
+-# Do format checking (clang-format)
+-C_CXX_format="\.([ch]|[chi](pp|xx)|(cc|hh|ii)|[CHI])$"
+-for file in `git diff-index --cached --name-only $against | grep -Ee "$C_CXX_format"`
+-do
+-  AUTOFORMATTER=`which clang-format`
+-  if [ "$AUTOFORMATTER" = "" ]
+-  then
+-    echo -n "${RED}Cannot find clang-format\nPlease run package install script : trunk/pkg/install_linux_pkg.sh ${END}\n"
+-    exit 1
+-  else
+-    if $AUTOFORMATTER "$file" -output-replacements-xml | grep -c "<replacement " > /dev/null
+-    then
+-      echo -n "\"$file\" is not formatted.\n"
+-      $AUTOFORMATTER -i "$file"
+-      git add "$file"
+-      echo -n "Auto formatting applied: $AUTOFORMATTER\n"
+-    fi
+-  fi
+-done
++# JS Auto formation by eslint package
++# First check ESLINT Pacakge was installed
++ESLINT=`which eslint`
++if [ ! -x "$ESLINT" ]; then
++  printf "\t\033[41mPlease install ESlint\033[0m (apt install eslint)\n"
++  exit 1
++fi
++
++# Find stage files and apply ESLint
++STAGED_FILES=($(git diff --cached --name-only --diff-filter=ACM | grep ".jsx\{0,1\}$"))
++
++echo "ESLint'ing ${#STAGED_FILES[@]} files"
++
++if [ "$STAGED_FILES" != "" ]; then
++ $ESLINT "${STAGED_FILES[@]}" --fix
++
++ ESLINT_EXIT="$?"
++
++ # Re-add files since they may have been fixed
++ git add "${STAGED_FILES[@]}"
++
++ if [[ "${ESLINT_EXIT}" == 0 ]]; then
++   printf "\n\033[42mCOMMIT SUCCEEDED\033[0m\n"
++ else
++   printf "\n\033[41mCOMMIT FAILED:\033[0m Fix eslint errors and try again\n"
++   exit 1
++ fi
++fi
+ 
+ # Do default checking (trailing whitespace, etc.)
+ git diff-index --check --cached $against . ':(exclude)*.patch'

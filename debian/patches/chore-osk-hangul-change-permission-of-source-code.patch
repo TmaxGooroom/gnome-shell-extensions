@@ -1,0 +1,15 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 9 Jul 2021 15:49:46 +0900
+Subject: [chore] osk-hangul : change permission of source code
+
+ - change permission of xkbcommon_keysyms.js
+
+[IMS] N/A
+---
+ extensions/osk-hangul/xkbcommon_keysyms.js | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ mode change 100755 => 100644 extensions/osk-hangul/xkbcommon_keysyms.js
+
+diff --git a/extensions/osk-hangul/xkbcommon_keysyms.js b/extensions/osk-hangul/xkbcommon_keysyms.js
+old mode 100755
+new mode 100644

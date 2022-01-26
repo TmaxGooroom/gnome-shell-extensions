@@ -1,0 +1,136 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 20 Aug 2021 15:42:30 +0900
+Subject: [bugfix] Greeter: Delete the customized screen shield
+
+- Transfer logic performed on new screen shield to extension::enable
+- So delete the customized screen shield
+- This modification also solved the problem of overlapping tray menu due to conflict of old and new screen shield.
+
+[IMS] 268489
+---
+ extensions/greeter/extension.js    | 26 ++++++------------
+ extensions/greeter/meson.build     |  1 -
+ extensions/greeter/screenShield.js | 55 --------------------------------------
+ 3 files changed, 8 insertions(+), 74 deletions(-)
+ delete mode 100644 extensions/greeter/screenShield.js
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index cb59c72..b6999d7 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -21,23 +21,9 @@ const Main = imports.ui.main;
+ const LoginManager = imports.misc.loginManager;
+ const _ = imports.gettext.gettext;
+ 
+-const ScreenShield = Me.imports.screenShield;
+-
+ function init(/* metadata*/) { // eslint-disable-line no-unused-vars
+ }
+ 
+-function _invalidateOldScreenShield() {
+-    // Invalidate objects used in previous screenshield
+-    let screenSaverDBus = Main.screenShield._screenSaverDBus;
+-    screenSaverDBus._dbusImpl.unexport();
+-    Main.screenShield._presence = null;
+-    Main.screenShield._screenSaverDBus = null;
+-    Main.screenShield._smartcardManager = null;
+-    Main.screenShield._oVirtCredentialsManager = null;
+-    Main.screenShield._loginManager = null;
+-    Main.screenShield._loginSession = null;
+-}
+-
+ function _enableNetworkSettings() {
+     // NOTE(210803, sohee): Receives 'startup-complete' signal
+     // to customize the panel network menus after completing gnome-shell panel network setup.
+@@ -62,11 +48,15 @@ function enable() { // eslint-disable-line no-unused-vars
+     if (!LoginManager.canLock())
+         return;
+ 
+-    _invalidateOldScreenShield();
++    Main.sessionMode.unlockDialog = Me.imports.loginDialog.LoginDialog;
++
++    let screenShieldGroup = Main.screenShield.actor;
++    Main.layoutManager.removeChrome(screenShieldGroup);
++    Main.layoutManager._backgroundGroup.add_child(screenShieldGroup);
+ 
+-    // Replace with custom ScreenShield and LoginDialog
+-    Main.screenShield = new ScreenShield.ScreenShield();
+-    Main.screenShield.ensureLoginDialog();
++    Main.screenShield._becomeModal = () => {
++        return true;
++    };
+ 
+     _enableNetworkSettings();
+ }
+diff --git a/extensions/greeter/meson.build b/extensions/greeter/meson.build
+index 3b51541..1c1f7a3 100644
+--- a/extensions/greeter/meson.build
++++ b/extensions/greeter/meson.build
+@@ -5,6 +5,5 @@ extension_data += configure_file(
+ )
+ 
+ extension_sources += files(
+-    'screenShield.js',
+     'loginDialog.js'
+ )
+diff --git a/extensions/greeter/screenShield.js b/extensions/greeter/screenShield.js
+deleted file mode 100644
+index 0da471a..0000000
+--- a/extensions/greeter/screenShield.js
++++ /dev/null
+@@ -1,55 +0,0 @@
+-// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+-
+-const Me = imports.misc.extensionUtils.getCurrentExtension();
+-
+-const Main = imports.ui.main;
+-const GnomeScreenShield = imports.ui.screenShield;
+-
+-var ScreenShield = class ScreenShield extends GnomeScreenShield.ScreenShield { // eslint-disable-line no-unused-vars
+-    constructor() {
+-        super();
+-        // NOTE(210722, sohee): To float network settings window (nm-connection-editor)
+-        // over the screenshield, change layer to which the screenshield belongs.
+-        Main.layoutManager.removeChrome(this.actor);
+-        Main.layoutManager._backgroundGroup.add_child(this.actor);
+-    }
+-
+-    _becomeModal() {
+-        return true;
+-    }
+-
+-    ensureLoginDialog() {
+-        if (!this._dialog) {
+-            let constructor = Me.imports.loginDialog.LoginDialog;
+-            if (!constructor) {
+-                // This session mode has no locking capabilities
+-                this.deactivate(true);
+-                return false;
+-            }
+-
+-            this._dialog = new constructor(this._lockDialogGroup);
+-
+-            let time = global.get_current_time();
+-            if (!this._dialog.open(time)) {
+-                // This is kind of an impossible error: we're already modal
+-                // by the time we reach this...
+-                log('Could not open login dialog: failed to acquire grab');
+-                this.deactivate(true);
+-                return false;
+-            }
+-
+-            this._dialog.connect('failed', this._onUnlockFailed.bind(this));
+-            this._wakeUpScreenId = this._dialog.connect(
+-                'wake-up-screen', this._wakeUpScreen.bind(this));
+-        }
+-        return true;
+-    }
+-
+-    set isModal(isModal) {
+-        this._isModal = false;
+-    }
+-
+-    get isModal() {
+-        return this._isModal;
+-    }
+-};

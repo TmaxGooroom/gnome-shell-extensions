@@ -1,0 +1,74 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 10 Aug 2021 18:34:47 +0900
+Subject: [bugfix] fix notification center crash after sleep & wake
+
+- added null check before notification message timelabel move
+
+[IMS] 263023
+---
+ extensions/notification-center/extension.js | 40 +++++++++++++----------------
+ 1 file changed, 18 insertions(+), 22 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 3baca63..2d4c79d 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -590,17 +590,7 @@ const NotificationCenter = new LangClass({
+             break;
+         }
+         this.resetIndicator();
+-        this.notificationSection._messages.forEach(message => {
+-            message.add_style_class_name('notification-center-message');
+-            message._bodyStack.style_class = 'notification-center-bodystack';
+-            let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
+-            let timelabel = message._secondaryBin.child;
+-            message._secondaryBin.child = null;
+-            contentBox.add_child(timelabel);
+-            message.setExpandedLines(3);
+-            message.expand();
+-        });
+-
++        this.notificationSection._messages.forEach(message => this._setMessageLayout(message));
+     },
+ 
+     remNotif(messageType) {
+@@ -950,17 +940,7 @@ const NotificationCenter = new LangClass({
+         this.defaultDateVisibility = Main.panel.statusArea.dateMenu._date.visible;
+         Main.panel.statusArea.dateMenu._date.visible =  !this.prefs.get_boolean('hide-date-section') && this.defaultDateVisibility;
+ 
+-        this.notificationSection._messages.forEach(message => {
+-            message.add_style_class_name('notification-center-message');
+-            message._bodyStack.style_class = 'notification-center-bodystack';
+-            let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
+-            let timelabel = message._secondaryBin.child;
+-            message._secondaryBin.child = null;
+-            contentBox.add_child(timelabel);
+-            message.setExpandedLines(3);
+-            message.expand();
+-        });
+-
++        this.notificationSection._messages.forEach(message => this._setMessageLayout(message));
+     },
+ 
+     undoChanges() {
+@@ -1137,4 +1117,20 @@ const NotificationCenter = new LangClass({
+         else
+             this.bluetoothIcon.setStatus(this._proxy.BluetoothHasAirplaneMode && !this._proxy.BluetoothAirplaneMode);
+     },
++
++    _setMessageLayout(message)  {
++        // check whether message's timelabel moved or not
++        // timelabel move should be done only once
++        if (!message._secondaryBin.child)
++            return;
++        message.add_style_class_name('notification-center-message');
++        message._bodyStack.style_class = 'notification-center-bodystack';
++        // move timelabel from side of title to down of body
++        let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
++        let timelabel = message._secondaryBin.child;
++        message._secondaryBin.child = null;
++        contentBox.add_child(timelabel);
++        message.setExpandedLines(3);
++        message.expand();
++    },
+ });

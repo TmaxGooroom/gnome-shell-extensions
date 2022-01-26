@@ -1,0 +1,93 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 27 Apr 2021 13:42:35 +0900
+Subject: [feat] AlternateTab: Add width-variable thumbnail
+
+  - Add width-variable thumbnail
+  - Modify Popup width calculation to adjust width-variable thumbnail
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 28 ++++++++++++++++++++++------
+ 1 file changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index f859c7e..ce240de 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -9,7 +9,7 @@ const { Clutter, Gio, GObject, Meta, Shell, St } = imports.gi;
+ const Main = imports.ui.main;
+ const SwitcherPopup = imports.ui.switcherPopup;
+ 
+-var MONITOR_HORIZON_PADDING_RATIO = 1 / 3;
++var MONITOR_HORIZON_PADDING_RATIO = 0.2;
+ var MONITOR_VERTICAL_PADDING_RATIO = 0.15;
+ 
+ var POPUP_VERTICAL_SPACING = 32;
+@@ -19,7 +19,7 @@ var POPUP_SCROLL_TIME = 100;
+ 
+ var APPS_PER_ROW = -1;
+ 
+-var WINDOW_PREVIEW_SIZE = 256;
++var WINDOW_PREVIEW_SIZE = 180;
+ var APP_ICON_SIZE = 128;
+ var APP_ICON_SIZE_SMALL = 16;
+ 
+@@ -35,7 +35,7 @@ function mod(a, b) {
+ 
+ function _createWindowClone(window, size) {
+     let [width, height] = window.get_size();
+-    let scale = Math.min(1.0, size / width, size / height);
++    let scale = size / height;
+     return new Clutter.Clone({ source: window,
+         width: width * scale,
+         height: height * scale,
+@@ -96,7 +96,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         let [, childNaturalHeight] = this._switcherList.get_preferred_height(primary.width - hPadding);
+         let [, childNaturalWidth] = this._switcherList.get_preferred_width(childNaturalHeight);
+ 
+-        childBox.x1 = primary.x + Math.floor((primary.width - childNaturalWidth) / 2);
++        childBox.x1 = Math.floor(primary.x + (primary.width - childNaturalWidth) / 2);
+         childBox.x2 = childBox.x1 + childNaturalWidth;
+ 
+         childBox.y1 = Math.max(primary.y + topPadding, primary.y + Math.floor((primary.height - childNaturalHeight) / 2));
+@@ -233,7 +233,10 @@ class WindowIcon extends St.BoxLayout {
+         }
+         this.child_actor.add_child(this.label);
+ 
+-        this._icon.set_size(size * scaleFactor, size * scaleFactor);
++        let [width, height] = mutterWindow.get_size();
++        let ratio = width / height;
++
++        this._icon.set_size(size * ratio * scaleFactor, size * scaleFactor);
+     }
+ 
+     _createAppIcon(app, size) {
+@@ -252,7 +255,7 @@ var WindowSwitcher = GObject.registerClass({
+     Signals: { 'item-pressed': { param_types: [GObject.TYPE_INT] } },
+ }, class WindowSwitcher extends SwitcherPopup.SwitcherList {
+     _init(windows, mode) {
+-        super._init(true);
++        super._init(false);
+ 
+         this._rows = 0;
+ 
+@@ -310,6 +313,19 @@ var WindowSwitcher = GObject.registerClass({
+         });
+     }
+ 
++    vfunc_get_preferred_width(forHeight) {
++        let themeNode = this.get_theme_node();
++        let [maxChildMin] = this._maxChildWidth(forHeight);
++        let [minListWidth] = this._list.get_preferred_width(forHeight);
++
++        for (let i = 0; i < this._rows; i++) {
++            let [newListWidth] = this._lists[i].get_preferred_width(forHeight);
++            minListWidth = Math.max(minListWidth, newListWidth);
++        }
++
++        return themeNode.adjust_preferred_width(maxChildMin, minListWidth);
++    }
++
+     vfunc_get_preferred_height(forWidth) {
+         let [minHeight, natHeight] = super.vfunc_get_preferred_height(forWidth);
+ 

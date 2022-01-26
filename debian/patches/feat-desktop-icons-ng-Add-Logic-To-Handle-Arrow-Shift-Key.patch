@@ -1,0 +1,331 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 1 Jun 2021 15:38:28 +0900
+Subject: [feat] desktop-icons-ng : Add Logic To Handle Arrow + Shift Key
+ Event For Range Selection
+
+- Add focus concept for range selection
+- Add Calculator Class for calculating next selection
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopGrid.js    |   2 +-
+ extensions/desktop-icons-ng/desktopManager.js |  36 +++---
+ extensions/desktop-icons-ng/fileItem.js       |   9 +-
+ extensions/desktop-icons-ng/itemCalculator.js | 158 ++++++++++++++++++++++++++
+ extensions/desktop-icons-ng/stylesheet.css    |   7 +-
+ 5 files changed, 194 insertions(+), 18 deletions(-)
+ create mode 100644 extensions/desktop-icons-ng/itemCalculator.js
+
+diff --git a/extensions/desktop-icons-ng/desktopGrid.js b/extensions/desktop-icons-ng/desktopGrid.js
+index 7725bfa..7cf7168 100644
+--- a/extensions/desktop-icons-ng/desktopGrid.js
++++ b/extensions/desktop-icons-ng/desktopGrid.js
+@@ -141,7 +141,7 @@ var DesktopGrid = class {
+             this._desktopManager.onReleaseButton(this);
+         });
+         this._window.connect('key-press-event', (actor, event) => {
+-            this._desktopManager.onKeyPress(event, this);
++            return this._desktopManager.onKeyPress(event, this);
+         });
+     }
+ 
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index e7a5b39..adbd5fa 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -35,7 +35,7 @@ const AskConfirmPopup = imports.askConfirmPopup;
+ const ShowErrorPopup = imports.showErrorPopup;
+ const TemplateManager = imports.templateManager;
+ const Constants = imports.constants;
+-const Utils = imports.utils;
++const ItemCalculator = imports.itemCalculator;
+ 
+ const Gettext = imports.gettext.domain('ding');
+ 
+@@ -131,6 +131,7 @@ var DesktopManager = class {
+ 
+         this._scriptsList = [];
+         this._readScriptFileList();
++        this._itemCalculator = new ItemCalculator.itemCalculator(this._fileList);
+ 
+         // Check if File Manager is available
+         try {
+@@ -559,7 +560,7 @@ var DesktopManager = class {
+             Prefs.gtkSettings.set_boolean('show-hidden', !this._showHidden);
+             return true;
+         } else if (symbol === Gdk.KEY_Left || symbol === Gdk.KEY_Right || symbol === Gdk.KEY_Up || symbol === Gdk.KEY_Down) {
+-            this._calculateNextSelectedItem(symbol);
++            this._calculateNextSelection(isCtrl, isShift, symbol);
+             return true;
+         }
+         return false;
+@@ -848,6 +849,7 @@ var DesktopManager = class {
+             }
+             break;
+         }
++        this._itemCalculator.resetShiftPivot();
+     }
+ 
+     _removeAllFilesFromGrids() {
+@@ -1524,24 +1526,30 @@ var DesktopManager = class {
+         }
+     }
+ 
+-    _calculateNextSelectedItem(symbol) {
+-        let selectedItem = this.getCurrentSelection(false);
+-        let nextSelectedIndex = -1;
+-        if (!selectedItem) {
+-            nextSelectedIndex = Utils.getNearestItemFromOrigin(this._fileList);
+-        } else {
+-            nextSelectedIndex =
+-        Utils.getNextSelectedItem(selectedItem[0], this._fileList, symbol);
+-        }
++    _calculateNextSelection(isCtrl, isShift, symbol) {
++        let currentSelection = this.getCurrentSelection(false);
++        let nextSelection =
++        this._itemCalculator.getNextSelection(currentSelection, this._fileList, symbol);
+ 
+-        if (nextSelectedIndex === -1) {
+-        // No more room to move
++        if (nextSelection.length === 0) {
++            // No more room to move
+             return;
+         }
+ 
++        let nextFocusItem = nextSelection[0];
++
++        if (isShift) {
++            nextSelection = this._itemCalculator.getShiftSelectedButtons(this._fileList,
++                nextSelection);
++        }
++
+         for (let item of this._fileList)
+             item.unsetSelected();
+ 
+-        this._fileList[nextSelectedIndex].setSelected();
++        for (let item of nextSelection)
++            item.setSelected();
++
++        // To ensure next shift selection
++        nextFocusItem.actor.grab_focus();
+     }
+ };
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index be4f823..18af98f 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -57,11 +57,16 @@ var FileItem = class {
+         this._dropCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.DND_POSITION_METADATA);
+ 
+         this.actor = new Gtk.EventBox({ visible: true });
++        this._styleContext = this.actor.get_style_context();
++        this._styleContext.add_class('file-item-focus');
+         this.actor.connect('destroy', () => this._onDestroy());
+ 
+         this._eventBox = new Gtk.EventBox({ visible: true });
++        this.actor.set_focus_on_click(true);
++        this.actor.set_can_focus(true);
+ 
+         this._innerContainer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
++
+         this._container = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+         this._styleContext = this._innerContainer.get_style_context();
+         this._eventBox.add(this._innerContainer);
+@@ -95,7 +100,8 @@ var FileItem = class {
+          * in a second EventBox, located outside.
+          */
+ 
+-        this.actor.connect('button-press-event', (unusedActor, unusedEvent) => {
++        this.actor.connect('button-press-event', (actor, unusedEvent) => {
++            actor.grab_focus();
+             return true;
+         });
+         this._eventBox.connect('button-press-event', (actor, event) => this._onPressButton(actor, event));
+@@ -918,7 +924,6 @@ var FileItem = class {
+                 this.doOpen();
+ 
+         }
+-
+         return false;
+     }
+ 
+diff --git a/extensions/desktop-icons-ng/itemCalculator.js b/extensions/desktop-icons-ng/itemCalculator.js
+new file mode 100644
+index 0000000..389ff0d
+--- /dev/null
++++ b/extensions/desktop-icons-ng/itemCalculator.js
+@@ -0,0 +1,158 @@
++/* exported itemCalculator */
++
++const Gdk = imports.gi.Gdk;
++
++class itemCalculator {
++    constructor() {
++        this._pivotToShiftSelection = null;
++    }
++
++    _getCompareFunc(direction) {
++        if (direction === Gdk.KEY_Up) {
++            return (unusedX1, unusedX2, y1, y2) => {
++                return y2 < y1;
++            };
++        } else if (direction === Gdk.KEY_Down)  {
++            return (unusedX1, unusedX2, y1, y2) => {
++                return y2 > y1;
++            };
++        }  else if (direction === Gdk.KEY_Right) {
++            return (x1, x2, unusedY1, unusedY2) => {
++                return x2 > x1;
++            };
++        } else {
++            return (x1, x2, unusedY1, unusedY2) => {
++                return x2 < x1;
++            };
++        }
++    }
++
++    _getDistance(x1, x2, y1, y2) {
++        let distanceX = x1 - x2;
++        let distanceY = y1 - y2;
++        return distanceX ** 2 + distanceY ** 2;
++    }
++
++    _getNearestItemFromOrigin(fileList) {
++        let nearestItem = [];
++        let minimumDistance = Number.MAX_VALUE;
++        let itemIndex = -1;
++
++        for (let i = 0; i < fileList.length; i++) {
++            let [x, y, endX_, endY_, grid_] = fileList[i].getCoordinates();
++            let distance = this._getDistance(0, x, 0, y);
++            if (distance > minimumDistance)
++                continue;
++
++            minimumDistance = distance;
++            itemIndex = i;
++        }
++
++        if (itemIndex === -1)
++            return nearestItem;
++
++
++        this._pivotToShiftSelection = fileList[itemIndex];
++        nearestItem.push(fileList[itemIndex]);
++        return nearestItem;
++    }
++
++    getNextSelection(selectedItems, fileList, direction) {
++        let focusedItem;
++        let itemIndex = -1;
++        let nextSelection = [];
++        for (let i = 0; i < fileList.length; i++) {
++            if (fileList[i].actor.has_focus) {
++                focusedItem = fileList[i];
++                break;
++            }
++
++        }
++
++        if (!this._pivotToShiftSelection) {
++            // set focused item as pivot for shift selection when it's null
++            this._pivotToShiftSelection = focusedItem;
++        } else if (selectedItems && selectedItems.length === 1) {
++        // set focused item as pivot for shift selection when the number of selected item
++        // is only one. Otherwise, keep the pivot because shift selection maybe in progress
++            this._pivotToShiftSelection = focusedItem;
++        }
++
++        if (!focusedItem) {
++            // If no focused Item, then choose nearest one from origin
++            return this._getNearestItemFromOrigin(fileList);
++        }
++
++        let compareFunc = this._getCompareFunc(direction);
++        let [x1, y1, endX1_, endY1_, grid_] = focusedItem.getCoordinates();
++        let minimumDistance = Number.MAX_VALUE;
++
++        for (let i = 0; i < fileList.length; i++) {
++            let [x2, y2, endX2_, endY2_, grid2_] = fileList[i].getCoordinates();
++            if (!compareFunc(x1, x2, y1, y2))
++                continue;
++
++            let distance = this._getDistance(x1, x2, y1, y2);
++            if (distance > minimumDistance)
++                continue;
++
++            minimumDistance = distance;
++            itemIndex = i;
++        }
++
++        if (itemIndex === -1)
++            return nextSelection;
++
++
++        // return only one item
++        nextSelection.push(fileList[itemIndex]);
++
++        return nextSelection;
++    }
++
++    getShiftSelectedButtons(fileList, toItem) {
++        let selectedFiles = [];
++        if (!this._pivotToShiftSelection) {
++            log('no pivot to select in range');
++            return selectedFiles;
++        }
++
++        let [x1, y1, endX1_, endY1_, grid1_] = this._pivotToShiftSelection.getCoordinates();
++        let [x2, y2, endX2_, endY2_, grid2_] = toItem[0].getCoordinates();
++
++        let start = [], end = [];
++        if (x1 === x2) {
++            start = y1 > y2 ? [x2, y2] : [x1, y1];
++            end = y1 > y2 ? [x1, y1] : [x2, y2];
++        } else {
++            start = x1 > x2 ? [x2, y2] : [x1, y1];
++            end = x1 > x2 ? [x1, y1] : [x2, y2];
++        }
++
++        for (let fileItem of fileList) {
++            let [x, y, endX_, endY_, grid_] = fileItem.getCoordinates();
++            if (x < start[0] || end[0] < x) {
++                // exclude other row item
++                continue;
++            }
++
++            if (start[0] === x && y < start[1]) {
++                // exclude same row, but column is before start
++                continue;
++            }
++
++            if (x === end[0] && end[1] < y) {
++                // exclude same row, but column is after end
++                continue;
++            }
++
++            selectedFiles.push(fileItem);
++        }
++
++        return selectedFiles;
++    }
++
++    resetShiftPivot() {
++        this._pivotToShiftSelection = null;
++    }
++}
+diff --git a/extensions/desktop-icons-ng/stylesheet.css b/extensions/desktop-icons-ng/stylesheet.css
+index 1c14a55..9d0d3da 100644
+--- a/extensions/desktop-icons-ng/stylesheet.css
++++ b/extensions/desktop-icons-ng/stylesheet.css
+@@ -9,5 +9,10 @@ label.file-label:backdrop {
+ }
+ 
+ .file-item-hover {
+-   background-color: rgba(238, 238, 238, 0.2);
++   background-color: rgba(1, 1, 1, 0.2);
++}
++
++.file-item-focus:focus {
++  background-color: rgb(41, 41, 41);
++  border-radius: 10px;
+ }

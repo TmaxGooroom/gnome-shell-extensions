@@ -1,0 +1,23 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 22 Dec 2021 14:38:28 +0900
+Subject: [feat] Arc Menu: Remove nimf-settings app from arc menu
+
+- Modify application menu to remove nimf-settings app from the applist.
+
+[IMS] 275515
+---
+ extensions/arc-menu/arc-applications.menu | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/arc-menu/arc-applications.menu b/extensions/arc-menu/arc-applications.menu
+index 1f31df1..e9d19d3 100644
+--- a/extensions/arc-menu/arc-applications.menu
++++ b/extensions/arc-menu/arc-applications.menu
+@@ -365,6 +365,7 @@
+           <Filename>org.gnome.tweaks.desktop</Filename>
+           <Filename>im-config.desktop</Filename>
+           <Filename>uim.desktop</Filename>
++          <Filename>nimf-settings.desktop</Filename>
+       </Exclude>
+     </Menu>
+     <Menu>

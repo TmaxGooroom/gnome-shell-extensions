@@ -1,0 +1,51 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Tue, 20 Apr 2021 13:55:11 +0900
+Subject: [chore] override file for notification center schemas
+
+ - override file for notification center schemas
+
+[IMS] N/A
+---
+ .../schemas/10_notification-center.gschema.override            | 10 ++++++++++
+ extensions/notification-center/schemas/meson.build             |  9 ++++++++-
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/notification-center/schemas/10_notification-center.gschema.override
+
+diff --git a/extensions/notification-center/schemas/10_notification-center.gschema.override b/extensions/notification-center/schemas/10_notification-center.gschema.override
+new file mode 100644
+index 0000000..353a89c
+--- /dev/null
++++ b/extensions/notification-center/schemas/10_notification-center.gschema.override
+@@ -0,0 +1,10 @@
++[org.gnome.shell.extensions.notification-center]
++beside-calendar = 'hide'
++hide-events-section-if-empty = true
++max-height = 90
++indicator-index = 20
++autohide = 0
++new-notification = 'count'
++show-label = true
++show-media = 0
++show-events = 0
+diff --git a/extensions/notification-center/schemas/meson.build b/extensions/notification-center/schemas/meson.build
+index cdbec7f..16cc4e9 100644
+--- a/extensions/notification-center/schemas/meson.build
++++ b/extensions/notification-center/schemas/meson.build
+@@ -4,9 +4,16 @@ r = run_command('glib-compile-schemas', meson.current_source_dir())
+ 
+ install_data([
+     'gschemas.compiled',
+-    schema_name
++    schema_name,
++    '10_notification-center.gschema.override'
+   ],
+   install_dir : join_paths(extensiondir, uuid, schema_data_dir)
+ )
+ 
++install_data([
++  '10_notification-center.gschema.override'
++  ],
++  install_dir : schemadir
++)
++
+ extension_schemas += files(schema_name)

@@ -1,0 +1,242 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Mon, 10 May 2021 16:33:40 +0900
+Subject: [refactor] AlternateTab : Modify Arrow allocation & show logic
+
+  - Use root Vertical BoxLayout to allocate up & down arrow
+  - Modify disabled up & down arrow show logic
+
+[IMS] N/A
+---
+ .../media/tos_btn_alttab_arrow_down_disable.svg    | 14 ++++
+ .../media/tos_btn_alttab_arrow_up_disable.svg      | 14 ++++
+ extensions/alternate-tab/switcher.js               | 83 ++++++++++++++--------
+ 3 files changed, 80 insertions(+), 31 deletions(-)
+ create mode 100644 extensions/alternate-tab/media/tos_btn_alttab_arrow_down_disable.svg
+ create mode 100644 extensions/alternate-tab/media/tos_btn_alttab_arrow_up_disable.svg
+
+diff --git a/extensions/alternate-tab/media/tos_btn_alttab_arrow_down_disable.svg b/extensions/alternate-tab/media/tos_btn_alttab_arrow_down_disable.svg
+new file mode 100644
+index 0000000..82a2d23
+--- /dev/null
++++ b/extensions/alternate-tab/media/tos_btn_alttab_arrow_down_disable.svg
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="40px" height="34px" viewBox="0 0 40 34" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_btn_alttab_arrow_down_disable</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="06_01_05_TOS5_alttab" transform="translate(-978.000000, -886.000000)">
++            <g id="Group-5-Copy" transform="translate(100.000000, 107.000000)">
++                <g id="Group-Copy-5" transform="translate(878.000000, 769.000000)">
++                    <rect id="Rectangle" x="0" y="7" width="40" height="40"></rect>
++                    <path d="M32.173913,6.09259259 C33.0907494,6.09259259 33.8418827,6.80270845 33.9082733,7.70341981 L33.9130435,7.83333333 L33.9130435,32.2037037 C33.9130435,33.121389 33.2035845,33.8732178 32.3037064,33.9396698 L32.173913,33.9444444 L7.82608696,33.9444444 C6.86559174,33.9444444 6.08695652,33.1650883 6.08695652,32.2037037 C6.08695652,31.2860184 6.79641547,30.5341896 7.69629361,30.4677376 L7.82608696,30.462963 L30.4347826,30.4622446 L30.4347826,7.83333333 C30.4347826,6.91564807 31.1442416,6.16381925 32.0441197,6.09736722 L32.173913,6.09259259 Z" id="Rectangle" fill="#FFFFFF" fill-rule="nonzero" opacity="0.3" transform="translate(20.000000, 20.018519) scale(1, -1) rotate(-135.000000) translate(-20.000000, -20.018519) "></path>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/alternate-tab/media/tos_btn_alttab_arrow_up_disable.svg b/extensions/alternate-tab/media/tos_btn_alttab_arrow_up_disable.svg
+new file mode 100644
+index 0000000..a239243
+--- /dev/null
++++ b/extensions/alternate-tab/media/tos_btn_alttab_arrow_up_disable.svg
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="40px" height="34px" viewBox="0 0 40 34" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_btn_alttab_arrow_up_disable</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="06_01_05_TOS5_alttab" transform="translate(-978.000000, -130.000000)">
++            <g id="Group-5-Copy" transform="translate(100.000000, 107.000000)">
++                <g id="Group-Copy-4" transform="translate(878.000000, 20.000000)">
++                    <rect id="Rectangle" x="0" y="0" width="40" height="39"></rect>
++                    <path d="M32.173913,12.7777778 C33.0907494,12.7777778 33.8418827,13.4727848 33.9082733,14.3543321 L33.9130435,14.4814815 L33.9130435,38.3333333 C33.9130435,39.2314934 33.2035845,39.9673258 32.3037064,40.032364 L32.173913,40.037037 L7.82608696,40.037037 C6.86559174,40.037037 6.08695652,39.2742629 6.08695652,38.3333333 C6.08695652,37.4351733 6.79641547,36.6993408 7.69629361,36.6343027 L7.82608696,36.6296296 L30.4347826,36.6289265 L30.4347826,14.4814815 C30.4347826,13.5833214 31.1442416,12.847489 32.0441197,12.7824508 L32.173913,12.7777778 Z" id="Rectangle" fill="#FFFFFF" fill-rule="nonzero" opacity="0.3" transform="translate(20.000000, 26.407407) rotate(-135.000000) translate(-20.000000, -26.407407) "></path>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index a0ed324..7cf79ee 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -17,7 +17,8 @@ var MONITOR_VERTICAL_PADDING_RATIO = 0.204;
+ 
+ var POPUP_SCROLL_TIME = 100;
+ 
+-var TOP_ARROW_Y1_POSITION = 1;
++var ARROW_HEIGHT = 40;
++var ARROW_WIDTH = ARROW_HEIGHT * 2;
+ 
+ var IMAGE_PATH = '/media/';
+ 
+@@ -105,7 +106,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+ 
+         // visibleRows is , considering vertical padding, The maximum number of rows that can be viewed,
+         // verticalPadding is vertical padding (top padding + bottom padding) in monitor screen (px);
+-        let visibleRows =  Math.floor(primary.height * (1 - MONITOR_VERTICAL_PADDING_RATIO) / this._rowHeight);
++        let visibleRows =  Math.floor((primary.height * (1 - MONITOR_VERTICAL_PADDING_RATIO) - switcherVerticalPadding) / this._rowHeight);
+         let verticalPadding = primary.height - (visibleRows * this._rowHeight +
+                                             switcherVerticalPadding +
+                                             (visibleRows - 1) * switcherVerticalSpacing
+@@ -125,10 +126,14 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+ 
+         childBox.x1 = Math.floor(primary.x + (primary.width - childNaturalWidth) / 2);
+         childBox.x2 = Math.ceil(childBox.x1 + childNaturalWidth);
+-
+         childBox.y1 = Math.max(primary.y + topPadding, primary.y + Math.floor((primary.height - childNaturalHeight) / 2));
+         childBox.y2 = Math.min(primary.y + primary.height - bottomPadding, childBox.y1 + childNaturalHeight) + 1;
+ 
++        if (visibleRows <= this._switcherList.getBottomRowIndex()) {
++            childBox.y1 -= switcherVerticalSpacing + this._switcherList.getTopArrowHeight();
++            childBox.y2 += switcherVerticalSpacing + this._switcherList.getBottomArrowHeight();
++
++        }
+         this._switcherList.allocate(childBox);
+     }
+ 
+@@ -305,29 +310,42 @@ var WindowSwitcher = GObject.registerClass({
+         this.remove_style_class_name('switcher-list');
+         this.set_style_class_name('tos-switcher-list');
+ 
++        this.remove_actor(this._scrollView);
++
+         this._list.remove_style_class_name('switcher-list-item-container');
+         this._list.set_style_class_name('tos-switcher-list-item-container');
+ 
++
+         this.visibleRows = -1;
+ 
+-        let topArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg`;
++        this._rootList = new St.BoxLayout({ style_class: 'tos-switcher-list-item-container',
++            vertical: true,
++            x_expand: true,
++            y_expand: true });
++
++        this.add_child(this._rootList);
++
++        let topArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg`;
+         this._topArrow = new St.Icon({
+             gicon: Gio.icon_new_for_string(topArrowPath),
+         });
++        this._topArrow.set_size(ARROW_WIDTH, ARROW_HEIGHT);
+ 
+ 
+         let bottomArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg`;
+         this._bottomArrow = new St.Icon({
+             gicon: Gio.icon_new_for_string(bottomArrowPath),
+         });
++        this._bottomArrow.set_size(ARROW_WIDTH, ARROW_HEIGHT);
+ 
+         this._scrollableDown = true;
+         this._scrollableUp = false;
+ 
+         this._removeFlag = false;
+ 
+-        this.add_actor(this._topArrow);
+-        this.add_actor(this._bottomArrow);
++        this._rootList.add_child(this._topArrow);
++        this._rootList.add_child(this._scrollView);
++        this._rootList.add_child(this._bottomArrow);
+ 
+         this._rows = 0;
+ 
+@@ -338,6 +356,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this._scrollView.remove_actor(this._list);
+         this._scrollView.add_actor(this._rowList);
++
+         this._rowList.add_child(this._list);
+ 
+         this._lists = [];
+@@ -363,7 +382,7 @@ var WindowSwitcher = GObject.registerClass({
+                     vertical: false,
+                     x_expand: true,
+                     y_expand: true });
+-                this._rowList.add_actor(newRow);
++                this._rowList.add_child(newRow);
+                 this._lists.push(newRow);
+             }
+ 
+@@ -377,7 +396,6 @@ var WindowSwitcher = GObject.registerClass({
+             });
+         }
+         this.connect('destroy', this._onDestroy.bind(this));
+-
+     }
+ 
+     _onDestroy() {
+@@ -406,17 +424,14 @@ var WindowSwitcher = GObject.registerClass({
+     }
+ 
+     vfunc_allocate(box) {
+-        super.vfunc_allocate(box);
++        this.set_allocation(box);
+ 
+         let contentBox = this.get_theme_node().get_content_box(box);
+-        let width = contentBox.x2 - contentBox.x1;
+-        let height = contentBox.y2 - contentBox.y1;
+ 
+-        let topPadding = this.get_theme_node().get_padding(St.Side.TOP);
+-        let bottomPadding = this.get_theme_node().get_padding(St.Side.BOTTOM);
+-        let leftPadding = this.get_theme_node().get_padding(St.Side.LEFT);
++        this._rootList.allocate(contentBox);
+ 
+         let verticalScrollable = this._rows >= this.visibleRows;
++
+         if (this._removeFlag) {
+             let adjustment = this._scrollView.vscroll.adjustment;
+             let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+@@ -424,29 +439,35 @@ var WindowSwitcher = GObject.registerClass({
+                 this._scrollableDown = false;
+             this._removeFlag = false;
+         }
+-        let childBox = new Clutter.ActorBox();
+ 
+-        let arrowHeight = topPadding;
+-        let arrowWidth = arrowHeight * 2;
++        this._scrollView.set_height(Math.min(this._rows, this.visibleRows) * this._list.get_height());
++
++        if (verticalScrollable) {
++            this._topArrow.show();
++            this._bottomArrow.show();
++        } else {
++            this._topArrow.hide();
++            this._bottomArrow.hide();
++        }
+ 
+-        childBox.x1 = leftPadding + width / 2 - arrowHeight;
+-        childBox.x2 = childBox.x1 + arrowWidth;
+-        childBox.y1 = TOP_ARROW_Y1_POSITION;
+-        childBox.y2 = childBox.y1 + arrowHeight;
++        let topArrowPath = this._scrollableUp ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up_disable.svg`;
++        let bottomArrowPath = this._scrollableDown ? `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg` : `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down_disable.svg`;
+ 
+-        this._topArrow.allocate(childBox);
+-        this._topArrow.opacity =  verticalScrollable && this._scrollableUp ? 255 : 0;
++        this._topArrow.set_gicon(Gio.icon_new_for_string(topArrowPath));
++        this._bottomArrow.set_gicon(Gio.icon_new_for_string(bottomArrowPath));
+ 
+-        arrowHeight = bottomPadding;
+-        arrowWidth = arrowHeight * 2;
++    }
+ 
+-        childBox.x1 = leftPadding + width / 2 - arrowHeight;
+-        childBox.x2 = childBox.x1 +  arrowWidth;
+-        childBox.y2 = height + bottomPadding + topPadding;
+-        childBox.y1 = childBox.y2 - arrowHeight;
+-        this._bottomArrow.allocate(childBox);
+-        this._bottomArrow.opacity = verticalScrollable && this._scrollableDown ?  255 : 0;
++    getTopArrowHeight() {
++        return this._topArrow.get_height();
++    }
++
++    getBottomArrowHeight() {
++        return this._bottomArrow.get_height();
++    }
+ 
++    getBottomRowIndex() {
++        return this._rows;
+     }
+ 
+     precalculateRowWidth(index) {

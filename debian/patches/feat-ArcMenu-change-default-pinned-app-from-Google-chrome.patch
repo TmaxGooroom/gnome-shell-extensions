@@ -1,0 +1,69 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 13 May 2021 17:51:52 +0900
+Subject: [feat] ArcMenu : change default pinned app from Google chrome to
+ ToGate
+
+ - change default pinned app from Google Chrome to ToGate
+ - remove _updatePinnedAppsWebBrowser function since arc menu no longer
+   use default brower setting to make default pinned app list
+
+[IMS] N/A
+---
+ extensions/arc-menu/baseMenuLayout.js              | 26 ----------------------
+ .../arc-menu/schemas/10_arcmenu.gschema.override   |  1 +
+ 2 files changed, 1 insertion(+), 26 deletions(-)
+
+diff --git a/extensions/arc-menu/baseMenuLayout.js b/extensions/arc-menu/baseMenuLayout.js
+index 6d9e894..fb2ff72 100644
+--- a/extensions/arc-menu/baseMenuLayout.js
++++ b/extensions/arc-menu/baseMenuLayout.js
+@@ -416,12 +416,8 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+ 
+     loadFavorites() {
+         let pinnedApps = this._settings.get_strv('pinned-app-list');
+-        this.favoritesArray = null;
+         this.favoritesArray = [];
+         for (let i = 0; i < pinnedApps.length; i += 3) {
+-            if (i === 0 && pinnedApps[0] === 'ArcMenu_WebBrowser')
+-                this._updatePinnedAppsWebBrowser(pinnedApps);
+-
+             let favoritesMenuItem = new MW.FavoritesMenuItem(
+                 this, pinnedApps[i], pinnedApps[i + 1], pinnedApps[i + 2]);
+             favoritesMenuItem.connect('saveSettings', () => {
+@@ -446,28 +442,6 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         }
+     }
+ 
+-    _updatePinnedAppsWebBrowser(pinnedApps) {
+-        // Find the Default Web Browser, if found add to pinned apps list, if not found delete the placeholder.
+-        // Will only run if placeholder is found. Placeholder only found with default settings set.
+-        if (pinnedApps[0] === 'ArcMenu_WebBrowser') {
+-            let [res_, stdout, stderr_, status_] = GLib.spawn_command_line_sync('xdg-settings get default-web-browser');
+-            let webBrowser = String.fromCharCode.apply(null, stdout);
+-            let browserName = webBrowser.split('.desktop')[0];
+-            browserName += '.desktop';
+-            this._app = appSys.lookup_app(browserName);
+-            if (this._app) {
+-                pinnedApps[0] = this._app.get_name();
+-                pinnedApps[1] = '';
+-                pinnedApps[2] = this._app.get_id();
+-            } else {
+-                pinnedApps.splice(0, 3);
+-            }
+-            this.shouldLoadFavorites = false; // We don't want to trigger a setting changed event
+-            this._settings.set_strv('pinned-app-list', pinnedApps);
+-            this.shouldLoadFavorites = true;
+-        }
+-    }
+-
+     setFrequentAppsList(categoryMenuItem) {
+         categoryMenuItem.appList = [];
+         let mostUsed = Shell.AppUsage.get_default().get_most_used();
+diff --git a/extensions/arc-menu/schemas/10_arcmenu.gschema.override b/extensions/arc-menu/schemas/10_arcmenu.gschema.override
+index 7503f50..45b7be9 100644
+--- a/extensions/arc-menu/schemas/10_arcmenu.gschema.override
++++ b/extensions/arc-menu/schemas/10_arcmenu.gschema.override
+@@ -1,2 +1,3 @@
+ [org.gnome.shell.extensions.arcmenu]
+ menu-hotkey='Super_L'
++pinned-app-list=['ToGate', '', 'togate-browser.desktop','Terminal', '', 'org.gnome.Terminal.desktop']

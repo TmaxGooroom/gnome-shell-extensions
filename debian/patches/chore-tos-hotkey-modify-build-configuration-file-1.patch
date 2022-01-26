@@ -1,0 +1,17 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 21 Apr 2021 11:09:37 +0900
+Subject: [chore] tos-hotkey : modify build configuration file
+
+ - same as above
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/stylesheet.css | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/tos-hotkey/stylesheet.css b/extensions/tos-hotkey/stylesheet.css
+index e69de29..6d91483 100644
+--- a/extensions/tos-hotkey/stylesheet.css
++++ b/extensions/tos-hotkey/stylesheet.css
+@@ -0,0 +1 @@
++/* none used */

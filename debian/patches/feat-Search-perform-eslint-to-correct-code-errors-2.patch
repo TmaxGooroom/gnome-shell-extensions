@@ -1,0 +1,68 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 7 Apr 2021 17:40:20 +0900
+Subject: [feat] Search : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/search/controller.js | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/search/controller.js b/extensions/search/controller.js
+index 1576d44..8d1ee5b 100644
+--- a/extensions/search/controller.js
++++ b/extensions/search/controller.js
+@@ -22,14 +22,13 @@
+  */
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const Constants = Me.imports.constants;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Main = imports.ui.main;
+ const MenuButton = Me.imports.menuButton;
+ const _ = Gettext.gettext;
+ 
+-var MenuSettingsController = class {
+-    constructor(settings, settingsControllers, panel, panelIndex) {
++var MenuSettingsController = class { // eslint-disable-line no-unused-vars
++    constructor(settings, settingsControllers, panel, /* panelIndex*/) {
+         this._settings = settings;
+         this.panel = panel;
+ 
+@@ -61,7 +60,7 @@ var MenuSettingsController = class {
+                 for (let i = 0; i < this._settingsControllers.length; i++) {
+                     let actor = this._settingsControllers[i]._menuButton.actor;
+                     let monitorForActor = Main.layoutManager.findMonitorForActor(actor);
+-                    if (this.currentMonitor == monitorForActor)
++                    if (this.currentMonitor === monitorForActor)
+                         this.currentMonitorIndex = i;
+ 
+                     else if (this._settingsControllers[i]._menuButton.searchMenu.isOpen)
+@@ -108,7 +107,7 @@ var MenuSettingsController = class {
+ 
+     // Add or restore the activities button on the main panel
+     _addActivitiesButtonToMainPanel() {
+-        if (this.panel == Main.panel && !this._isActivitiesButtonPresent()) {
++        if (this.panel === Main.panel && !this._isActivitiesButtonPresent()) {
+             // Retsore the activities button at the default position
+             let parent = this._activitiesButton.container.get_parent();
+             if (!parent)
+@@ -129,7 +128,7 @@ var MenuSettingsController = class {
+     }
+ 
+     // Enable the menu button
+-    enableButton(index) {
++    enableButton() {
+         this._removeActivitiesButtonFromMainPanel();
+         this._addMenuButtonToMainPanel();
+ 
+@@ -149,7 +148,7 @@ var MenuSettingsController = class {
+ 
+     // Destroy this object
+     destroy() {
+-        if (this.panel == undefined)
++        if (this.panel === undefined)
+             this._menuButton.destroy();
+         else if (this._isButtonEnabled())
+             this._disableButton();

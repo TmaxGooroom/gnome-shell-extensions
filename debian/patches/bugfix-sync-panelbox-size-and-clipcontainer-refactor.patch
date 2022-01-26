@@ -1,0 +1,79 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 6 Jul 2021 15:00:49 +0900
+Subject: [bugfix] sync panelbox size and clipcontainer refactor
+
+- registered same callback function to panelbox width and height notify signal
+- instead of queueing setclip to mainloop, register setclip as a callback function of panelbox size change notify in panelmanager.js
+
+[IMS] 262144
+---
+ extensions/dash-to-panel/panel.js        |  8 --------
+ extensions/dash-to-panel/panelManager.js | 14 ++++++++------
+ 2 files changed, 8 insertions(+), 14 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index ad1ecb3..9a5323a 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -273,7 +273,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         if (!this.isStandalone) {
+             if (this.panel.vfunc_allocate) {
+                 this._panelConnectId = 0;
+-                // Utils.hookVfunc(this.panel.__proto__, 'allocate', (box, flags) => this._mainPanelAllocate(0, box, flags));
+                 Utils.hookVfunc(Object.getPrototypeOf(this.panel), 'allocate', (box, flags) => this._mainPanelAllocate(0, box, flags));
+             } else {
+                 this._panelConnectId = this.panel.actor.connect('allocate', (actor, box, flags) => this._mainPanelAllocate(actor, box, flags));
+@@ -356,9 +355,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+                 this.taskbar,
+                 'menu-closed',
+                 () => this.panel.actor.sync_hover(),
+-                /* Lang.bind(this, function () {
+-                    this.panel.actor.sync_hover();
+-                }),*/
+             ],
+             [
+                 Main.overview,
+@@ -533,7 +529,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             if (this._panelConnectId)
+                 this.panel.actor.disconnect(this._panelConnectId);
+             else
+-                // Utils.hookVfunc(this.panel.__proto__, 'allocate', this.panel.__proto__.vfunc_allocate);
+                 Utils.hookVfunc(Object.getPrototypeOf(this.panel), 'allocate', Object.getPrototypeOf(this.panel).vfunc_allocate);
+ 
+ 
+@@ -1111,9 +1106,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             this.panel.actor[`${St.Side[p] === this.geom.position ? 'add' : 'remove'}_style_class_name`](cssName);
+         });
+ 
+-        // instead of queueing setclip function to mainloop, register setclip as callback of panelbox size change notify in panelManager.js
+-        // this._setPanelClip(clipContainer);
+-
+         Main.layoutManager._updateHotCorners();
+         Main.layoutManager._updatePanelBarrier(this);
+     },
+diff --git a/extensions/dash-to-panel/panelManager.js b/extensions/dash-to-panel/panelManager.js
+index d050998..400d48b 100644
+--- a/extensions/dash-to-panel/panelManager.js
++++ b/extensions/dash-to-panel/panelManager.js
+@@ -421,13 +421,15 @@ var dtpPanelManager = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         clipContainer.add_child(panelBox);
+         Main.layoutManager.trackChrome(panelBox, { trackFullscreen: true, affectsStruts: true, affectsInputRegion: true });
+ 
+-        // sync clipcontainer size with panelbox using callback function to notify signal
+-        clipContainer.setWidth = panelBox.connect('notify::width', () => {
++        // Previously, clipcontainer size did not track panelbox size always. It caused problem in fullscreened dashtopanel reset.
++        // During reset, panelbox size does not initialized, due to trackFullscreen. And clipContainer refers the uninitialized one.
++        // Later, panelbox size is updated by disabling fullscreen, but clipcontainer does not. It makes panelbox not visible.
++        // Since clipcontainer and panelbox always allocates same area, sync clipcontainer size to panelbox.
++        let setClipCallback = () => {
+             Utils.setClip(clipContainer, clipContainer.x, clipContainer.y, panelBox.width, panelBox.height + panel.cornerSize);
+-        });
+-        clipContainer.setHeight = panelBox.connect('notify::height', () => {
+-            Utils.setClip(clipContainer, clipContainer.x, clipContainer.y, panelBox.width, panelBox.height + panel.cornerSize);
+-        });
++        };
++        clipContainer.setWidth = panelBox.connect('notify::width', setClipCallback);
++        clipContainer.setHeight = panelBox.connect('notify::height', setClipCallback);
+ 
+         panel = new Panel.dtpPanel(this, monitor, panelBox, isStandalone);
+         panelBox.add(panel);

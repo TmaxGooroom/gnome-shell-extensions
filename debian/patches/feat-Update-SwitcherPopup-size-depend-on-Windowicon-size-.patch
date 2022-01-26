@@ -1,0 +1,153 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 20 Apr 2021 16:56:09 +0900
+Subject: [feat]Update SwitcherPopup size depend on Windowicon size and
+ monitor resolution modify WindowSwitcherPopup.vfunc_allocate function modify
+ WindowSwitcher._init function
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 51 ++++++++++++++++++++++--------------
+ 1 file changed, 31 insertions(+), 20 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index a4addb1..f859c7e 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -9,12 +9,15 @@ const { Clutter, Gio, GObject, Meta, Shell, St } = imports.gi;
+ const Main = imports.ui.main;
+ const SwitcherPopup = imports.ui.switcherPopup;
+ 
+-var HORIZON_PADDING_RATIO = 0.19;
+-var VERTICAL_PADDING_RATIO = 0.13;
++var MONITOR_HORIZON_PADDING_RATIO = 1 / 3;
++var MONITOR_VERTICAL_PADDING_RATIO = 0.15;
++
++var POPUP_VERTICAL_SPACING = 32;
++var SWITCHER_VERTICAL_SPACING = 11;
+ 
+ var POPUP_SCROLL_TIME = 100;
+ 
+-var APPS_PER_ROW = 5;
++var APPS_PER_ROW = -1;
+ 
+ var WINDOW_PREVIEW_SIZE = 256;
+ var APP_ICON_SIZE = 128;
+@@ -67,6 +70,7 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+ 
+         this._switcherList = new WindowSwitcher(windows, mode);
+         this._items = this._switcherList.icons;
++        this._rowHeight = 0;
+ 
+         this._switcherList.connect('item-pressed', this._itemPressed.bind(this));
+     }
+@@ -77,11 +81,13 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         let childBox = new Clutter.ActorBox();
+         let primary = Main.layoutManager.primaryMonitor;
+ 
+-        let hPadding = Math.ceil(primary.width * HORIZON_PADDING_RATIO);
+-        let leftPadding = Math.ceil(hPadding / 2);
+-        let rightPadding = leftPadding;
++        let hPadding = Math.floor(primary.width * MONITOR_HORIZON_PADDING_RATIO);
++
++        if (this._rowHeight === 0)
++            this._rowHeight = this._switcherList._list.get_height();
+ 
+-        let vPadding = primary.height * VERTICAL_PADDING_RATIO;
++        let visibleRows =  Math.floor(primary.height * (1 - MONITOR_VERTICAL_PADDING_RATIO) / this._rowHeight);
++        let vPadding = primary.height - (visibleRows * this._rowHeight + POPUP_VERTICAL_SPACING + (visibleRows - 1) * SWITCHER_VERTICAL_SPACING);
+         let topPadding = Math.ceil(vPadding / 2);
+         let bottomPadding = Math.ceil(vPadding / 2);
+ 
+@@ -90,8 +96,8 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         let [, childNaturalHeight] = this._switcherList.get_preferred_height(primary.width - hPadding);
+         let [, childNaturalWidth] = this._switcherList.get_preferred_width(childNaturalHeight);
+ 
+-        childBox.x1 = Math.max(primary.x + leftPadding, primary.x + Math.floor((primary.width - childNaturalWidth) / 2));
+-        childBox.x2 = Math.min(primary.x + primary.width - rightPadding, childBox.x1 + childNaturalWidth);
++        childBox.x1 = primary.x + Math.floor((primary.width - childNaturalWidth) / 2);
++        childBox.x2 = childBox.x1 + childNaturalWidth;
+ 
+         childBox.y1 = Math.max(primary.y + topPadding, primary.y + Math.floor((primary.height - childNaturalHeight) / 2));
+         childBox.y2 = Math.min(primary.y + primary.height - bottomPadding, childBox.y1 + childNaturalHeight);
+@@ -149,6 +155,9 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         return Clutter.EVENT_STOP;
+     }
+ 
++    _scrollHandler(direction) { // eslint-disable-line no-unused-vars
++    }
++
+     _finish() {
+         Main.activateWindow(this._items[this._selectedIndex].window);
+ 
+@@ -185,7 +194,7 @@ class WindowIcon extends St.BoxLayout {
+         this.window = window;
+ 
+         this.child_actor =  new St.BoxLayout();
+-        this.actor.add_child(this.child_actor);
++        this.add_child(this.child_actor);
+ 
+         this._icon = new St.Widget({ layout_manager: new Clutter.BinLayout() });
+ 
+@@ -265,8 +274,15 @@ var WindowSwitcher = GObject.registerClass({
+             let win = windows[i];
+             let icon = new WindowIcon(win, mode);
+ 
++            // determine apps_per_row value, but it will be unused because of variable width WindowIcon push
++            if (i === 0) {
++                let primary = Main.layoutManager.primaryMonitor;
++                let width = primary.width * (1 - MONITOR_HORIZON_PADDING_RATIO);
++                APPS_PER_ROW = Math.floor(width / icon.get_width());
++            }
+ 
+-            if (i > 0 && i % APPS_PER_ROW === 0) { // new Row add Algorithm, need to modify because of variable width WindowIcon push
++            // new Row add Algorithm, need to modify because of variable width WindowIcon push
++            if (i > 0 && i % APPS_PER_ROW === 0) {
+                 this._rows++;
+                 let newRow = new St.BoxLayout({ style_class: 'switcher-list-item-container',
+                     vertical: false,
+@@ -297,11 +313,6 @@ var WindowSwitcher = GObject.registerClass({
+     vfunc_get_preferred_height(forWidth) {
+         let [minHeight, natHeight] = super.vfunc_get_preferred_height(forWidth);
+ 
+-        let spacing = this.get_theme_node().get_padding(St.Side.BOTTOM);
+-
+-        minHeight += spacing;
+-        natHeight += spacing;
+-
+         return [minHeight, (this._rows + 1) * natHeight];
+     }
+ 
+@@ -343,7 +354,7 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value] = adjustment.get_values();
+-        let listRow = Math.ceil((index + 1) / APPS_PER_ROW) - 1;// find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
++        let listRow = Math.floor(index / APPS_PER_ROW);// find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
+         let [absItemX_, absItemY] = this._items[index].get_transformed_position();
+         let [result_, posX_, posY] = this.transform_stage_point(absItemX_, absItemY);
+         let [containerWidth_, containerHeight] = this.get_transformed_size();
+@@ -359,7 +370,7 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let indexRow = Math.ceil((index + 1) / APPS_PER_ROW) - 1;// find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
++        let indexRow = Math.floor(index / APPS_PER_ROW);// find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
+         let list = this._lists[indexRow];
+ 
+         if (list.allocation.y1 < value)
+@@ -383,13 +394,13 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let indexRow = Math.ceil((index + 1) / APPS_PER_ROW) - 1;
++        let indexRow = Math.floor(index / APPS_PER_ROW);
+         let list = this._lists[indexRow];
+ 
+         if (list.allocation.y1 < value)
+             value = Math.max(0, list.allocation.y1);
+         else if (list.allocation.y2 > value + pageSize)
+-            value = Math.min(upper, list.allocation.y1);
++            value = list.allocation.y1;
+ 
+         this._scrollableLeft = true;
+ 

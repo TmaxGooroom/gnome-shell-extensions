@@ -1,0 +1,23 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 24 Aug 2021 17:20:41 +0900
+Subject: [chore] notification center hotkey change
+
+- changed notification center hotkey from win+c to win+a
+
+[IMS] 268850
+---
+ .../notification-center/schemas/10_notification-center.gschema.override  | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/notification-center/schemas/10_notification-center.gschema.override b/extensions/notification-center/schemas/10_notification-center.gschema.override
+index 9b3111a..7dac40b 100644
+--- a/extensions/notification-center/schemas/10_notification-center.gschema.override
++++ b/extensions/notification-center/schemas/10_notification-center.gschema.override
+@@ -3,6 +3,7 @@ beside-calendar = 'hide'
+ hide-events-section-if-empty = true
+ max-height = 90
+ indicator-index = 20
++indicator-shortcut = ['<Super>a']
+ autohide = 0
+ new-notification = 'count'
+ show-label = true

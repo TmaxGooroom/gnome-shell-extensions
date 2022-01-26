@@ -1,0 +1,158 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 31 May 2021 11:20:12 +0900
+Subject: [feat] tos-hotkey : fixed error in changing display to join mode
+
+ - fixed error that isn't changing to join mode if logical monitor for certain connector is not found
+ - modify the way of logical monitors' coordinates are set in join mode
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 90 +++++++++++++++++++++-------------
+ 1 file changed, 56 insertions(+), 34 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 7805cfd..2e5b1eb 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -27,6 +27,13 @@ class DisplayConfig {
+             this._setResources(resources);
+         if (currentState)
+             this._setCurrentState(currentState);
++
++        for (let output of this._outputs) {
++            if (output['isPrimary']) {
++                this.primaryOutput = output;
++                break;
++            }
++        }
+     }
+ 
+     _setResources(resources) {
+@@ -77,6 +84,7 @@ class DisplayConfig {
+             for (let mode of monitor[1]) {
+                 temp['possibleModes'].push({
+                     'modeID': mode[0],
++                    'width': mode[1],
+                     'preferredScale': mode[4],
+                     'possibleScale': mode[5],
+                     'isCurrent': mode[6]['is-current'] ? mode[6]['is-current'].deepUnpack() : false,
+@@ -142,16 +150,13 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+ 
+         let serial = displayConfig._serial;
+         let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+-        let scale, transform;
++
++        let crtcID = displayConfig.primaryOutput['currentCrtc'];
++        let scale = displayConfig._crtcs[crtcID]['scale'];
++        let transform = displayConfig._crtcs[crtcID]['transform'];
+ 
+         let logicalMonitor = [];
+         displayConfig._outputs.forEach(output => {
+-            if (output['isPrimary']) {
+-                let crtcID = output['currentCrtc'];
+-                scale = displayConfig._crtcs[crtcID]['scale'];
+-                transform = displayConfig._crtcs[crtcID]['transform'];
+-            }
+-
+             let modeID = output['currentMode'] ? output['currentMode'] : output['preferredMode'];
+ 
+             let properties = {
+@@ -180,36 +185,59 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+         let currentState = await this._proxy.call('GetCurrentState');
+ 
+         let displayConfig = new DisplayConfig(resources, currentState);
++        try {
++            let serial = displayConfig._serial;
++            let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+ 
+-        let serial = displayConfig._serial;
+-        let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
++            let logicalMonitors = [];
+ 
+-        let logicalMonitors = [];
+-        displayConfig._outputs.forEach(output => {
+-            let x, y = 0, scale, transform;
+-            let crtcID = output['currentCrtc'];
+-            if (output['isPrimary'])
+-                x = 0;
+-            else
+-                x = displayConfig._crtcs[crtcID]['width'];
++            // 1. set primary monitor as the leftmost monitor
++            let crtcID = displayConfig.primaryOutput['currentCrtc'];
+ 
+-            scale = displayConfig._crtcs[crtcID]['scale'];
+-            transform = displayConfig._crtcs[crtcID]['transform'];
++            let x = 0;
++            let y = 0;
++            let scale = displayConfig._crtcs[crtcID]['scale'];
++            let transform = displayConfig._crtcs[crtcID]['transform'];
+ 
+-            let modeID = output['currentMode'] ? output['currentMode'] : output['preferredMode'];
++            let modeID = displayConfig.primaryOutput['currentMode'];
+ 
+             let properties = {
+-                'enable_underscanning': output['underscanning'] ? output['underscanning'] : new GLib.Variant('b', false),
++                'enable_underscanning': displayConfig.primaryOutput['underscanning'] ? displayConfig.primaryOutput['underscanning'] : new GLib.Variant('b', false),
+             };
+ 
+-            let monitor = [output['connector'], modeID, properties];
++            let monitor = [displayConfig.primaryOutput['connector'], modeID, properties];
+ 
+-            let logicalMonitor = [x, y, scale, transform, output['isPrimary'], [monitor]];
++            let logicalMonitor = [x, y, scale, transform, true, [monitor]];
+             logicalMonitors.push(logicalMonitor);
+ 
+-        });
++            x += displayConfig._crtcs[crtcID]['width'];
++            let subMonitors = displayConfig._outputs.filter(output => !output['isPrimary']);
++
++            // 2. X coordinates of other monitors should be determined by their order
++            subMonitors.forEach(output => {
++                transform = 0;
++                modeID = output['currentMode'] ? output['currentMode'] : output['preferredMode'];
++
++                let mode;
++                for (let i in output['possibleModes']) {
++                    if (output['possibleModes'][i]['modeID'] === modeID) {
++                        mode = output['possibleModes'][i];
++                        break;
++                    }
++                }
++                scale = mode['preferredScale'];
++
++                properties = {
++                    'enable_underscanning': output['underscanning'] ? output['underscanning'] : new GLib.Variant('b', false),
++                };
++
++                monitor = [output['connector'], modeID, properties];
++                logicalMonitor = [x, y, scale, transform, false, [monitor]];
++                logicalMonitors.push(logicalMonitor);
++
++                x += mode['width'];
++            });
+ 
+-        try {
+             await this._proxy.call('ApplyMonitorsConfig', [serial, method, logicalMonitors, [new GLib.Variant('a{sv}', {})]]);
+         } catch (e) {
+             log(e);
+@@ -226,17 +254,11 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+             let serial = displayConfig._serial;
+             let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+ 
+-            let scale, transform;
++            let crtcID = displayConfig.primaryOutput['currentCrtc'];
++            let scale = displayConfig._crtcs[crtcID]['scale'];
++            let transform = displayConfig._crtcs[crtcID]['transform'];
+ 
+             let logicalMonitor = [];
+-            for (let output of displayConfig._outputs) {
+-                if (output['isPrimary']) {
+-                    let crtcID = output['currentCrtc'];
+-                    scale = displayConfig._crtcs[crtcID]['scale'];
+-                    transform = displayConfig._crtcs[crtcID]['transform'];
+-                    break;
+-                }
+-            }
+ 
+             let target = displayConfig._outputs[index];
+             if (!target)

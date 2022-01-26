@@ -1,0 +1,38 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 23 Aug 2021 15:22:44 +0900
+Subject: [chore] removed redundant notification menu
+
+- removed redundant notification menu next to date/time menu
+- notification center replaces its functions
+
+[IMS] 268482
+---
+ extensions/notification-center/extension.js | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 2d4c79d..9555fa0 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -904,12 +904,7 @@ const NotificationCenter = new LangClass({
+                     break;
+ 
+                 case 2:
+-                    if (!this.mediaSectionToBeShown && this.mediaSection._shouldShow() || !this.notificationSectionToBeShown && this.notificationSection._list.get_children().length || !this.eventsSectionToBeShown &&  this.shouldShowEventsSection()) {
+-                        if (this.messageListRemoved) {
+-                            this._messageListParent.insert_child_at_index(this._messageList, this.messageListPos);
+-                            this.messageListRemoved = false;
+-                        }
+-                    } else if (!this.messageListRemoved) {
++                    if (!this.messageListRemoved) {
+                         this._messageListParent.remove_actor(this._messageList);
+                         this.messageListRemoved = true;
+                     }
+@@ -920,7 +915,6 @@ const NotificationCenter = new LangClass({
+                 this.eventsCount = this.seenEvents ? 0 : this.eventsCount;
+                 this.resetIndicator();
+             }
+-
+         });
+ 
+         if (this.menuAutoclose) {

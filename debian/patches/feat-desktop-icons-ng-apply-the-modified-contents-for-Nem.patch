@@ -1,0 +1,1053 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Fri, 14 May 2021 14:43:45 +0900
+Subject: [feat] desktop-icons-ng : apply the modified contents for Nemo file
+ manager
+
+- apply custom format of clipboard for Nemo
+- apply gsetting values for Nemo
+- modify ko.po file
+- modify eslint error
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/README.md           |   4 +-
+ extensions/desktop-icons-ng/askRenamePopup.js   |  47 ++++----
+ extensions/desktop-icons-ng/dbusUtils.js        |  38 +++---
+ extensions/desktop-icons-ng/desktopIconsUtil.js | 148 ++++++++++++------------
+ extensions/desktop-icons-ng/desktopManager.js   |  85 +++++++-------
+ extensions/desktop-icons-ng/enums.js            |  28 ++---
+ extensions/desktop-icons-ng/fileItem.js         |  24 ++--
+ extensions/desktop-icons-ng/po/ko.po            |  12 +-
+ extensions/desktop-icons-ng/preferences.js      |  39 ++++---
+ 9 files changed, 217 insertions(+), 208 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/README.md b/extensions/desktop-icons-ng/README.md
+index b269b9a..0183904 100644
+--- a/extensions/desktop-icons-ng/README.md
++++ b/extensions/desktop-icons-ng/README.md
+@@ -5,7 +5,7 @@
+ Desktop Icons NG for GNOME Shell. It is a fork/rewrite of the official 'Desktop Icons' extension,
+ with these advantages:
+ 
+- * Drag'n'Drop, both inside the desktop, between desktop and applications, and nautilus windows
++ * Drag'n'Drop, both inside the desktop, between desktop and applications, and nemo windows
+  * Allows to use "Open with..." option with several files
+  * When hovering or clicking on an icon with a name too large to fit, it shows the full name
+  * Doesn't hang the compositor when there is too much activity in the desktop folder
+@@ -19,7 +19,7 @@ Version 0.15.0
+ ## Requirements
+ 
+ * GNOME Shell >= 3.38
+-* Nautilus >= 3.38
++* Nemo >= 4.8.5
+ 
+ ## TO-DO
+ 
+diff --git a/extensions/desktop-icons-ng/askRenamePopup.js b/extensions/desktop-icons-ng/askRenamePopup.js
+index cfd382c..6adcfd5 100644
+--- a/extensions/desktop-icons-ng/askRenamePopup.js
++++ b/extensions/desktop-icons-ng/askRenamePopup.js
+@@ -1,3 +1,4 @@
++/* exported AskRenamePopup*/
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -31,35 +32,35 @@ var AskRenamePopup = class {
+ 
+         this._desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+         this._fileItem = fileItem;
+-        this._popover = new Gtk.Popover({relative_to: fileItem.actor,
+-                                         modal: true});
+-        let contentBox = new Gtk.Grid({row_spacing: 6,
+-                                       column_spacing: 6,
+-                                       margin: 10});
++        this._popover = new Gtk.Popover({ relative_to: fileItem.actor,
++            modal: true });
++        let contentBox = new Gtk.Grid({ row_spacing: 6,
++            column_spacing: 6,
++            margin: 10 });
+         this._popover.add(contentBox);
+-        let label = new Gtk.Label({label: fileItem.isDirectory ? _("Folder name") : _("File name"),
+-                                   justify: Gtk.Justification.LEFT,
+-                                   halign: Gtk.Align.START});
++        let label = new Gtk.Label({ label: fileItem.isDirectory ? _('Folder name') : _('File name'),
++            justify: Gtk.Justification.LEFT,
++            halign: Gtk.Align.START });
+         contentBox.attach(label, 0, 0, 2, 1);
+         this._textArea = new Gtk.Entry();
+         this._textArea.text = fileItem.fileName;
+         contentBox.attach(this._textArea, 0, 1, 1, 1);
+-        this._button = new Gtk.Button({label: _("Rename")});
++        this._button = new Gtk.Button({ label: _('Rename') });
+         contentBox.attach(this._button, 1, 1, 1, 1);
+         this._button.connect('clicked', () => {
+-            this._do_rename();
++            this._doRename();
+         });
+         this._textArea.connect('changed', () => {
+             this._validate();
+         });
+         this._textArea.connect('activate', () => {
+-            if (this._button.sensitive) {
+-                this._do_rename();
+-            }
++            if (this._button.sensitive)
++                this._doRename();
++
+         });
+         this._textArea.set_can_default(true);
+         this._popover.set_default_widget(this._textArea);
+-        this._button.get_style_context().add_class("suggested-action");
++        this._button.get_style_context().add_class('suggested-action');
+         this._popover.show_all();
+         this._validate();
+         this._textArea.grab_focus_without_selecting();
+@@ -68,21 +69,21 @@ var AskRenamePopup = class {
+ 
+     _validate() {
+         let text = this._textArea.text;
+-        let final_path = this._desktopPath + '/' + text;
+-        let final_file = Gio.File.new_for_commandline_arg(final_path);
+-        if ((text == '') || (-1 != text.indexOf('/')) || (text == this._fileItem.fileName) || final_file.query_exists(null)) {
++        let finalPath = `${this._desktopPath}/${text}`;
++        let finalFile = Gio.File.new_for_commandline_arg(finalPath);
++        if (text === '' || text.indexOf('/') !== -1 || text === this._fileItem.fileName || finalFile.query_exists(null))
+             this._button.sensitive = false;
+-        } else {
++        else
+             this._button.sensitive = true;
+-        }
++
+     }
+ 
+-    _do_rename() {
+-        DBusUtils.NautilusFileOperationsProxy.RenameFileRemote(this._fileItem.file.get_uri(),
+-                                                               this._textArea.text,
++    _doRename() {
++        DBusUtils.NemoFileOperationsProxy.RenameFileRemote(this._fileItem.file.get_uri(),
++            this._textArea.text,
+             (result, error) => {
+                 if (error)
+-                    throw new Error('Error renaming file: ' + error.message);
++                    throw new Error(`Error renaming file: ${error.message}`);
+             }
+         );
+     }
+diff --git a/extensions/desktop-icons-ng/dbusUtils.js b/extensions/desktop-icons-ng/dbusUtils.js
+index c769ae6..c2822a4 100644
+--- a/extensions/desktop-icons-ng/dbusUtils.js
++++ b/extensions/desktop-icons-ng/dbusUtils.js
+@@ -1,3 +1,4 @@
++/* exported NemoFileOperationsProxy FreeDesktopFileManagerProxy GnomeNautilusPreviewProxy discreteGpuAvailable GnomeArchiveManagerProxy init */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -17,8 +18,7 @@
+  */
+ 
+ const Gio = imports.gi.Gio;
+-const GLib = imports.gi.GLib;
+-var NautilusFileOperationsProxy;
++var NemoFileOperationsProxy;
+ var FreeDesktopFileManagerProxy;
+ var GnomeNautilusPreviewProxy;
+ var SwitcherooControlProxyClass;
+@@ -26,8 +26,8 @@ var SwitcherooControlProxy;
+ var discreteGpuAvailable;
+ var GnomeArchiveManagerProxy;
+ 
+-const NautilusFileOperationsInterface = `<node>
+-<interface name='org.gnome.Nautilus.FileOperations'>
++const NemoFileOperationsInterface = `<node>
++<interface name='org.Nemo.FileOperations'>
+     <method name='CopyURIs'>
+         <arg name='URIs' type='as' direction='in'/>
+         <arg name='Destination' type='s' direction='in'/>
+@@ -56,7 +56,7 @@ const NautilusFileOperationsInterface = `<node>
+ </interface>
+ </node>`;
+ 
+-const NautilusFileOperationsProxyInterface = Gio.DBusProxy.makeProxyWrapper(NautilusFileOperationsInterface);
++const NemoFileOperationsProxyInterface = Gio.DBusProxy.makeProxyWrapper(NemoFileOperationsInterface);
+ 
+ const FreeDesktopFileManagerInterface = `<node>
+ <interface name='org.freedesktop.FileManager1'>
+@@ -203,19 +203,19 @@ const GnomeArchiveManagerInterface = `<node>
+     </signal>
+ 
+   </interface>
+-</node>`
++</node>`;
+ 
+ const GnomeArchiveManagerProxyInterface = Gio.DBusProxy.makeProxyWrapper(GnomeArchiveManagerInterface);
+ 
+ function init() {
+-    NautilusFileOperationsProxy = new NautilusFileOperationsProxyInterface(
++    NemoFileOperationsProxy = new NemoFileOperationsProxyInterface(
+         Gio.DBus.session,
+-        'org.gnome.Nautilus',
+-        '/org/gnome/Nautilus',
++        'org.Nemo',
++        '/org/Nemo',
+         (proxy, error) => {
+-            if (error) {
+-                log('Error connecting to Nautilus');
+-            }
++            if (error)
++                log('Error connecting to Nemo');
++
+         }
+     );
+ 
+@@ -224,9 +224,9 @@ function init() {
+         'org.freedesktop.FileManager1',
+         '/org/freedesktop/FileManager1',
+         (proxy, error) => {
+-            if (error) {
+-                log('Error connecting to Nautilus');
+-            }
++            if (error)
++                log('Error connecting to Nemo');
++
+         }
+     );
+ 
+@@ -235,9 +235,9 @@ function init() {
+         'org.gnome.NautilusPreviewer',
+         '/org/gnome/NautilusPreviewer',
+         (proxy, error) => {
+-            if (error) {
++            if (error)
+                 log('Error connecting to Nautilus Previewer');
+-            }
++
+         }
+     );
+ 
+@@ -256,9 +256,9 @@ function init() {
+         'org.gnome.ArchiveManager1',
+         '/org/gnome/ArchiveManager1',
+         (proxy, error) => {
+-            if (error) {
++            if (error)
+                 log('Error connecting to ArchiveManager');
+-            }
++
+         }
+     );
+ }
+diff --git a/extensions/desktop-icons-ng/desktopIconsUtil.js b/extensions/desktop-icons-ng/desktopIconsUtil.js
+index c19b249..ce1f8af 100644
+--- a/extensions/desktop-icons-ng/desktopIconsUtil.js
++++ b/extensions/desktop-icons-ng/desktopIconsUtil.js
+@@ -1,3 +1,4 @@
++/* exported getDesktopDir getScriptsDir clamp spawnCommandLine distanceBetweenPoints getExtraFolders getMounts launchTerminal getFileExtensionOffset getFilesFromNemoDnD isExecutable writeTextFileToDesktop */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -31,20 +32,20 @@ function getDesktopDir() {
+ }
+ 
+ function getScriptsDir() {
+-    let scriptsDir =  GLib.build_filenamev([GLib.get_home_dir(), Enums.NAUTILUS_SCRIPTS_DIR]);
++    let scriptsDir =  GLib.build_filenamev([GLib.get_home_dir(), Enums.NEMO_SCRIPTS_DIR]);
+     return Gio.File.new_for_commandline_arg(scriptsDir);
+ }
+ 
+ function clamp(value, min, max) {
+     return Math.max(Math.min(value, max), min);
+-};
++}
+ 
+-function spawnCommandLine(command_line) {
++function spawnCommandLine(commandLine) {
+     try {
+-        let [success, argv] = GLib.shell_parse_argv(command_line);
++        let [success_, argv] = GLib.shell_parse_argv(commandLine);
+         trySpawn(null, argv);
+     } catch (err) {
+-        print(`${command_line} failed with ${err}`);
++        print(`${commandLine} failed with ${err}`);
+     }
+ }
+ 
+@@ -67,16 +68,16 @@ function trySpawn(workdir, argv) {
+      * https://gitlab.gnome.org/GNOME/gnome-shell/blob/gnome-3-30/js/misc/util.js
+      */
+ 
+-    var success, pid;
++    var success_, pid;
+     try {
+-        [success, pid] = GLib.spawn_async(workdir, argv, null,
+-                                          GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+-                                          null);
++        [success_, pid] = GLib.spawn_async(workdir, argv, null,
++            GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
++            null);
+     } catch (err) {
+         /* Rewrite the error in case of ENOENT */
+         if (err.matches(GLib.SpawnError, GLib.SpawnError.NOENT)) {
+             throw new GLib.SpawnError({ code: GLib.SpawnError.NOENT,
+-                                        message: _("Command not found") });
++                message: _('Command not found') });
+         } else if (err instanceof GLib.Error) {
+             // The exception from gjs contains an error string like:
+             //   Error invoking GLib.spawn_command_line_async: Failed to
+@@ -84,8 +85,8 @@ function trySpawn(workdir, argv) {
+             // We are only interested in the part in the parentheses. (And
+             // we can't pattern match the text, since it gets localized.)
+             let message = err.message.replace(/.*\((.+)\)/, '$1');
+-            throw new (err.constructor)({ code: err.code,
+-                                          message: message });
++            throw new err.constructor({ code: err.code,
++                message });
+         } else {
+             throw err;
+         }
+@@ -97,27 +98,28 @@ function trySpawn(workdir, argv) {
+ }
+ 
+ function distanceBetweenPoints(x, y, x2, y2) {
+-    return (Math.pow(x - x2, 2) + Math.pow(y - y2, 2));
++    return Math.pow(x - x2, 2) + Math.pow(y - y2, 2);
+ }
+ 
+ function getExtraFolders() {
+-    let extraFolders = new Array();
+-    if (Prefs.desktopSettings.get_boolean('show-home')) {
++    let extraFolders = [];
++    if (Prefs.desktopSettings.get_boolean('show-home'))
+         extraFolders.push([Gio.File.new_for_commandline_arg(GLib.get_home_dir()), Enums.FileType.USER_DIRECTORY_HOME]);
+-    }
+-    if (Prefs.desktopSettings.get_boolean('show-trash')) {
++
++    if (Prefs.desktopSettings.get_boolean('show-trash'))
+         extraFolders.push([Gio.File.new_for_uri('trash:///'), Enums.FileType.USER_DIRECTORY_TRASH]);
+-    }
++
+     return extraFolders;
+ }
+ 
+ function getMounts(volumeMonitor) {
+-    let show_volumes = Prefs.desktopSettings.get_boolean('show-volumes');
+-    let show_network = Prefs.desktopSettings.get_boolean('show-network-volumes');
++    let showVolumes = Prefs.desktopSettings.get_boolean('show-volumes');
++    let showNetwork = Prefs.desktopSettings.get_boolean('show-network-volumes');
++    var mounts;
+ 
+     try {
+-        var mounts = volumeMonitor.get_mounts();
+-    } catch(e) {
++        mounts = volumeMonitor.get_mounts();
++    } catch (e) {
+         print(`Failed to get the list of mounts with ${e}`);
+         return [];
+     }
+@@ -126,13 +128,13 @@ function getMounts(volumeMonitor) {
+     let uris = [];
+     for (let mount of mounts) {
+         try {
+-            let is_drive = (mount.get_drive() != null) || (mount.get_volume() != null);
++            let isDrive = mount.get_drive() !== null || mount.get_volume() !== null;
+             let uri = mount.get_root().get_uri();
+-            if (((is_drive && show_volumes) || (!is_drive && show_network)) && (!(uris.includes(uri)))) {
++            if ((isDrive && showVolumes || !isDrive && showNetwork) && !uris.includes(uri)) {
+                 result.push([mount.get_root(), Enums.FileType.EXTERNAL_DRIVE, mount]);
+                 uris.push(uri);
+             }
+-        } catch(e) {
++        } catch (e) {
+             print(`Failed with ${e} while getting volume`);
+         }
+     }
+@@ -158,23 +160,23 @@ function getFileExtensionOffset(filename, isDirectory) {
+     return offset;
+ }
+ 
+-function getFilesFromNautilusDnD(selection, type) {
++function getFilesFromNemoDnD(selection, type) {
+     let data = String.fromCharCode.apply(null, selection.get_data());
+     let retval = [];
+     let elements = data.split('\r\n');
+-    for(let item of elements) {
+-        if (item.length == 0) {
++    for (let item of elements) {
++        if (item.length === 0)
+             continue;
+-        }
+-        if (type == 1) {
++
++        if (type === 1) {
+             // x-special/gnome-icon-list
+             let entry = item.split('\r');
+             retval.push(entry[0]);
+         } else {
+             // text/uri-list
+-            if (item[0] == '#') {
++            if (item[0] === '#')
+                 continue;
+-            }
++
+             retval.push(item);
+         }
+     }
+@@ -182,41 +184,45 @@ function getFilesFromNautilusDnD(selection, type) {
+ }
+ 
+ 
+-function isExecutable(mimetype, file_name) {
++function isExecutable(mimetype, fileName) {
+ 
+     if (Gio.content_type_can_be_executable(mimetype)) {
+-        switch (Prefs.nautilusSettings.get_string('executable-text-activation')) {
+-            default: // display
+-                return Enums.WhatToDoWithExecutable.DISPLAY;
+-            case 'launch':
+-                return Enums.WhatToDoWithExecutable.EXECUTE;
+-            case 'ask':
+-                let dialog = new Gtk.MessageDialog({
+-                    text: _("Do you want to run “{0}”, or display its contents?").replace('{0}', file_name),
+-                    secondary_text: _("“{0}” is an executable text file.").replace('{0}', file_name),
+-                    message_type: Gtk.MessageType.QUESTION,
+-                    buttons: Gtk.ButtonsType.NONE
+-                });
+-                dialog.add_button(_("Execute in a terminal"),
+-                                  Enums.WhatToDoWithExecutable.EXECUTE_IN_TERMINAL);
+-                dialog.add_button(_("Show"),
+-                                  Enums.WhatToDoWithExecutable.DISPLAY);
+-                dialog.add_button(_("Cancel"),
+-                                  Gtk.ResponseType.CANCEL);
+-                dialog.add_button(_("Execute"),
+-                                  Enums.WhatToDoWithExecutable.EXECUTE);
+-                dialog.set_default_response(Gtk.ResponseType.CANCEL);
+-
+-                dialog.show_all();
+-                let result = dialog.run();
+-                dialog.destroy();
+-                if ((result != Enums.WhatToDoWithExecutable.EXECUTE) &&
+-                    (result != Enums.WhatToDoWithExecutable.EXECUTE_IN_TERMINAL) &&
+-                    (result != Enums.WhatToDoWithExecutable.DISPLAY)) {
+-                        return Gtk.ResponseType.CANCEL;
+-                } else {
+-                        return result;
+-                }
++        switch (Prefs.nemoSettings.get_string('executable-text-activation')) {
++        case 'launch': {
++            return Enums.WhatToDoWithExecutable.EXECUTE;
++        }
++        case 'ask': {
++            let dialog = new Gtk.MessageDialog({
++                text: _('Do you want to run “{0}”, or display its contents?').replace('{0}', fileName),
++                secondary_text: _('“{0}” is an executable text file.').replace('{0}', fileName),
++                message_type: Gtk.MessageType.QUESTION,
++                buttons: Gtk.ButtonsType.NONE,
++            });
++            dialog.add_button(_('Execute in a terminal'),
++                Enums.WhatToDoWithExecutable.EXECUTE_IN_TERMINAL);
++            dialog.add_button(_('Show'),
++                Enums.WhatToDoWithExecutable.DISPLAY);
++            dialog.add_button(_('Cancel'),
++                Gtk.ResponseType.CANCEL);
++            dialog.add_button(_('Execute'),
++                Enums.WhatToDoWithExecutable.EXECUTE);
++            dialog.set_default_response(Gtk.ResponseType.CANCEL);
++
++            dialog.show_all();
++            let result = dialog.run();
++            dialog.destroy();
++            if (result !== Enums.WhatToDoWithExecutable.EXECUTE &&
++                    result !== Enums.WhatToDoWithExecutable.EXECUTE_IN_TERMINAL &&
++                    result !== Enums.WhatToDoWithExecutable.DISPLAY)
++                return Gtk.ResponseType.CANCEL;
++            else
++                return result;
++        }
++        default: // display
++        {
++            return Enums.WhatToDoWithExecutable.DISPLAY;
++        }
++
+         }
+     } else {
+         return Enums.WhatToDoWithExecutable.DISPLAY;
+@@ -227,14 +233,14 @@ function writeTextFileToDesktop(text, filename, dropCoordinates) {
+     let path = GLib.build_filenamev([GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP),  filename]);
+     let file = Gio.File.new_for_path(path);
+     const PERMISSIONS_MODE = 0o744;
+-    if (GLib.mkdir_with_parents(file.get_parent().get_path(), PERMISSIONS_MODE) === 0) {
+-                let [success, tag] = file.replace_contents(text, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+-    }
+-    if (dropCoordinates != null) {
++    if (GLib.mkdir_with_parents(file.get_parent().get_path(), PERMISSIONS_MODE) === 0)
++        file.replace_contents(text, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
++
++    if (dropCoordinates !== null) {
+         let info = new Gio.FileInfo();
+-        info.set_attribute_string('metadata::nautilus-drop-position', `${dropCoordinates[0]},${dropCoordinates[1]}`);
++        info.set_attribute_string('metadata::nemo-drop-position', `${dropCoordinates[0]},${dropCoordinates[1]}`);
+         try {
+             file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+-        } catch(e) {}
++        } catch (e) {}
+     }
+ }
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 98ca8ba..6ccbebc 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -21,6 +21,7 @@ const GLib = imports.gi.GLib;
+ const Gtk = imports.gi.Gtk;
+ const Gdk = imports.gi.Gdk;
+ const Gio = imports.gi.Gio;
++const ByteArray = imports.byteArray;
+ 
+ const FileItem = imports.fileItem;
+ const DesktopGrid = imports.desktopGrid;
+@@ -94,7 +95,7 @@ var DesktopManager = class {
+                 this._updateDesktop();
+             }
+         });
+-        Prefs.nautilusSettings.connect('changed', (obj, key) => {
++        Prefs.nemoSettings.connect('changed', (obj, key) => {
+             if (key === 'show-image-thumbnails')
+                 this._updateDesktop();
+ 
+@@ -122,19 +123,19 @@ var DesktopManager = class {
+         this._createDesktopBackgroundMenu();
+         this._createGrids();
+ 
+-        DBusUtils.NautilusFileOperationsProxy.connect('g-properties-changed', this._undoStatusChanged.bind(this));
++        DBusUtils.NemoFileOperationsProxy.connect('g-properties-changed', this._undoStatusChanged.bind(this));
+         this._fileList = [];
+         this._readFileList();
+ 
+         this._scriptsList = [];
+         this._readScriptFileList();
+ 
+-        // Check if Nautilus is available
++        // Check if Nemo is available
+         try {
+-            DesktopIconsUtil.trySpawn(null, ['nautilus', '--version']);
++            DesktopIconsUtil.trySpawn(null, ['nemo', '--version']);
+         } catch (e) {
+-            this._errorWindow = new ShowErrorPopup.ShowErrorPopup(_('Nautilus File Manager not found'),
+-                _('The Nautilus File Manager is mandatory to work with Desktop Icons NG.'),
++            this._errorWindow = new ShowErrorPopup.ShowErrorPopup(_('Nemo File Manager not found'),
++                _('The Nemo File Manager is mandatory to work with Desktop Icons NG.'),
+                 null,
+                 true);
+         }
+@@ -202,9 +203,9 @@ var DesktopManager = class {
+                 continue;
+             }
+             let info = new Gio.FileInfo();
+-            info.set_attribute_string('metadata::nautilus-icon-position', '');
++            info.set_attribute_string('metadata::nemo-icon-position', '');
+             if (dropCoordinates !== null)
+-                info.set_attribute_string('metadata::nautilus-drop-position', `${dropCoordinates[0]},${dropCoordinates[1]}`);
++                info.set_attribute_string('metadata::nemo-drop-position', `${dropCoordinates[0]},${dropCoordinates[1]}`);
+ 
+             try {
+                 file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+@@ -280,7 +281,7 @@ var DesktopManager = class {
+ 
+     onDragDataReceived(xDestination, yDestination, selection, info) {
+         this.onDragLeave();
+-        let fileList = DesktopIconsUtil.getFilesFromNautilusDnD(selection, info);
++        let fileList = DesktopIconsUtil.getFilesFromNemoDnD(selection, info);
+         switch (info) {
+         case 0:
+             if (fileList.length !== 0) {
+@@ -295,7 +296,7 @@ var DesktopManager = class {
+                 let data = Gio.File.new_for_uri(fileList[0]).query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null);
+                 let idFs = data.get_attribute_string('id::filesystem');
+                 if (this.desktopFsId === idFs) {
+-                    DBusUtils.NautilusFileOperationsProxy.MoveURIsRemote(
++                    DBusUtils.NemoFileOperationsProxy.MoveURIsRemote(
+                         fileList,
+                         `file://${GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP)}`,
+                         (result, error) => {
+@@ -304,7 +305,7 @@ var DesktopManager = class {
+                         }
+                     );
+                 } else {
+-                    DBusUtils.NautilusFileOperationsProxy.CopyURIsRemote(
++                    DBusUtils.NemoFileOperationsProxy.CopyURIsRemote(
+                         fileList,
+                         `file://${GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP)}`,
+                         (result, error) => {
+@@ -437,16 +438,19 @@ var DesktopManager = class {
+             this._syncUndoRedo();
+             let atom = Gdk.Atom.intern('CLIPBOARD', false);
+             let clipboard = Gtk.Clipboard.get(atom);
+-            clipboard.request_text((clipboardIn, text) => {
+-                let [valid, unusedIsCut, unusedFiles] = this._parseClipboardText(text);
++            let nemoCustomAtom = Gdk.Atom.intern('x-special/gnome-copied-files', false);
++            clipboard.request_contents(nemoCustomAtom, (clipboardIn, selectionData) => {
++                let data = selectionData.get_data();
++                let [valid, unusedIsCut, unusedFiles] = this._parseClipboardText(data);
+                 this._pasteMenuItem.set_sensitive(valid);
+             });
++
+             this._menu.popup_at_pointer(event);
+         }
+     }
+ 
+     _syncUndoRedo() {
+-        switch (DBusUtils.NautilusFileOperationsProxy.UndoStatus) {
++        switch (DBusUtils.NemoFileOperationsProxy.UndoStatus) {
+         case Enums.UndoStatus.UNDO:
+             this._undoMenuItem.show();
+             this._redoMenuItem.hide();
+@@ -468,7 +472,7 @@ var DesktopManager = class {
+     }
+ 
+     _doUndo() {
+-        DBusUtils.NautilusFileOperationsProxy.UndoRemote(
++        DBusUtils.NemoFileOperationsProxy.UndoRemote(
+             (result, error) => {
+                 if (error)
+                     throw new Error(`Error performing undo: ${error.message}`);
+@@ -477,7 +481,7 @@ var DesktopManager = class {
+     }
+ 
+     _doRedo() {
+-        DBusUtils.NautilusFileOperationsProxy.RedoRemote(
++        DBusUtils.NemoFileOperationsProxy.RedoRemote(
+             (result, error) => {
+                 if (error)
+                     throw new Error(`Error performing redo: ${error.message}`);
+@@ -657,22 +661,24 @@ var DesktopManager = class {
+     _doPaste() {
+         let atom = Gdk.Atom.intern('CLIPBOARD', false);
+         let clipboard = Gtk.Clipboard.get(atom);
+-        clipboard.request_text((clipboardIn, text) => {
+-            let [valid, isCut, files] = this._parseClipboardText(text);
++        let nemoCustomAtom = Gdk.Atom.intern('x-special/gnome-copied-files', false);
++        clipboard.request_contents(nemoCustomAtom, (clipboardIn, selectionData) => {
++            let data = selectionData.get_data();
++            let [valid, isCut, files] = this._parseClipboardText(data);
++
+             if (!valid)
+                 return;
+ 
+-
+             let desktopDir = this._desktopDir.get_uri();
+             if (isCut) {
+-                DBusUtils.NautilusFileOperationsProxy.MoveURIsRemote(files, desktopDir,
++                DBusUtils.NemoFileOperationsProxy.MoveURIsRemote(files, desktopDir,
+                     (result, error) => {
+                         if (error)
+                             throw new Error(`Error moving files: ${error.message}`);
+                     }
+                 );
+             } else {
+-                DBusUtils.NautilusFileOperationsProxy.CopyURIsRemote(files, desktopDir,
++                DBusUtils.NemoFileOperationsProxy.CopyURIsRemote(files, desktopDir,
+                     (result, error) => {
+                         if (error)
+                             throw new Error(`Error copying files: ${error.message}`);
+@@ -682,25 +688,20 @@ var DesktopManager = class {
+         });
+     }
+ 
+-    _parseClipboardText(text) {
++    _parseClipboardText(data) {
++        let text = ByteArray.toString(data);
+         if (text === null)
+             return [false, false, null];
+ 
+         let lines = text.split('\n');
+-        let [mime, action, ...files] = lines;
+-
+-        if (mime !== 'x-special/nautilus-clipboard')
+-            return [false, false, null];
++        let [action, ...files] = lines;
+ 
+         if (!['copy', 'cut'].includes(action))
+             return [false, false, null];
+         let isCut = action === 'cut';
+ 
+-        /* Last line is empty due to the split */
+-        if (files.length <= 1)
++        if (files.length === 0)
+             return [false, false, null];
+-        /* Remove last line */
+-        files.pop();
+ 
+         return [true, isCut, files];
+     }
+@@ -1073,7 +1074,7 @@ var DesktopManager = class {
+                  */
+             try {
+                 let info = new Gio.FileInfo();
+-                info.set_attribute_string('metadata::nautilus-icon-position', '');
++                info.set_attribute_string('metadata::nemo-icon-position', '');
+                 file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+             } catch (e) {} // can happen if a file is created and deleted very fast
+             break;
+@@ -1095,7 +1096,7 @@ var DesktopManager = class {
+         if (selection) {
+             let atom = Gdk.Atom.intern('CLIPBOARD', false);
+             let clipboard = Gtk.Clipboard.get(atom);
+-            let text = `x-special/nautilus-clipboard\n${isCopy ? 'copy' : 'cut'}\n`;
++            let text = `x-special/nemo-clipboard\n${isCopy ? 'copy' : 'cut'}\n`;
+             for (let item of selection)
+                 text += `${item}\n`;
+ 
+@@ -1114,7 +1115,7 @@ var DesktopManager = class {
+     doTrash() {
+         let selection = this.getCurrentSelection(true);
+         if (selection) {
+-            DBusUtils.NautilusFileOperationsProxy.TrashFilesRemote(selection,
++            DBusUtils.NemoFileOperationsProxy.TrashFilesRemote(selection,
+                 (source, error) => {
+                     if (error)
+                         throw new Error(`Error trashing files on the desktop: ${error.message}`);
+@@ -1219,7 +1220,7 @@ var DesktopManager = class {
+     }
+ 
+     doEmptyTrash() {
+-        DBusUtils.NautilusFileOperationsProxy.EmptyTrashRemote((source, error) => {
++        DBusUtils.NemoFileOperationsProxy.EmptyTrashRemote((source, error) => {
+             if (error)
+                 throw new Error(`Error trashing files on the desktop: ${error.message}`);
+         });
+@@ -1320,8 +1321,8 @@ var DesktopManager = class {
+             try {
+                 dir.make_directory(null);
+                 let info = new Gio.FileInfo();
+-                info.set_attribute_string('metadata::nautilus-drop-position', `${X},${Y}`);
+-                info.set_attribute_string('metadata::nautilus-icon-position', '');
++                info.set_attribute_string('metadata::nemo-drop-position', `${X},${Y}`);
++                info.set_attribute_string('metadata::nemo-icon-position', '');
+                 dir.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+                 if (position)
+                     return dir.get_uri();
+@@ -1350,8 +1351,8 @@ var DesktopManager = class {
+         try {
+             file.copy(destination, Gio.FileCopyFlags.NONE, null, null);
+             let info = new Gio.FileInfo();
+-            info.set_attribute_string('metadata::nautilus-drop-position', `${this._clickX},${this._clickY}`);
+-            info.set_attribute_string('metadata::nautilus-icon-position', '');
++            info.set_attribute_string('metadata::nemo-drop-position', `${this._clickX},${this._clickY}`);
++            info.set_attribute_string('metadata::nemo-icon-position', '');
+             destination.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+         } catch (e) {
+             print(`Failed to create template ${e.message}`);
+@@ -1371,9 +1372,9 @@ var DesktopManager = class {
+         uriList = uriList.join('');
+         let deskTop = `'${DesktopIconsUtil.getDesktopDir().get_uri()}'`;
+         let execline = '/bin/bash -c "';
+-        execline += `NAUTILUS_SCRIPT_SELECTED_FILE_PATHS=${pathList} `;
+-        execline += `NAUTILUS_SCRIPT_SELECTED_URIS=${uriList} `;
+-        execline += `NAUTILUS_SCRIPT_CURRENT_URI=${deskTop} `;
++        execline += `NEMO_SCRIPT_SELECTED_FILE_PATHS=${pathList} `;
++        execline += `NEMO_SCRIPT_SELECTED_URIS=${uriList} `;
++        execline += `NEMO_SCRIPT_CURRENT_URI=${deskTop} `;
+         execline += `'${menuItemPath}'"`;
+         DesktopIconsUtil.spawnCommandLine(execline);
+     }
+@@ -1414,7 +1415,7 @@ var DesktopManager = class {
+ 
+         let newFolder = this._newFolder(position);
+         if (newFolder) {
+-            DBusUtils.NautilusFileOperationsProxy.MoveURIsRemote(newFolderFileItems, newFolder,
++            DBusUtils.NemoFileOperationsProxy.MoveURIsRemote(newFolderFileItems, newFolder,
+                 (result, error) => {
+                     if (error)
+                         throw new Error(`Error moving files: ${error.message}`);
+diff --git a/extensions/desktop-icons-ng/enums.js b/extensions/desktop-icons-ng/enums.js
+index 7e3d54b..db9dbc8 100644
+--- a/extensions/desktop-icons-ng/enums.js
++++ b/extensions/desktop-icons-ng/enums.js
+@@ -1,3 +1,4 @@
++/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_NEMO SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY NEMO_SCRIPTS_DIR S_IXUSR S_IWOTH */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -20,22 +21,22 @@ var ICON_SIZE = { 'tiny': 36, 'small': 48, 'standard': 64, 'large': 96 };
+ var ICON_WIDTH = { 'tiny': 70, 'small': 90, 'standard': 120, 'large': 130 };
+ var ICON_HEIGHT = { 'tiny': 70, 'small': 90, 'standard': 106, 'large': 138 };
+ 
+-var START_CORNER = { 'top-left':     [false, false],
+-                     'top-right':    [true, false],
+-                     'bottom-left':  [false, true],
+-                     'bottom-right': [true, true]};
++var START_CORNER = { 'top-left': [false, false],
++    'top-right': [true, false],
++    'bottom-left': [false, true],
++    'bottom-right': [true, true] };
+ 
+ var FileType = {
+     NONE: null,
+     USER_DIRECTORY_HOME: 'show-home',
+     USER_DIRECTORY_TRASH: 'show-trash',
+-    EXTERNAL_DRIVE: 'external-drive'
+-}
++    EXTERNAL_DRIVE: 'external-drive',
++};
+ 
+ var StoredCoordinates = {
+     PRESERVE: 0,
+-    OVERWRITE:1,
+-    ASSIGN:2,
++    OVERWRITE: 1,
++    ASSIGN: 2,
+ };
+ 
+ var Selection = {
+@@ -44,7 +45,7 @@ var Selection = {
+     RIGHT_BUTTON: 2,
+     ENTER: 3,
+     LEAVE: 4,
+-    RELEASE: 5
++    RELEASE: 5,
+ };
+ 
+ /* From NautilusFileUndoManagerState */
+@@ -58,24 +59,23 @@ var FileExistOperation = {
+     ASK: 0,
+     OVERWRITE: 1,
+     RENAME: 2,
+-    SKIP: 3
++    SKIP: 3,
+ };
+ 
+ var WhatToDoWithExecutable = {
+     EXECUTE: 0,
+     EXECUTE_IN_TERMINAL: 1,
+     DISPLAY: 2,
+-    CANCEL: 3
++    CANCEL: 3,
+ };
+ 
+ var DEFAULT_ATTRIBUTES = 'metadata::*,standard::*,access::*,time::modified,unix::mode';
+ var TERMINAL_SCHEMA = 'org.gnome.desktop.default-applications.terminal';
+-var SCHEMA_NAUTILUS = 'org.gnome.nautilus.preferences';
++var SCHEMA_NEMO = 'org.nemo.preferences';
+ var SCHEMA_GTK = 'org.gtk.Settings.FileChooser';
+ var SCHEMA = 'org.gnome.shell.extensions.ding';
+ var SCHEMA_MUTTER = 'org.gnome.mutter';
+ var EXEC_KEY = 'exec';
+-var NAUTILUS_SCRIPTS_DIR = '.local/share/nautilus/scripts';
+-
++var NEMO_SCRIPTS_DIR = '.local/share/nemo/scripts';
+ var S_IXUSR = 0o00100;
+ var S_IWOTH = 0o00002;
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index ccf98dd..df39d32 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -52,8 +52,8 @@ var FileItem = class {
+ 
+         this._file = file;
+ 
+-        this._savedCoordinates = this._readCoordinatesFromAttribute(fileInfo, 'metadata::nautilus-icon-position');
+-        this._dropCoordinates = this._readCoordinatesFromAttribute(fileInfo, 'metadata::nautilus-drop-position');
++        this._savedCoordinates = this._readCoordinatesFromAttribute(fileInfo, 'metadata::nemo-icon-position');
++        this._dropCoordinates = this._readCoordinatesFromAttribute(fileInfo, 'metadata::nemo-drop-position');
+ 
+         this.actor = new Gtk.EventBox({ visible: true });
+         this.actor.connect('destroy', () => this._onDestroy());
+@@ -220,7 +220,7 @@ var FileItem = class {
+             dropDestination.drag_dest_set_target_list(targets);
+             dropDestination.connect('drag-data-received', (widget, context, x, y, selection, info, unusedTime) => {
+                 if (info === 1 || info === 2) {
+-                    let fileList = DesktopIconsUtil.getFilesFromNautilusDnD(selection, info);
++                    let fileList = DesktopIconsUtil.getFilesFromNemoDnD(selection, info);
+                     if (fileList.length !== 0) {
+                         if (this._desktopManager.dragItem && (this._desktopManager.dragItem.uri === this._file.get_uri() || !(this._isValidDesktopFile || this.isDirectory))) {
+                             // Dragging a file/folder over itself or over another file will do nothing, allow drag to directory or validdesktop file
+@@ -235,7 +235,7 @@ var FileItem = class {
+                             let data = Gio.File.new_for_uri(fileList[0]).query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null);
+                             let idFs = data.get_attribute_string('id::filesystem');
+                             if (this._desktopManager.desktopFsId === idFs) {
+-                                DBusUtils.NautilusFileOperationsProxy.MoveURIsRemote(fileList, this._file.get_uri(),
++                                DBusUtils.NemoFileOperationsProxy.MoveURIsRemote(fileList, this._file.get_uri(),
+                                     (result, error) => {
+                                         if (error)
+                                             throw new Error(`Error moving files: ${error.message}`);
+@@ -243,7 +243,7 @@ var FileItem = class {
+                                     }
+                                 );
+                             } else {
+-                                DBusUtils.NautilusFileOperationsProxy.CopyURIsRemote(fileList, this._file.get_uri(),
++                                DBusUtils.NemoFileOperationsProxy.CopyURIsRemote(fileList, this._file.get_uri(),
+                                     (result, error) => {
+                                         if (error)
+                                             throw new Error(`Error moving files: ${error.message}`);
+@@ -252,7 +252,7 @@ var FileItem = class {
+                                 );
+                             }
+                         } else {
+-                            DBusUtils.NautilusFileOperationsProxy.TrashFilesRemote(fileList,
++                            DBusUtils.NemoFileOperationsProxy.TrashFilesRemote(fileList,
+                                 (result, error) => {
+                                     if (error)
+                                         throw new Error(`Error moving files: ${error.message}`);
+@@ -433,7 +433,7 @@ var FileItem = class {
+         let iconSet = false;
+ 
+         let thumbnailFactory = GnomeDesktop.DesktopThumbnailFactory.new(GnomeDesktop.DesktopThumbnailSize.LARGE);
+-        if (Prefs.nautilusSettings.get_string('show-image-thumbnails') !== 'never' &&
++        if (Prefs.nemoSettings.get_string('show-image-thumbnails') !== 'never' &&
+             thumbnailFactory.can_thumbnail(this._file.get_uri(),
+                 this._attributeContentType,
+                 this._modifiedTime)) {
+@@ -799,7 +799,7 @@ var FileItem = class {
+                 this._desktopManager.doTrash();
+             });
+             this._menu.add(this._actionTrash);
+-            if (Prefs.nautilusSettings.get_boolean('show-delete-permanently')) {
++            if (Prefs.nemoSettings.get_boolean('enable-delete')) {
+                 this._actionDelete = new Gtk.MenuItem({ label: _('Delete permanently') });
+                 this._actionDelete.connect('activate', () => {
+                     this._desktopManager.doDeletePermanently();
+@@ -1041,10 +1041,10 @@ var FileItem = class {
+             let info = new Gio.FileInfo();
+             if (pos !== null) {
+                 this._savedCoordinates = [pos[0], pos[1]];
+-                info.set_attribute_string('metadata::nautilus-icon-position', `${pos[0]},${pos[1]}`);
++                info.set_attribute_string('metadata::nemo-icon-position', `${pos[0]},${pos[1]}`);
+             } else {
+                 this._savedCoordinates = null;
+-                info.set_attribute_string('metadata::nautilus-icon-position', '');
++                info.set_attribute_string('metadata::nemo-icon-position', '');
+             }
+             this.file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+         } catch (e) {
+@@ -1060,10 +1060,10 @@ var FileItem = class {
+         let info = new Gio.FileInfo();
+         if (pos !== null) {
+             this._dropCoordinates = [pos[0], pos[1]];
+-            info.set_attribute_string('metadata::nautilus-drop-position', `${pos[0]},${pos[1]}`);
++            info.set_attribute_string('metadata::nemo-drop-position', `${pos[0]},${pos[1]}`);
+         } else {
+             this._dropCoordinates = null;
+-            info.set_attribute_string('metadata::nautilus-drop-position', '');
++            info.set_attribute_string('metadata::nemo-drop-position', '');
+         }
+         this.file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+     }
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index bf32a4d..1963b77 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -66,12 +66,12 @@ msgid "Execute"
+ msgstr "실행"
+ 
+ #: ../desktopManager.js:131
+-msgid "Nautilus File Manager not found"
+-msgstr "노틸러스 파일 관리자를 찾을 수 없습니다."
++msgid "Nemo File Manager not found"
++msgstr "니모 파일 관리자를 찾을 수 없습니다."
+ 
+ #: ../desktopManager.js:132
+-msgid "The Nautilus File Manager is mandatory to work with Desktop Icons NG."
+-msgstr "노틸러스 파일 관리자는 Desktop Icons NG로 작업하는 데 필수입니다."
++msgid "The Nemo File Manager is mandatory to work with Desktop Icons NG."
++msgstr "니모 파일 관리자는 Desktop Icons NG로 작업하는 데 필수입니다."
+ 
+ #: ../desktopManager.js:543
+ msgid "New Folder"
+@@ -319,8 +319,8 @@ msgid "Highlight the drop place during Drag'n'Drop"
+ msgstr "드래그 앤 드랍 시 드랍 위치 강조 효과"
+ 
+ #: ../preferences.js:112
+-msgid "Settings shared with Nautilus"
+-msgstr "노틸러스와 설정 공유"
++msgid "Settings shared with Nemo"
++msgstr "Nemo 파일 관리자와 설정 공유"
+ 
+ #: ../preferences.js:118
+ msgid "Click type for open files"
+diff --git a/extensions/desktop-icons-ng/preferences.js b/extensions/desktop-icons-ng/preferences.js
+index 7d74cbb..760db75 100644
+--- a/extensions/desktop-icons-ng/preferences.js
++++ b/extensions/desktop-icons-ng/preferences.js
+@@ -34,11 +34,11 @@ var _ = Gettext.domain('ding').gettext;
+ 
+ var extensionPath;
+ 
+-var nautilusSettings;
++var nemoSettings;
+ var gtkSettings;
+ var desktopSettings;
+ var mutterSettings = null;
+-// This is already in Nautilus settings, so it should not be made tweakable here
++// This is already in nemo settings, so it should not be made tweakable here
+ var CLICK_POLICY_SINGLE = false;
+ 
+ function init(path) {
+@@ -46,13 +46,13 @@ function init(path) {
+     let schemaSource = GioSSS.get_default();
+     let schemaGtk = schemaSource.lookup(Enums.SCHEMA_GTK, true);
+     gtkSettings = new Gio.Settings({ settings_schema: schemaGtk });
+-    let schemaObj = schemaSource.lookup(Enums.SCHEMA_NAUTILUS, true);
++    let schemaObj = schemaSource.lookup(Enums.SCHEMA_NEMO, true);
+     if (!schemaObj) {
+-        nautilusSettings = null;
++        nemoSettings = null;
+     } else {
+-        nautilusSettings = new Gio.Settings({ settings_schema: schemaObj });
+-        nautilusSettings.connect('changed', _onNautilusSettingsChanged);
+-        _onNautilusSettingsChanged();
++        nemoSettings = new Gio.Settings({ settings_schema: schemaObj });
++        nemoSettings.connect('changed', _onNemoSettingsChanged);
++        _onNemoSettingsChanged();
+     }
+     desktopSettings = getSchema(Enums.SCHEMA);
+     let schemaMutter = schemaSource.lookup(Enums.SCHEMA_MUTTER, true);
+@@ -110,29 +110,30 @@ function showPreferences() {
+ 
+     frame.add(new Gtk.Separator({ orientation: Gtk.Orientation.HORIZONTAL }));
+ 
+-    let nautilusFrame = new Gtk.Frame({ label: _('Settings shared with Nautilus'),
++    let nemoFrame = new Gtk.Frame({ label: _('Settings shared with Nemo'),
+         shadow_type: Gtk.ShadowType.ETCHED_IN });
+-    let nautilusBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin: 5, spacing: 10 });
+-    nautilusFrame.add(nautilusBox);
+-    frame.add(nautilusFrame);
+-
+-    nautilusBox.add(buildSelector(nautilusSettings, 'click-policy', _('Click type for open files'), { 'single': _('Single click'), 'double': _('Double click') }));
+-    nautilusBox.add(buildSwitcher(gtkSettings, 'show-hidden', _('Show hidden files')));
+-    nautilusBox.add(buildSwitcher(nautilusSettings, 'show-delete-permanently', _('Show a context menu item to delete permanently')));
+-    nautilusBox.add(buildSelector(nautilusSettings,
++    let nemoBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin: 5, spacing: 10 });
++    nemoFrame.add(nemoBox);
++    frame.add(nemoFrame);
++
++    nemoBox.add(buildSelector(nemoSettings, 'click-policy', _('Click type for open files'), { 'single': _('Single click'), 'double': _('Double click') }));
++    nemoBox.add(buildSwitcher(gtkSettings, 'show-hidden', _('Show hidden files')));
++    nemoBox.add(buildSwitcher(nemoSettings, 'enable-delete', _('Show a context menu item to delete permanently')));
++    nemoBox.add(buildSelector(nemoSettings,
+         'executable-text-activation',
+         _('Action to do when launching a program from the desktop'), {
+             'display': _('Display the content of the file'),
+             'launch': _('Launch the file'),
+             'ask': _('Ask what to do'),
+         }));
+-    nautilusBox.add(buildSelector(nautilusSettings,
++    nemoBox.add(buildSelector(nemoSettings,
+         'show-image-thumbnails',
+         _('Show image thumbnails'), {
+             'never': _('Never'),
+             'local-only': _('Local files only'),
+             'always': _('Always'),
+         }));
++
+     window.show_all();
+ }
+ 
+@@ -171,8 +172,8 @@ function buildSelector(settings, key, labelText, elements) {
+     return hbox;
+ }
+ 
+-function _onNautilusSettingsChanged() {
+-    CLICK_POLICY_SINGLE = nautilusSettings.get_string('click-policy') === 'single';
++function _onNemoSettingsChanged() {
++    CLICK_POLICY_SINGLE = nemoSettings.get_string('click-policy') === 'single';
+ }
+ 
+ function getIconSize() {

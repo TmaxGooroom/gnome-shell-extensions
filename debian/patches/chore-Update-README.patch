@@ -1,0 +1,27 @@
+From: junho_lee3 <junho_lee3>
+Date: Mon, 19 Apr 2021 13:56:33 +0900
+Subject: [chore] Update README
+
+ - Modify the explanation of logging module
+
+[IMS] N/A
+---
+ logging/README.md | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/logging/README.md b/logging/README.md
+index 1bd7b30..7bcaa00 100644
+--- a/logging/README.md
++++ b/logging/README.md
+@@ -1,7 +1,8 @@
+-# Extension Debugger
++# Logging
+ 
+-Extension Debugger is GUI tool for debugging gnome-shell-extension that use
+-logging.js
++Logging module is a tool for debugging gnome-shell-extensions by inserting logging functions,
++setting breakpoints and etc.
++It records the logs defined by extensions-developers and, additionally, the logs can be opened by extension viewer which shows the log in GUI mode.
+ 
+ ## 1. Logging APIs
+ 

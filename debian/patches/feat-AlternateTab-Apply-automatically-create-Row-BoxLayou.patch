@@ -1,0 +1,256 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 30 Apr 2021 12:10:52 +0900
+Subject: [feat] AlternateTab : Apply automatically create Row BoxLayout Logic
+
+ - Width prediction based logic
+ - Adjust new logic to key press handling
+ - Implement remove Row BoxLayout logic when there are no preview items
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 106 +++++++++++++++++++++--------------
+ 1 file changed, 65 insertions(+), 41 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 63eec54..0813a9f 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -14,7 +14,16 @@ var MONITOR_VERTICAL_PADDING_RATIO = 0.15;
+ 
+ var POPUP_SCROLL_TIME = 100;
+ 
+-var APPS_PER_ROW = -1;
++// Before allocation Logic, we can't load CSS value.
++// ex) spacing, padding
++// But we need to precalculate Row width to determine whether or not make new Row
++// If you modify tos-item-box padding value in stylesheet.css
++// or gnome-shell default css code(In this case, 'switcher-list-item-container' style class in
++// $gnome_shell_dir/data/theme/gnome-shell-sass/widgets/_switcher-popup.scss)
++// Also need to scale below values.
++// If there are another ways to load CSS value, update me
++var BUTTON_PADDING = 8;
++var ROW_SPACING = 12;
+ 
+ var WINDOW_PREVIEW_SIZE = 180;
+ var APP_ICON_SIZE = 128;
+@@ -26,10 +35,6 @@ var AppIconMode = {
+     BOTH: 3,
+ };
+ 
+-function mod(a, b) {
+-    return (a + b) % b;
+-}
+-
+ function _createWindowClone(window, size) {
+     let [width, height] = window.get_size();
+     let scale = size / height;
+@@ -178,23 +183,20 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+     }
+ 
+     _nextLine() {
+-        if (this._selectedIndex + APPS_PER_ROW  >= this._items.length)
+-            return this._selectedIndex % APPS_PER_ROW;
+-
+-        else
+-            return mod(this._selectedIndex + APPS_PER_ROW, this._items.length);
++        let [width, height] = this._items[this._selectedIndex].get_size();
++        let [x, y] = this._items[this._selectedIndex].get_transformed_position();
++        let target = this._items[this._selectedIndex].get_stage().get_actor_at_pos(Clutter.PickMode.REACTIVE, x + width / 3, y + height * 1.2);
++        global.log(target);
++        return this._items.indexOf(target.get_child());
+ 
+     }
+ 
+     _previousLine() {
+-        if (this._selectedIndex - APPS_PER_ROW  < 0) {
+-            if (this._selectedIndex + 1 <= this._items.length % APPS_PER_ROW)
+-                return parseInt(this._items.length / APPS_PER_ROW) * APPS_PER_ROW  + this._selectedIndex;
+-            else
+-                return (parseInt(this._items.length / APPS_PER_ROW) - 1) * APPS_PER_ROW  + this._selectedIndex;
+-        } else {
+-            return mod(this._selectedIndex - APPS_PER_ROW, this._items.length);
+-        }
++        let [width, height] = this._items[this._selectedIndex].get_size();
++        let [x, y] = this._items[this._selectedIndex].get_transformed_position();
++        let target = this._items[this._selectedIndex].get_stage().get_actor_at_pos(Clutter.PickMode.REACTIVE, x + width / 2, y - height / 3);
++        global.log(target);
++        return this._items.indexOf(target.get_child());
+     }
+ });
+ 
+@@ -225,8 +227,7 @@ class WindowIcon extends St.BoxLayout {
+ 
+         this._preview.destroy_all_children();
+ 
+-        // ScaleFactor is used to resize preview widget. In development environment, It always sets 1.
+-        // Please report when scaleFactor value changes
++        // scaleFactor is used to resize preview widget.
+         let scaleFactor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+ 
+         // Set preview & appicon widget depending on the mode value
+@@ -249,7 +250,6 @@ class WindowIcon extends St.BoxLayout {
+             size = APP_ICON_SIZE;
+             this._preview.add_child(this._createAppIcon(this.app, size));
+         }
+-
+         // Set window name on title row
+         this._title.add_child(this.label);
+ 
+@@ -283,6 +283,7 @@ var WindowSwitcher = GObject.registerClass({
+             vertical: true,
+             x_expand: true,
+             y_expand: true });
++
+         this._scrollView.remove_actor(this._list);
+         this._scrollView.add_actor(this._rowList);
+         this._rowList.add_child(this._list);
+@@ -290,15 +291,19 @@ var WindowSwitcher = GObject.registerClass({
+         this._lists = [];
+         this._lists.push(this._list);
+ 
++
+         this.windows = windows;
+         this.icons = [];
+ 
++        let primary = Main.layoutManager.primaryMonitor;
++        this._maxWidth = primary.width * (1 - MONITOR_HORIZON_PADDING_RATIO);
++
+         for (let i = 0; i < windows.length; i++) {
+             let win = windows[i];
+             let icon = new WindowIcon(win, mode);
++            let rowWidth = this.precalculateRowWidth(this._rows);
+ 
+-            // Add new Row Algorithm, need to modify because of variable width WindowIcon push
+-            if (i > 0 && i % APPS_PER_ROW === 0) {
++            if (rowWidth + icon.get_width() > this._maxWidth) {
+                 this._rows++;
+                 let newRow = new St.BoxLayout({ style_class: 'switcher-list-item-container',
+                     vertical: false,
+@@ -311,19 +316,10 @@ var WindowSwitcher = GObject.registerClass({
+             this.addItem(icon, icon.label);
+ 
+             this.icons.push(icon);
+-
+-            // Determine apps_per_row value, but it will be unused because of variable width WindowIcon push
+-            if (i === 0) {
+-                let primary = Main.layoutManager.primaryMonitor;
+-                let width = primary.width * (1 - MONITOR_HORIZON_PADDING_RATIO);
+-                APPS_PER_ROW = Math.floor(width / this._items[i].get_width());
+-            }
+-
+             icon._unmanagedSignalId = icon.window.connect('unmanaged', window => {
+                 this._removeWindow(window);
+             });
+         }
+-
+         this.connect('destroy', this._onDestroy.bind(this));
+     }
+ 
+@@ -336,9 +332,9 @@ var WindowSwitcher = GObject.registerClass({
+     vfunc_get_preferred_width(forHeight) {
+         let themeNode = this.get_theme_node();
+         let [maxChildMin] = this._maxChildWidth(forHeight);
+-        let [minListWidth] = this._list.get_preferred_width(forHeight);
++        let [minListWidth] = this._lists[0].get_preferred_width(forHeight);
+ 
+-        for (let i = 0; i < this._rows; i++) {
++        for (let i = 1; i < this._rows; i++) {
+             let [newListWidth] = this._lists[i].get_preferred_width(forHeight);
+             minListWidth = Math.max(minListWidth, newListWidth);
+         }
+@@ -356,10 +352,23 @@ var WindowSwitcher = GObject.registerClass({
+         super.vfunc_allocate(box);
+     }
+ 
++    precalculateRowWidth(index) {
++        let rowButtons = this._lists[index].get_children();
++        let rowButtonNum = rowButtons.length;
++        let naturalWidth = 0;
++        for (let i = 0; i < rowButtonNum; i++) {
++            naturalWidth += rowButtons[i].get_width();
++            naturalWidth += BUTTON_PADDING * 2;
++        }
++        naturalWidth += (rowButtonNum - 1) * ROW_SPACING;
++        return naturalWidth;
++    }
++
+     addItem(item, label) {
+         let bbox = new SwitcherPopup.SwitcherButton(this._squareItems);
+ 
+         bbox.set_style_class_name('tos-item-box');
++
+         bbox.set_child(item);
+ 
+         this._lists[this._rows].add_actor(bbox);
+@@ -373,6 +382,17 @@ var WindowSwitcher = GObject.registerClass({
+         return bbox;
+     }
+ 
++    findItemRowIndex(index) {
++        let indexReturn = -1;
++        for (let i = 0; i <= this._rows; i++) {
++            if (this._lists[i].get_children().indexOf(this._items[index]) !== -1) {
++                indexReturn = i;
++                break;
++            }
++        }
++        return indexReturn;
++    }
++
+     highlight(index, justOutline) {
+         if (this._items[this._highlighted]) {
+             this._items[this._highlighted].remove_style_pseudo_class('outlined');
+@@ -391,9 +411,8 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value] = adjustment.get_values();
+ 
+-        // Find row boxlayout which index items belongs to, need to modify because of variable width windowicon push
+-        let listRow = Math.floor(index / APPS_PER_ROW);
+-
++        // Find row boxlayout which index items belongs to
++        let listRow = this.findItemRowIndex(index);
+         let [absItemX_, absItemY] = this._items[index].get_transformed_position();
+         this.transform_stage_point(absItemX_, absItemY);
+         let [containerWidth_, containerHeight] = this.get_transformed_size();
+@@ -408,7 +427,7 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let indexRow = Math.floor(index / APPS_PER_ROW);
++        let indexRow = this.findItemRowIndex(index);
+         let list = this._lists[indexRow];
+ 
+         if (list.allocation.y1 < value)
+@@ -432,7 +451,7 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let indexRow = Math.floor(index / APPS_PER_ROW);
++        let indexRow = this.findItemRowIndex(index);
+         let list = this._lists[indexRow];
+ 
+         if (list.allocation.y1 < value)
+@@ -451,7 +470,6 @@ var WindowSwitcher = GObject.registerClass({
+                 this.queue_relayout();
+             },
+         });
+-
+     }
+ 
+     _onItemPress(item) {
+@@ -471,8 +489,14 @@ var WindowSwitcher = GObject.registerClass({
+         });
+         if (index === -1)
+             return;
+-
++        let rowIndex = this.findItemRowIndex(index);
+         this.icons.splice(index, 1);
+         this.removeItem(index);
++        if (this._lists[rowIndex].get_children().length === 0) {
++            this._rowList.remove_child(this._lists[rowIndex]);
++            this._lists.splice(rowIndex, 1);
++            global.log(this._lists.length);
++            this._rows--;
++        }
+     }
+ });

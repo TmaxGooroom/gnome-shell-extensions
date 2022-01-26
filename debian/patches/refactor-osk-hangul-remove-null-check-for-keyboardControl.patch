@@ -1,0 +1,30 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 28 Jul 2021 16:52:51 +0900
+Subject: [refactor] osk-hangul : remove null-check for keyboardController
+
+ - remove null-check for keyboardController because its life cycle is
+   same as keyboard. So if keyboard is not null, then it is guaranteed
+   that keyboardController is also not null.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 8a1e3da..920f9e8 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -210,10 +210,8 @@ function disable() { // eslint-disable-line no-unused-vars
+         _resetKeyboardLayout(keyboard);
+ 
+         let controller = keyboard._keyboardController;
+-        if (controller) {
+-            controller.keyvalPress = _originalKeyvalPress;
+-            controller.keyvalRelease = _originalKeyvalRelease;
+-        }
++        controller.keyvalPress = _originalKeyvalPress;
++        controller.keyvalRelease = _originalKeyvalRelease;
+     }
+ 
+     _disable();

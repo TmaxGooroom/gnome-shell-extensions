@@ -1,0 +1,271 @@
+From: jungrae kim <jungrae_kim@tmax.co.kr>
+Date: Tue, 30 Mar 2021 14:59:50 +0900
+Subject: [chore] common : Install git hooks
+
+ - Intall git hooks for formating
+
+[IMS] N/A
+---
+ hooks/commit-msg         | 112 +++++++++++++++++++++++++++++++++++++++++++++++
+ hooks/pre-commit         |  43 ++++++++++++++++++
+ hooks/prepare-commit-msg |  66 ++++++++++++++++++++++++++++
+ meson.build              |   4 ++
+ 4 files changed, 225 insertions(+)
+ create mode 100755 hooks/commit-msg
+ create mode 100755 hooks/pre-commit
+ create mode 100755 hooks/prepare-commit-msg
+
+diff --git a/hooks/commit-msg b/hooks/commit-msg
+new file mode 100755
+index 0000000..f8658c2
+--- /dev/null
++++ b/hooks/commit-msg
+@@ -0,0 +1,112 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++import sys, os, re
++from subprocess import check_output
++
++red='\033[0;31m'
++green='\033[0;32m'
++yellow='\033[0;33m'
++no_color='\033[0m'
++
++################ status enum
++def enum(*sequential, **named):
++    enums = dict(zip(sequential, range(len(sequential))), **named)
++    reverse = dict((value, key) for key, value in enums.iteritems())
++    enums['reverse_mapping'] = reverse
++    return type('Enum', (), enums)
++
++STATUS = enum('TITLE', 'DESC', 'IMS', 'MSG_FORM')
++commit_msg = '''[[Your Commit Message]]'''
++title_msg = '''%s[type] title message 를 적어주세요%s
++%s[type] 종류 : [feat], [bugfix], [docs], [refactor], [test], [chore]%s
++%stitle은 최소 한글자 이상 입력 되어야 합니다.%s
++%sex) [feat] 신규 기능 추가%s
++''' % (yellow, no_color, yellow, no_color, yellow, no_color, yellow, no_color)
++desc_msg = '''%sCommit의 설명 message 적어 주세요. '[]' 대괄호로 시작할 수 없습니다.%s
++%sex) TOS 신규 기능 추가%s
++''' % (yellow, no_color, yellow, no_color)
++ims_msg = '''%sIMS message 를 적어주세요.%s
++%sex) [IMS] N/A or [IMS] 123456%s
++''' % (yellow, no_color, yellow, no_color)
++sample_msg = '''%s[[Sample Commit Message]]%s\n[feat] 신규 API추가
++TOS개발용 신규 API추가
++example_api, 예제_api 추가
++[IMS] : N/A or 123456\n''' % (yellow, no_color)
++
++# current state
++state = STATUS.TITLE
++
++################ reject function
++def reject(arg, arg2):
++    msg = ''
++    print '%s%s%s' % (yellow, arg2, no_color)
++    print '\n%s[[Invalid Commit Message hooked by Commit-Msg Hook]]%s' % (red, no_color)
++    msg = STATUS.reverse_mapping[arg]
++    print '%sYour commit msg is rejected because of invalid [%s] type. %s' % (red, msg, no_color)
++    print '%sPlease modify the commit message and retry. %s' % (red, no_color)
++    print '%sYou can use "$git commit --amend"  command. %s \n' % (red, no_color)
++
++    if arg == STATUS.TITLE:
++        print '%s' % (title_msg)
++    elif arg == STATUS.DESC:
++        print '%s' % (desc_msg)
++    elif arg == STATUS.IMS:
++        print '%s' % (ims_msg)
++    else:
++        print '%s' % (sample_msg)
++    print
++
++    sys.exit(1)
++
++#################################################################################
++#prefix type
++prefix_list = ['[feat]', '[bugfix]', '[docs]', '[refactor]', '[test]', '[chore]']
++prefix_ims = '[IMS]'
++#################################################################################
++
++commit_msg_filepath = sys.argv[1]
++
++with open(commit_msg_filepath, 'r') as f:
++    lines = f.readlines()
++    print '%s%s%s' % (green, commit_msg, no_color)
++    for line in lines:
++        if bool(line.startswith('#')) == False and line != '\n' and line != '':
++            if line.find('Merge branch') > -1 or line.find('Revert \"') > -1 or line.find('Merge remote-tracking branch') > -1:
++                print '%s%s%s' % (green, line.rstrip('\n'), no_color)
++                sys.exit(0)
++            if state == STATUS.MSG_FORM:
++              reject(state, line)
++            gbp_commit = re.search(' ^(Update changelog for \d+.\d+.\d)[.\-\+\w\s\d]{0,} release$', line)
++            if gbp_commit != None:
++              print 'this commit is gbp commit do not any any format'
++              sys.exit(0)
++            result = re.match('(\[.*\])(.*)', line)
++            if result != None:
++                subject = result.group(1)
++                content = result.group(2)
++                if state == STATUS.TITLE:
++                    if subject in prefix_list:
++                        if content == '':
++                            reject(state, line)
++                    else:
++                        reject(state, line)
++                    state = STATUS.DESC
++                elif state == STATUS.IMS:
++                    result = re.search('(N/A)|([0-9]{6})',content)
++                    if result == None:
++                        reject(state, line)
++                    if (result.group().find('N/A') > -1 and len(line) > 10 ) or len(line) > 13:
++                        reject(state, line)
++                    state = STATUS.MSG_FORM
++                else:
++                    reject(state, line)
++            else:
++                if state == STATUS.TITLE:
++                    reject(state, line)
++                else:
++                    state = STATUS.IMS
++            print '%s%s%s' % (green, line.rstrip('\n'), no_color)
++
++    if state != STATUS.MSG_FORM:
++        reject(state, '')
+diff --git a/hooks/pre-commit b/hooks/pre-commit
+new file mode 100755
+index 0000000..4a5b240
+--- /dev/null
++++ b/hooks/pre-commit
+@@ -0,0 +1,43 @@
++#!/bin/sh
++
++if git rev-parse --verify HEAD >/dev/null 2>&1
++then
++  against=HEAD
++else
++  # Initial commit: diff against an empty tree object
++  against=9dc9ff403850282bbbbeb93d16b34837932d01a1
++fi
++
++# conflict인 경우 clang-format 적용하지 않음
++if grep "Conflicts" .git/MERGE_MSG > /dev/null 2>&1
++then
++    echo conflict occurred... skip hook
++    exit 0
++fi
++
++# 색 정의
++RED="\e[0;31m"
++END="\e[0m"
++
++# Do format checking (clang-format)
++C_CXX_format="\.([ch]|[chi](pp|xx)|(cc|hh|ii)|[CHI])$"
++for file in `git diff-index --cached --name-only $against | grep -Ee "$C_CXX_format"`
++do
++  AUTOFORMATTER=`which clang-format`
++  if [ "$AUTOFORMATTER" = "" ]
++  then
++    echo -n "${RED}Cannot find clang-format\nPlease run package install script : trunk/pkg/install_linux_pkg.sh ${END}\n"
++    exit 1
++  else
++    if $AUTOFORMATTER "$file" -output-replacements-xml | grep -c "<replacement " > /dev/null
++    then
++      echo -n "\"$file\" is not formatted.\n"
++      $AUTOFORMATTER -i "$file"
++      git add "$file"
++      echo -n "Auto formatting applied: $AUTOFORMATTER\n"
++    fi
++  fi
++done
++
++# Do default checking (trailing whitespace, etc.)
++git diff-index --check --cached $against . ':(exclude)*.patch'
+diff --git a/hooks/prepare-commit-msg b/hooks/prepare-commit-msg
+new file mode 100755
+index 0000000..7108814
+--- /dev/null
++++ b/hooks/prepare-commit-msg
+@@ -0,0 +1,66 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++import sys, os, re
++#from subprocess import check_output
++
++commit_msg_filepath = sys.argv[1]
++if len(sys.argv) > 2:
++    commit_type = sys.argv[2]
++else:
++    commit_type = ''
++    if len(sys.argv) > 3:
++        commit_hash = sys.argv[3]
++    else:
++        commit_hash = ''
++
++pre_msg = '''[feat]
++
++[IMS] N/A
++
++#
++# 위의 예제 Commit Message의 사용하시면 됩니다.:
++'''
++sample_msg = '''# Commit Messge의 형식은:
++# - TITLE:
++# - DESC:
++# - IMS:
++# 으로 이루어져 있습니다.:
++#
++# - TITLE -:
++#  - 해당 Commit이 어떤 Type의 Commit인지 명시하고, 제목을 정합니다.:
++#  - Commit Type:
++#  -- [feat] '새 기능 추가':
++#  -- [bugfix] '버그 수정 이슈':
++#  -- [docs] 'README나 주석 등에 대한 수정':
++#  -- [refactor] 'Code refactoring 수정 사항':
++#  -- [test] '제품에 영향이 없는 test code':
++#  -- [chore] 'cmake, config file 등에 대한 수정':
++#
++# - DESC -:
++#  - 해당 Commit에 대한 자세한 설명을 기록합니다.:
++#
++# - IMS -:
++#  - IMS 이슈 번호를 명시하거나 없을 경우 N/A를 기록합니다:
++#
++# [[Sample Commit Message]]
++# [feat] 신규 API추가
++# TOS개발용 신규 API추가
++# example_api, 예제_api 추가
++# [IMS] : N/A or 123456
++#'''
++
++if commit_type.find('message') < 0:
++    with open(commit_msg_filepath, 'r') as f:
++            s = f.read()
++            f.close
++            if len(sys.argv) > 2:
++                with open(commit_msg_filepath, 'w') as f:
++                    f.write(s)
++                    f.write("%s" % sample_msg)
++            else:
++                with open(commit_msg_filepath, 'w') as f:
++                    f.write("%s" % pre_msg)
++                    f.write("%s" % sample_msg)
++                    f.write(s)
++            f.close
+diff --git a/meson.build b/meson.build
+index 2e26532..28a6d79 100644
+--- a/meson.build
++++ b/meson.build
+@@ -4,6 +4,10 @@ project('gnome-shell-extensions',
+   license: 'GPL2+'
+ )
+ 
++#Apply Git Hook Directory
++hook_dir = join_paths(meson.source_root(), 'hooks')
++run_command('git', 'config', 'core.hooksPath', hook_dir)
++
+ gettext_domain = meson.project_name()
+ 
+ gnome = import('gnome')

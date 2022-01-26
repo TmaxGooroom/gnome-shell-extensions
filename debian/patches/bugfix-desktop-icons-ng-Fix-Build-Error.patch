@@ -1,0 +1,23 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Thu, 20 May 2021 16:58:08 +0900
+Subject: [bugfix] desktop-icons-ng : Fix Build Error
+
+- include constants.js file
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/meson.build | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/desktop-icons-ng/meson.build b/extensions/desktop-icons-ng/meson.build
+index 08c85f8..36cbffa 100644
+--- a/extensions/desktop-icons-ng/meson.build
++++ b/extensions/desktop-icons-ng/meson.build
+@@ -8,6 +8,7 @@ extension_sources += files(
+     'askConfirmPopup.js',
+     'askNamePopup.js',
+     'askRenamePopup.js',
++    'constants.js',
+     'createThumbnail.js',
+     'dbusUtils.js',
+     'desktopGrid.js',

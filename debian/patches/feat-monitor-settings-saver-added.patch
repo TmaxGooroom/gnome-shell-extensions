@@ -1,0 +1,137 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 17 Sep 2021 19:38:50 +0900
+Subject: [feat] monitor-settings-saver added
+
+- new extension added which saves current primary monitor settings
+- saves conf file under /usr/share/x11/xorg.conf.d/
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/extension.js     | 64 ++++++++++++++++++++++
+ extensions/monitor-settings-saver/meson.build      |  5 ++
+ extensions/monitor-settings-saver/metadata.json.in |  9 +++
+ extensions/monitor-settings-saver/stylesheet.css   |  1 +
+ meson.build                                        |  3 +-
+ 5 files changed, 81 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/monitor-settings-saver/extension.js
+ create mode 100644 extensions/monitor-settings-saver/meson.build
+ create mode 100644 extensions/monitor-settings-saver/metadata.json.in
+ create mode 100644 extensions/monitor-settings-saver/stylesheet.css
+
+diff --git a/extensions/monitor-settings-saver/extension.js b/extensions/monitor-settings-saver/extension.js
+new file mode 100644
+index 0000000..21176b3
+--- /dev/null
++++ b/extensions/monitor-settings-saver/extension.js
+@@ -0,0 +1,64 @@
++const ByteArray = imports.byteArray;
++
++const { Gio, GLib } = imports.gi;
++
++const Main = imports.ui.main;
++
++var sysconfdir = '/usr/share/X11/xorg.conf.d/';
++// var confdir = '/etc/X11/xorg.conf.d/';
++var filename = '10-primary.conf';
++var confFile = Gio.File.new_for_path(GLib.build_filenamev([sysconfdir, filename]));
++
++function init(metadata) { // eslint-disable-line no-unused-vars
++}
++
++function enable() { // eslint-disable-line no-unused-vars
++    this._primaryMonitorId = Main.layoutManager.connect('monitor-changed', () => {
++        savePrimary();
++    });
++    savePrimary();
++}
++
++function disable() { // eslint-disable-line no-unused-vars
++    Main.layoutManager.disconnect(this._primaryMonitorId);
++}
++
++function savePrimary() {
++    if (Main.layoutManager.monitors.length < 2) {
++        if (confFile.query_exists(null))
++            confFile.delete(null);
++        return;
++    }
++    let success, stdout, status;
++    try {
++        [success, stdout,, status] = GLib.spawn_command_line_sync('xrandr');
++    } catch (e) {
++        return;
++    }
++
++    if (!success || status)
++        return;
++
++    writeConf(xrandrGetPrimary(stdout));
++}
++
++function writeConf(primary) {
++    let outputStream = confFile.replace('', false, 0, null);
++
++    outputStream.write('Section "Monitor"\n', null);
++    outputStream.write(`  Identifier "${primary}"\n`, null);
++    outputStream.write('  Option "Primary" "true"\n', null);
++    outputStream.write('EndSection\n', null);
++
++    outputStream.close(null);
++}
++
++function xrandrGetPrimary(stdout) {
++    let ret;
++    let str = ByteArray.toString(stdout).split('\n');
++    str.forEach(line => {
++        if (line.includes('primary'))
++            ret = line.split(' ')[0];
++    });
++    return ret;
++}
+diff --git a/extensions/monitor-settings-saver/meson.build b/extensions/monitor-settings-saver/meson.build
+new file mode 100644
+index 0000000..48504f6
+--- /dev/null
++++ b/extensions/monitor-settings-saver/meson.build
+@@ -0,0 +1,5 @@
++extension_data += configure_file(
++  input: metadata_name + '.in',
++  output: metadata_name,
++  configuration: metadata_conf
++)
+diff --git a/extensions/monitor-settings-saver/metadata.json.in b/extensions/monitor-settings-saver/metadata.json.in
+new file mode 100644
+index 0000000..b2f0d2d
+--- /dev/null
++++ b/extensions/monitor-settings-saver/metadata.json.in
+@@ -0,0 +1,9 @@
++{
++"extension-id": "@extension_id@",
++"uuid": "@uuid@",
++"name": "monitor-settings-saver",
++"description": "saves monitor settings",
++"original-authors": [  "tmax" ],
++"shell-version": [ "@shell_current@" ],
++"url": "@url@"
++}
+diff --git a/extensions/monitor-settings-saver/stylesheet.css b/extensions/monitor-settings-saver/stylesheet.css
+new file mode 100644
+index 0000000..25134b6
+--- /dev/null
++++ b/extensions/monitor-settings-saver/stylesheet.css
+@@ -0,0 +1 @@
++/* This extensions requires no special styling */
+diff --git a/meson.build b/meson.build
+index 038bcdf..89a158b 100644
+--- a/meson.build
++++ b/meson.build
+@@ -53,7 +53,8 @@ tos_extensions = [
+   'osk-hangul',
+   'greeter',
+   'calibrator',
+-  'screenshot'
++  'screenshot',
++  'monitor-settings-saver'
+ ]
+ 
+ 

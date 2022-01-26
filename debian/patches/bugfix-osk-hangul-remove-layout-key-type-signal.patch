@@ -1,0 +1,26 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 13 Dec 2021 14:43:33 +0900
+Subject: [bugfix] osk-hangul : remove "layout-key-type" signal
+
+ - removed "layout-key-type" signal from extension
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index 067ea11..c5c3ca2 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -57,10 +57,6 @@ function _getSyncKeyboardFunc() {
+                     _enable(Enums.KeyboardType.XKB);
+             });
+ 
+-            adapter.connect('layout-key-type', () => {
+-                KeyboardManager._keyboard._onKeyboardGroupsChanged();
+-            });
+-
+             const nimfService = getNimfService();
+             const focusTracker = KeyboardManager._keyboard._focusTracker;
+             _nimfFocusInId = nimfService.connect('focus-in', () => {

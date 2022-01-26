@@ -1,0 +1,60 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 8 Nov 2021 15:46:38 +0900
+Subject: [feat] dash-to-panel : disable hover event for tray if the value of
+ stockgs-panelbtn-click-only is true
+
+ - disable hover event of tray if the value of stockgs-panelbtn-click-only is true
+ - make the default value of stockgs-panelbtn-click-only true
+
+[IMS] 273874
+---
+ .../schemas/10_dash-to-panel.gschema.override         |  1 +
+ extensions/dash-to-panel/tray.js                      | 19 ++++++++++++-------
+ 2 files changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index 1c5c59f..08fdee9 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -17,6 +17,7 @@ show-apps-icon-side-padding = 0
+ click-action = 'TOGGLE-SHOWPREVIEW'
+ isolate-workspaces = true
+ overview-click-to-exit = true
++stockgs-panelbtn-click-only = true
+ scroll-panel-show-ws-popup = false
+ scroll-icon-action = 'NOTHING'
+ panel-element-positions = '{"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"NotificationCenter","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"NotificationCenter","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index fc754e8..1d42e50 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -139,17 +139,22 @@ class Tray {
+           (event.type() === Clutter.EventType.TOUCH_BEGIN ||
+            event.type() === Clutter.EventType.BUTTON_PRESS)) {
+             // when tray menu item is clicked
+-            this._changeSourceIndicator(actor);
+-            this._menu.toggle(true);
+-        } else if (actor.menu && (event.type() === Clutter.EventType.MOTION ||
+-                    event.type() === Clutter.EventType.ENTER ||
+-                    event.type() === Clutter.EventType.LEAVE)) {
+-            // when tray menu item is hovered and another menu is already opened, change the opened menu with tray menu
+-            if (this._menu.isOpen && this._menu.sourceActor !== actor) {
++            if (this._menu.sourceActor === actor) {
++                this._menu.toggle();
++            } else {
+                 this._menu.close();
+                 this._changeSourceIndicator(actor);
+                 this._menu.open();
+             }
++        } else if (!Me.settings.get_boolean('stockgs-panelbtn-click-only')) {
++            if (actor.menu && event.type() === Clutter.EventType.ENTER) {
++                // when tray menu item is hovered and another menu is already opened, change the opened menu with tray menu
++                if (this._menu.isOpen && this._menu.sourceActor !== actor) {
++                    this._menu.close();
++                    this._changeSourceIndicator(actor);
++                    this._menu.open();
++                }
++            }
+         }
+ 
+         return Clutter.EVENT_STOP;

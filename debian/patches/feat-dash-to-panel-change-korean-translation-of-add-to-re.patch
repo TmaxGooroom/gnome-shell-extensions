@@ -1,0 +1,52 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 13 May 2021 15:27:56 +0900
+Subject: [feat] dash-to-panel : change korean translation of add to/remove
+ from favorites
+
+ - changed korean translation of two string according to ui/ux
+   guidelines
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/appIcons.js | 9 +++++++--
+ extensions/dash-to-panel/po/ko.po    | 6 ++++++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/dash-to-panel/appIcons.js b/extensions/dash-to-panel/appIcons.js
+index 83cb42d..9ef3516 100644
+--- a/extensions/dash-to-panel/appIcons.js
++++ b/extensions/dash-to-panel/appIcons.js
+@@ -1424,12 +1424,17 @@ var taskbarSecondaryMenu = Utils.defineClass({
+                 x_align: Clutter.ActorAlign.END });
+             menuitem.actor.insert_child_above(_icon, menuitem.actor.get_first_child());
+ 
++            let __ = imports.gettext.domain('gnome-shell').gettext;
+             if (menuitem.actor.label_actor.text === _('Show Details')) {
+                 _icon.gicon = Gio.Icon.new_for_string('system-search-symbolic');
+-            } else if (menuitem.actor.label_actor.text === _('Add to Favorites')) {
++            } else if (menuitem.actor.label_actor.text === __('Add to Favorites')) {
++            // compare label_actor's text with translations from gnome-shell. Generally, gnome-shell and dash-to-panel's translations are the same.
++            // but in this case, they are different. So first compare label_actor's text with gnome-shell's translation, and change it to dash-to-panel's.
+                 _icon.gicon = Gio.Icon.new_for_string('view-pin-symbolic');
+-            } else if (menuitem.actor.label_actor.text === _('Remove from Favorites')) {
++                menuitem.actor.label_actor.text = _('Add to Favorites');
++            } else if (menuitem.actor.label_actor.text === __('Remove from Favorites')) {
+                 _icon.gicon = Gio.Icon.new_for_string('view-pin-symbolic');
++                menuitem.actor.label_actor.text = _('Remove from Favorites');
+             } else {
+                 // When the shell-window-tracker get app from window use .desktop file
+                 // if the window created from a binary without .desktop file,
+diff --git a/extensions/dash-to-panel/po/ko.po b/extensions/dash-to-panel/po/ko.po
+index 8e60ceb..8016ef4 100644
+--- a/extensions/dash-to-panel/po/ko.po
++++ b/extensions/dash-to-panel/po/ko.po
+@@ -1315,3 +1315,9 @@ msgstr "비활성화 시, 헤더 바 크기에 창 미리보기 아이콘 크기
+ 
+ msgid "Quit %d windows"
+ msgstr "%d개 창 끝내기"
++
++msgid "Add to Favorites"
++msgstr "Dock 에 추가"
++
++msgid "Remove from Favorites"
++msgstr "Dock 에서 제거"

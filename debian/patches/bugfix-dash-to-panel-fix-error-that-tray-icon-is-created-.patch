@@ -1,0 +1,44 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 21 Jul 2021 17:21:32 +0900
+Subject: [bugfix] dash-to-panel : fix error that tray icon is created even
+ when cannot be adjustable
+
+ - The problem was caused by that tray initialized before gnome-settings-daemon. So made tray icons reset when gsd property has changed.
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 16e42f3..fc754e8 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -40,7 +40,14 @@ class Tray {
+                     log('error connecting to org.gnome.SettingsDaemon.Power');
+                     return;
+                 }
+-                brightness.visible = proxy.Brightness >= 0;
++
++                // Sometimes Brightness becomes null value for some reason, so it needs to be checked.
++                // e.g. gnome-settings-daemon is initialized after tray construction.
++                proxy.connect('g-properties-changed', () => {
++                    brightness.visible = proxy.Brightness !== null ? proxy.Brightness >= 0 : false;
++                });
++
++                brightness.visible = proxy.Brightness !== null ? proxy.Brightness >= 0 : false;
+             }
+         );
+ 
+@@ -54,6 +61,11 @@ class Tray {
+                     log('error connecting to org.freedesktop.UPower');
+                     return;
+                 }
++
++                proxy.connect('g-properties-changed', () => {
++                    power.visible = proxy.IsPresent;
++                });
++
+                 power.visible = proxy.IsPresent;
+             }
+         );

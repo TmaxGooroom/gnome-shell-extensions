@@ -1,0 +1,125 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 30 Apr 2021 14:30:36 +0900
+Subject: [chore] Rename variable, add annotation
+
+   - rename findRowIndex function name and return property
+   - rename return property at precalculateWidth function
+   - add annotation about nextLine & previousLine function
+
+[IMS] N/A
+---
+ extensions/alternate-tab/switcher.js | 41 ++++++++++++++++++++----------------
+ 1 file changed, 23 insertions(+), 18 deletions(-)
+
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index db1bfa0..07f62c1 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -182,6 +182,8 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+         super._finish();
+     }
+ 
++    // When Clutter.Key.Down pressed, Move Focus below the focused item.
++    // If selected item is allocated Bottom Row, then move focus Top Row item
+     _nextLine() {
+         let [width, height] = this._items[this._selectedIndex].get_size();
+         let [x, y] = this._items[this._selectedIndex].get_transformed_position();
+@@ -191,6 +193,8 @@ class WindowSwitcherPopup extends SwitcherPopup.SwitcherPopup {
+ 
+     }
+ 
++    // When Clutter.Key.Up pressed, Move Focus above the focused item.
++    // If selected item is allocated Top Row, then move focus Bottom Row item
+     _previousLine() {
+         let [width, height] = this._items[this._selectedIndex].get_size();
+         let [x, y] = this._items[this._selectedIndex].get_transformed_position();
+@@ -355,13 +359,13 @@ var WindowSwitcher = GObject.registerClass({
+     precalculateRowWidth(index) {
+         let rowButtons = this._lists[index].get_children();
+         let rowButtonNum = rowButtons.length;
+-        let naturalWidth = 0;
++        let rowWidth = 0;
+         for (let i = 0; i < rowButtonNum; i++) {
+-            naturalWidth += rowButtons[i].get_width();
+-            naturalWidth += BUTTON_PADDING * 2;
++            rowWidth += rowButtons[i].get_width();
++            rowWidth += BUTTON_PADDING * 2;
+         }
+-        naturalWidth += (rowButtonNum - 1) * ROW_SPACING;
+-        return naturalWidth;
++        rowWidth += (rowButtonNum - 1) * ROW_SPACING;
++        return rowWidth;
+     }
+ 
+     addItem(item, label) {
+@@ -382,15 +386,16 @@ var WindowSwitcher = GObject.registerClass({
+         return bbox;
+     }
+ 
+-    findItemRowIndex(index) {
+-        let indexReturn = -1;
++    // Find and return row index which include this._items[index]
++    findRowIndexFromItem(itemIndex) {
++        let rowIndex = -1;
+         for (let i = 0; i <= this._rows; i++) {
+-            if (this._lists[i].get_children().indexOf(this._items[index]) !== -1) {
+-                indexReturn = i;
++            if (this._lists[i].get_children().indexOf(this._items[itemIndex]) !== -1) {
++                rowIndex = i;
+                 break;
+             }
+         }
+-        return indexReturn;
++        return rowIndex;
+     }
+ 
+     highlight(index, justOutline) {
+@@ -412,14 +417,14 @@ var WindowSwitcher = GObject.registerClass({
+         let [value] = adjustment.get_values();
+ 
+         // Find row boxlayout which index items belongs to
+-        let listRow = this.findItemRowIndex(index);
++        let rowIndex = this.findRowIndexFromItem(index);
+         let [absItemX_, absItemY] = this._items[index].get_transformed_position();
+         this.transform_stage_point(absItemX_, absItemY);
+         let [containerWidth_, containerHeight] = this.get_transformed_size();
+ 
+-        if (this._lists[listRow].allocation.y2 > containerHeight)
++        if (this._lists[rowIndex].allocation.y2 > containerHeight)
+             this._scrollToDown(index);
+-        else if (this._lists[listRow].allocation.y1 - value < 0)
++        else if (this._lists[rowIndex].allocation.y1 - value < 0)
+             this._scrollToUp(index);
+     }
+ 
+@@ -427,8 +432,8 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let indexRow = this.findItemRowIndex(index);
+-        let list = this._lists[indexRow];
++        let rowIndex = this.findRowIndexFromItem(index);
++        let list = this._lists[rowIndex];
+ 
+         if (list.allocation.y1 < value)
+             value = Math.max(0, list.allocation.y1);
+@@ -451,8 +456,8 @@ var WindowSwitcher = GObject.registerClass({
+         let adjustment = this._scrollView.vscroll.adjustment;
+         let [value, lower_, upper, stepIncrement_, pageIncrement_, pageSize] = adjustment.get_values();
+ 
+-        let indexRow = this.findItemRowIndex(index);
+-        let list = this._lists[indexRow];
++        let rowIndex = this.findRowIndexFromItem(index);
++        let list = this._lists[rowIndex];
+ 
+         if (list.allocation.y1 < value)
+             value = Math.max(0, list.allocation.y1);
+@@ -489,7 +494,7 @@ var WindowSwitcher = GObject.registerClass({
+         });
+         if (index === -1)
+             return;
+-        let rowIndex = this.findItemRowIndex(index);
++        let rowIndex = this.findRowIndexFromItem(index);
+         this.icons.splice(index, 1);
+         this.removeItem(index);
+         if (this._lists[rowIndex].get_children().length === 0) {

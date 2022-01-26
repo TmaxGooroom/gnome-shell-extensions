@@ -1,0 +1,76 @@
+From: Gyumin Lim <gyumin_lim@tmax.co.kr>
+Date: Mon, 3 May 2021 16:48:36 +0900
+Subject: [chore] notification message closebutton&timelabel style override
+
+ - notification message closebutton & timelabel style override
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js   | 4 ----
+ extensions/notification-center/stylesheet.css | 8 ++++----
+ 2 files changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 6c19654..f4421e5 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -368,11 +368,9 @@ const NotificationCenter = new LangClass({
+         this.resetIndicator();
+         this.notificationSection._messages.forEach(message => {
+             message.add_style_class_name('notification-center-message');
+-            message._closeButton.style_class = 'notification-center-close-button';
+             message._bodyStack.style_class = 'notification-center-bodystack';
+             let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
+             let timelabel = message._secondaryBin.child;
+-            timelabel.style_class = 'notification-center-time-label';
+             message._secondaryBin.remove_child(timelabel);
+             contentBox.add_child(timelabel);
+             message.setExpandedLines(3);
+@@ -630,11 +628,9 @@ const NotificationCenter = new LangClass({
+ 
+         this.notificationSection._messages.forEach(message => {
+             message.add_style_class_name('notification-center-message');
+-            message._closeButton.style_class = 'notification-center-close-button';
+             message._bodyStack.style_class = 'notification-center-bodystack';
+             let contentBox = message.child.get_child_at_index(0).get_child_at_index(1);
+             let timelabel = message._secondaryBin.child;
+-            timelabel.style_class = 'notification-center-time-label';
+             message._secondaryBin.remove_child(timelabel);
+             contentBox.add_child(timelabel);
+             message.setExpandedLines(3);
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index 4612d66..51847b5 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -84,19 +84,19 @@
+   font-weight: bold;
+ }
+ 
+-.notification-center-close-button {
++.message-close-button {
+   color: rgb(0,0,0);
+   width: 20px;
+   height: 20px;
+   size: 11px;
+ }
+ 
+-.notification-center-close-button:hover {
++.message-close-button:hover {
+   background-color: rgba(203, 206, 216, 0.5);
+   border-radius: 10px;
+ }
+ 
+-.notification-center-close-button:active {
++.message-close-button:active {
+   background-color: rgb(203, 206, 216);
+   border-radius: 10px;
+ }
+@@ -107,7 +107,7 @@
+   font-weight: lighter;
+ }
+ 
+-.notification-center-time-label {
++.event-time {
+   margin-top: 4px;
+   color: rgba(0,0,0,0.4);
+   font-size: 13px;

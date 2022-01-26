@@ -1,0 +1,28 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 15 Apr 2021 16:45:35 +0900
+Subject: [feat] arc-menu : fix arc-menu to search focus error
+
+ - close the arc-menu popup before search menu is toggled to release arc-menu popup's grab
+
+[IMS] N/A
+---
+ extensions/arc-menu/baseMenuLayout.js | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/arc-menu/baseMenuLayout.js b/extensions/arc-menu/baseMenuLayout.js
+index 27a42b7..6d9e894 100644
+--- a/extensions/arc-menu/baseMenuLayout.js
++++ b/extensions/arc-menu/baseMenuLayout.js
+@@ -602,9 +602,10 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         case Clutter.KEY_Delete:
+             return Clutter.EVENT_PROPAGATE;
+         default:
+-            if (event.get_key_unicode())
++            if (event.get_key_unicode()) {
++                this.arcMenu.toggle();
+                 Main.overview.focusSearch(event);
+-
++            }
+         }
+         return Clutter.EVENT_PROPAGATE;
+     }

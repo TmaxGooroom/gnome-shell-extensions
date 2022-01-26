@@ -1,0 +1,33 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 12 Oct 2021 17:41:06 +0900
+Subject: [feat] dash-to-panel : change dot-style and dot-color
+
+ - changed dot-style and color
+
+[IMS] 270851
+---
+ .../dash-to-panel/schemas/10_dash-to-panel.gschema.override  | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index 8cb2d19..f5fade5 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -1,11 +1,11 @@
+ [org.gnome.shell.extensions.dash-to-panel]
+-dot-style-focused = 'DOTS'
+-dot-style-unfocused = 'DOTS'
++dot-style-focused = 'METRO'
++dot-style-unfocused = 'METRO'
+ dot-color-override = true
+-dot-color-1 = '#4e6cb0'
+-dot-color-2 = '#4e6cb0'
+-dot-color-3 = '#4e6cb0'
+-dot-color-4 = '#4e6cb0'
++dot-color-1 = '#80a7ff'
++dot-color-2 = '#80a7ff'
++dot-color-3 = '#80a7ff'
++dot-color-4 = '#80a7ff'
+ dot-size = 4
+ trans-use-custom-bg = true
+ trans-use-custom-opacity = true

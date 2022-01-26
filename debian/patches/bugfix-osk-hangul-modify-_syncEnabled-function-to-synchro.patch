@@ -1,0 +1,100 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 9 Jul 2021 17:52:23 +0900
+Subject: [bugfix] osk-hangul : modify _syncEnabled function to synchronize
+ with extension
+
+ - modified _syncEnabled function of KeyboardManager to synchronize with extension
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 43 +++++++++++++++++++++++++++++++-------
+ 1 file changed, 36 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index ae60df7..2056a8a 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -13,11 +13,12 @@ const QwertyKeysyms = Me.imports.xkbcommon_keysyms.QwertyMap;
+ const HangulKiyeog = 0x0ea1;
+ const HangulJYeorinHieuh = 0x0efa;
+ 
+-
+ let _originalKeyvalPress = null;
+ let _originalKeyvalRelease = null;
+ let _originalPopupLanguageMenu = null;
+ let _originalSetActiveLayer = null;
++let _originalSyncEnabled = null;
++let _keyboardDestroyId;
+ 
+ function _isKoreanCharactor(keyval) {
+     if (!keyval)
+@@ -74,7 +75,7 @@ function _nextInputMethod() {
+ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+-function enable() { // eslint-disable-line no-unused-vars
++function _enable() {
+     let keyboard = Main.keyboard._keyboard;
+     let controller = keyboard._keyboardController;
+ 
+@@ -96,7 +97,6 @@ function enable() { // eslint-disable-line no-unused-vars
+         _nextInputMethod();
+     };
+ 
+-
+     // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+     // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+     // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+@@ -115,19 +115,48 @@ function enable() { // eslint-disable-line no-unused-vars
+         _originalSetActiveLayer.call(keyboard, activeLevel);
+         controller._currentSource.xkbId = oldGroupName;
+     };
++
++    keyboard._setActiveLayer(0);
++}
++
++function enable() { // eslint-disable-line no-unused-vars
++    _originalSyncEnabled = Main.keyboard._syncEnabled;
++    let _isEnabled = false;
++    Main.keyboard._syncEnabled = () => {
++        _originalSyncEnabled.call(Main.keyboard);
++        if (Main.keyboard._keyboard && !_isEnabled) {
++            _enable();
++            _isEnabled = true;
++            _keyboardDestroyId = Main.keyboard._keyboard.connect('destroy', () => {
++                _keyboardDestroyId = null;
++                _isEnabled = false;
++            });
++        }
++    };
++    Main.keyboard._syncEnabled();
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+     let keyboard = Main.keyboard._keyboard;
+     let controller = keyboard._keyboardController;
+ 
+-    controller.keyvalPress = _originalKeyvalPress;
+-    controller.keyvalRelease = _originalKeyvalRelease;
+-    keyboard._setActiveLayer = _originalSetActiveLayer;
+-    keyboard._popupLanguageMenu = _originalPopupLanguageMenu;
++    if (controller) {
++        controller.keyvalPress = _originalKeyvalPress;
++        controller.keyvalRelease = _originalKeyvalRelease;
++    }
++    if (keyboard) {
++        keyboard._setActiveLayer = _originalSetActiveLayer;
++        keyboard._popupLanguageMenu = _originalPopupLanguageMenu;
++        if (_keyboardDestroyId)
++            keyboard.disconnect(_keyboardDestroyId);
++        keyboard._setActiveLayer(0);
++    }
+ 
+     _originalKeyvalPress = null;
+     _originalKeyvalRelease = null;
+     _originalPopupLanguageMenu = null;
+     _originalSetActiveLayer = null;
++
++    Main.keyboard._syncEnabled = _originalSyncEnabled;
++    _originalSyncEnabled = null;
+ }

@@ -1,0 +1,35 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 19 Oct 2021 14:28:49 +0900
+Subject: [refactor] notification-center: code refactoring
+
+- refactoring by code reviews
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 756b029..bc37bf9 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -957,13 +957,15 @@ const NotificationCenter = new LangClass({
+ 
+     changeSubPanelUI(panel) {
+         // remove dots and borders from sub panel datemenu
++        const dtActor = panel.statusArea.dateMenu.get_children()[0].get_children()[0];
++        this.subDtActors.push(dtActor);
++        panel.statusArea.dateMenu.get_children()[0].remove_actor(dtActor);
+         panel.statusArea.dateMenu.get_children()[0].remove_actor(panel.statusArea.dateMenu._indicator);
+-        this.subDtActors.push(panel.statusArea.dateMenu.get_children()[0].get_children()[0]);
+-        panel.statusArea.dateMenu.get_children()[0].remove_actor(this.subDtActors[this.subDtActors.length - 1]);
+ 
+         // remove messagelist from datemenu in sub panel
+-        this.subMessageLists.push(panel.statusArea.dateMenu._messageList);
+-        panel.statusArea.dateMenu._messageList.get_parent().remove_actor(this.subMessageLists[this.subMessageLists.length - 1]);
++        const messageList = panel.statusArea.dateMenu._messageList;
++        this.subMessageLists.push(messageList);
++        panel.statusArea.dateMenu._messageList.get_parent().remove_actor(messageList);
+ 
+         // use same default visitility value of main panel
+         panel.statusArea.dateMenu._weatherItem.visible = !this.prefs.get_boolean('hide-weather-section') && this.defaultWeatherItemVisibility;

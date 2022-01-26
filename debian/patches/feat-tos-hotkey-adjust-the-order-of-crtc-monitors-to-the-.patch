@@ -1,0 +1,191 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 27 May 2021 14:32:07 +0900
+Subject: [feat] tos-hotkey : adjust the order of crtc monitors to the same
+ order of gnome-settings
+
+ - make built-in display always first monitor
+ - number each monitor to the reverse order of retured array of GetResources' call
+ - change output dictionary to array to maintain order of monitors
+ - remove unused member variable of DisplayConfig
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 117 ++++++++++++++++++---------------
+ 1 file changed, 63 insertions(+), 54 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 29fce56..30cdc0c 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -22,7 +22,7 @@ const META_MONITORS_CONFIG_METHOD_PERSISTENT = 2;
+ 
+ class DisplayConfig {
+     constructor(resources, currentState) {
+-        this._outputs = {}; // physical monitors
++        this._outputs = []; // physical monitors
+         if (resources)
+             this._setResources(resources);
+         if (currentState)
+@@ -45,18 +45,19 @@ class DisplayConfig {
+                 'transform': 0,
+             });
+         }
+-        this._outputs = new Map();
+-        for (let output of resources[2]) {
++
++        // reverse the original array to fit the outputs order with gnome-settings
++        // gnome-settings are numbering the physical monitor to the reverse order of the physical monitor list.
++        // e.g) if the original list is [DP-1, DP-3, HDMI-1], then the number of each element would be 3, 2, 1.
++        for (let output of resources[2].reverse()) {
+             let productSerial = output[7]['serial'].deepUnpack();
+-            this._outputs.set(productSerial, {
++            this._outputs.push({
++                productSerial,
+                 'currentCrtc': output[2],
+                 'isPrimary': output[7]['primary'] ? output[7]['primary'].deepUnpack() : false,
+                 'underscanning': output[7]['underscanning'] ? output[7]['underscanning'] : false,
+                 'supportsUnderscanning': output[7]['supportsUnderscanning'] ? output[7]['supportsUnderscanning'] : false,
+             });
+-
+-            if (this._outputs.get(productSerial)['isPrimary'])
+-                this._primaryMonitor = this._outputs.get(productSerial);
+         }
+     }
+ 
+@@ -65,7 +66,12 @@ class DisplayConfig {
+         for (let monitor of current[1]) {
+             let serial = monitor[0][3];
+ 
+-            let temp = this._outputs.has(serial) ? this._outputs.get(serial) : {};
++            let index = this._outputs.findIndex(ele => ele['productSerial'] === serial);
++            if (index === -1)
++                return;
++
++            let temp = this._outputs[index];
++
+             temp['connector'] = monitor[0][0];
+             temp['possibleModes'] = [];
+             for (let mode of monitor[1]) {
+@@ -81,19 +87,29 @@ class DisplayConfig {
+                 if (mode[6]['is-preferred'] && mode[6]['is-preferred'].deepUnpack() === true)
+                     temp['preferredMode'] = mode[0];
+             }
+-            temp['is-builtin'] = monitor[2]['is-builtin'] ? monitor[2]['is-builtin'].deepUnpack() : false;
+-            this._outputs.set(serial, temp);
++            temp['isBuiltin'] = monitor[2]['is-builtin'] ? monitor[2]['is-builtin'].deepUnpack() : false;
++            this._outputs[index] = temp;
++        }
++
++        // built-in display is always 1.
++        for (let i in this._outputs) {
++            if (this._outputs[i]['isBuiltin']) {
++                let output = this._outputs[i];
++                this._outputs.splice(i, 1);
++                this._outputs.unshift(output);
++                break;
++            }
+         }
+ 
+         for (let monitor of current[2]) {
+             let serial = monitor[5][0][3];
+-            let logicalMonitor = this._outputs.get(serial);
++            let physicalMonitor = this._outputs.find(ele => ele['productSerial'] === serial);
+ 
+-            let crtcID = logicalMonitor['currentCrtc'];
++            let crtcID = physicalMonitor['currentCrtc'];
+ 
+             // validate scale
+-            let modeID = logicalMonitor['currentMode'] ? logicalMonitor['currentMode'] : logicalMonitor['preferredMode'];
+-            for (let mode of logicalMonitor['possibleModes']) {
++            let modeID = physicalMonitor['currentMode'] ? physicalMonitor['currentMode'] : physicalMonitor['preferredMode'];
++            for (let mode of physicalMonitor['possibleModes']) {
+                 if (mode['modeID'] !== modeID)
+                     continue;
+ 
+@@ -200,53 +216,46 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+         }
+     }
+ 
+-    async setSingleDisplay(index = 1) {
++    async setSingleDisplay(index = 0) {
+         let resources = await this._proxy.call('GetResources');
+         let currentState = await this._proxy.call('GetCurrentState');
+ 
+         try {
+-            let crtcId = resources[2][index] ? resources[2][index][2] : -1;
+-            let transform, scale, currentMode;
+-            if (crtcId !== -1) {
+-                transform = resources[1][crtcId][7];
+-                currentMode = resources[1][crtcId][6];
+-
+-                // check whether that the given mode actually exist. If not, set `currentMode` to null
+-                if (currentState[1][index][1][currentMode] && currentState[1][index][1][currentMode][6]['is-current'])
+-                    // use preferred scale for given mode
+-                    scale = currentState[1][index][1][currentMode][4];
+-                else
+-                    currentMode = null;
+-            }
+-            // if there is no crtc for given index, use default transform(0), preferred mode
+-            if (!transform)
+-                transform = 0;
+-
+-            if (!currentMode) {
+-                let possibleModes = currentState[1][index][1];
+-
+-                for (let idx in possibleModes) {
+-                    if (possibleModes[idx][6]['is-preferred'] && possibleModes[idx][6]['is-preferred'].get_boolean()) {
+-                        currentMode = idx;
+-                        scale = possibleModes[idx][4];
+-                    }
+-                }
+-                if (!currentMode) {
+-                    currentMode = 0;
+-                    scale = 1.0;
++            let displayConfig = new DisplayConfig(resources, currentState);
++
++            let serial = displayConfig._serial;
++            let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
++
++            let scale, transform;
++
++            let logicalMonitor = [];
++            displayConfig._outputs.forEach(output => {
++                if (output['isPrimary']) {
++                    let crtcID = output['currentCrtc'];
++                    scale = displayConfig._crtcs[crtcID]['scale'];
++                    transform = displayConfig._crtcs[crtcID]['transform'];
+                 }
+-            }
++            });
+ 
+-            let properties = {};
+-            if (!currentState[1][index][2]['is-underscanning'])
+-                properties['underscanning'] = new GLib.Variant('b', false);
+-            else
+-                properties['underscanning'] = new GLib.Variant('b', true);
++            let target = displayConfig._outputs[index];
++            if (!target)
++                return;
++
++            let modeID = target['currentMode'] ? target['currentMode'] : target['preferredMode'];
++
++            let properties = {
++                'enable_underscanning': target['underscanning'] ? target['underscanning'] : new GLib.Variant('b', false),
++            };
+ 
+-            let logicalMonitor = [currentState[1][index][0][0], currentState[1][index][1][currentMode][0], properties]; // connector id, mode id(e.g. 1920x1080@60)
+-            let logicalMonitors = [0, 0, scale, transform, true]; // x, y, scale, transform, is primary
+-            logicalMonitors.push([logicalMonitor]);
+-            await this._proxy.call('ApplyMonitorsConfig', [currentState[0], 2, [logicalMonitors], [new GLib.Variant('a{sv}', {})]]);
++            let monitor = [target['connector'], modeID, properties];
++
++            logicalMonitor.push(monitor);
++
++            // x, y, scale, transform, is primary
++            let logicalMonitors = [0, 0, scale, transform, true];
++            logicalMonitors.push(logicalMonitor);
++
++            await this._proxy.call('ApplyMonitorsConfig', [serial, method, [logicalMonitors], [new GLib.Variant('a{sv}', {})]]);
+         } catch (e) {
+             log(e);
+         }

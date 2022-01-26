@@ -1,0 +1,44 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 1 Nov 2021 15:19:21 +0900
+Subject: [docs] monitor-settings-saver: added comment
+
+- added comments about serial, product information in EDID header block and display descriptor block
+
+[IMS] N/A
+---
+ extensions/monitor-settings-saver/xrandrParser.js | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/xrandrParser.js b/extensions/monitor-settings-saver/xrandrParser.js
+index dfe4dd7..865134c 100644
+--- a/extensions/monitor-settings-saver/xrandrParser.js
++++ b/extensions/monitor-settings-saver/xrandrParser.js
+@@ -52,7 +52,7 @@ function xrandrParse() {
+                 if (lines[j].includes('EDID:')) {
+                     for (let k = 1; k <= 8; k++)
+                         edid += lines[j + k].replace('\n', '').replace('\t\t', '');
+-                    // vendor, serial, product
++                    // vendor, serial, product information in EDID header block
+                     let vendor = '';
+                     let bin = parseInt(edid.substr(16, 4), 16).toString(2).padStart(16, '0');
+                     vendor += String.fromCharCode(64 + parseInt(bin.substr(1, 5), 2));
+@@ -61,7 +61,9 @@ function xrandrParse() {
+                     monitor.vendor = vendor;
+                     monitor.product = `0x${edid.substr(20, 4)}`;
+                     monitor.serial = `0x${edid.substr(24, 8)}`;
+-                    // if serial, product information is in display descriptor, use it
++                    // parse serial, product information in display descriptor block
++                    // if there is no serial, product information in display descriptor block,
++                    // use the information in EDID header block
+                     for (let k = 0; k < 4; k++) {
+                         let descriptor = edid.substr(108 + 36 * k, 36);
+                         if (descriptor.substr(0, 10) === '000000ff00') {
+@@ -85,7 +87,7 @@ function xrandrParse() {
+                     let totalHeightPixel = Number(lines[j + 1].split(' ').filter(word => word.length > 1)[8]);
+                     let totalWidthPixel = Number(lines[j + 2].split(' ').filter(word => word.length > 1)[8]);
+                     monitor.rate = String(pixelClock * 1000000 / totalHeightPixel / totalWidthPixel);
+-                } else if (lines[j].includes('connected')) { // another connector, end
++                } else if (lines[j].includes(' connected') || lines[j].includes(' disconnected')) { // another connector, end
+                     if (!edid) { // edid info not found
+                         monitor.vendor = 'unknown';
+                         monitor.serial = 'unknown';

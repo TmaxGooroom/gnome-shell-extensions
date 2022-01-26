@@ -1,0 +1,32 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 13 Oct 2021 13:32:34 +0900
+Subject: [bugfix] dashtopanel: preference bugfix
+
+- fixed crash when enter preference window
+
+[IMS] 272165
+---
+ extensions/dash-to-panel/prefs.js | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/extensions/dash-to-panel/prefs.js b/extensions/dash-to-panel/prefs.js
+index 72fcf95..4370ded 100644
+--- a/extensions/dash-to-panel/prefs.js
++++ b/extensions/dash-to-panel/prefs.js
+@@ -24,7 +24,6 @@
+ const { GdkPixbuf, Gio, GLib, Gtk, Gdk } = imports.gi;
+ const Lang = imports.lang;
+ 
+-const Main = imports.ui.main;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Convenience = Me.imports.convenience;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+@@ -710,7 +709,7 @@ const Settings = new Lang.Class({ // eslint-disable-line no-restricted-propertie
+         // multi-monitor
+         this.monitors = this._settings.get_value('available-monitors').deep_unpack();
+ 
+-        let dtpPrimaryMonitorIndex = this.monitors.indexOf(Main.layoutManager.primaryMonitor);
++        let dtpPrimaryMonitorIndex = this.monitors[0];
+ 
+         if (dtpPrimaryMonitorIndex < 0)
+             dtpPrimaryMonitorIndex = 0;

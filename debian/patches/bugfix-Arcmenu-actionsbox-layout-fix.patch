@@ -1,0 +1,43 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 21 May 2021 14:55:04 +0900
+Subject: [bugfix] Arcmenu actionsbox layout fix
+
+- Fixed arcmenu actionsbox laybox based on TOS ux documents
+
+[IMS] N/A
+---
+ extensions/arc-menu/menuButton.js | 2 +-
+ extensions/arc-menu/menuLayout.js | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/arc-menu/menuButton.js b/extensions/arc-menu/menuButton.js
+index d0fee87..beaa69a 100644
+--- a/extensions/arc-menu/menuButton.js
++++ b/extensions/arc-menu/menuButton.js
+@@ -196,7 +196,7 @@ var MenuButton = GObject.registerClass(class ArcMenuButton extends PanelMenu.But
+             height = monitorWorkArea.height * 8 / 10;
+ 
+ 
+-        this.mainBox.style = `height: ${height}px; background-color:rgb(41, 41, 41); border-radius:14px 20px 20px 14px`;
++        this.mainBox.style = `height: ${height}px; background-color:rgb(29, 29, 29); border-radius:14px 20px 20px 14px`;
+         this.section.actor.add_actor(this.mainBox);
+         this.MenuLayout = new MenuLayout.createMenu(this);
+         this._setMenuPositionAlignment();
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index 89da353..12d16b3 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -50,11 +50,11 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         this.actionsBox = new St.BoxLayout({
+             x_expand: true,
+             y_expand: true,
+-            x_align: Clutter.ActorAlign.START,
++            x_align: Clutter.ActorAlign.CENTER,
+             y_align: Clutter.ActorAlign.END,
+             vertical: true,
+         });
+-        this.actionsBox.style = 'background-color:rgb(41, 41, 41); border-radius: 14px 0px 0px 14px; margin: 0px; spacing: 10px; padding: 0px 5px 0px 5px; width: 38px;';
++        this.actionsBox.style = 'background-color:rgb(29, 29, 29); border-radius: 14px 0px 0px 14px; margin: 0px; spacing: 10px; padding: 0px 7px 9px 5px; width: 38px;';
+         this.mainBox.add(this.actionsBox);
+ 
+         // User Button

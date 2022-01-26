@@ -1,0 +1,63 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 22 Oct 2021 18:43:29 +0900
+Subject: [bugfix] notificationcenter: sleep fix
+
+- remove datemenu noti menu fix
+
+[IMS] 272701
+---
+ extensions/notification-center/extension.js | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index bc37bf9..1795d69 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -40,7 +40,7 @@ function enable() {
+ }
+ 
+ function disable() {
+-
++    log('disable notificationcenter');
+     notificationCenter.undoChanges();
+     notificationCenter.destroy();
+ 
+@@ -948,14 +948,19 @@ const NotificationCenter = new LangClass({
+                 return;
+             this.subDtActors = [];
+             this.subMessageLists = [];
++            this.subMessageListParents = [];
+             global.dashToPanel.panels.forEach(panel => {
+                 if (panel !== Main.panel.get_parent())
+                     this.changeSubPanelUI(panel);
+             });
++        } else {
++            // when dashtopanel loaded lately
+         }
+     },
+ 
+     changeSubPanelUI(panel) {
++        log('several panels');
++        log(global.dashToPanel.panels.length);
+         // remove dots and borders from sub panel datemenu
+         const dtActor = panel.statusArea.dateMenu.get_children()[0].get_children()[0];
+         this.subDtActors.push(dtActor);
+@@ -965,7 +970,8 @@ const NotificationCenter = new LangClass({
+         // remove messagelist from datemenu in sub panel
+         const messageList = panel.statusArea.dateMenu._messageList;
+         this.subMessageLists.push(messageList);
+-        panel.statusArea.dateMenu._messageList.get_parent().remove_actor(messageList);
++        this.subMessageListParents.push(messageList.get_parent());
++        messageList.get_parent().remove_actor(messageList);
+ 
+         // use same default visitility value of main panel
+         panel.statusArea.dateMenu._weatherItem.visible = !this.prefs.get_boolean('hide-weather-section') && this.defaultWeatherItemVisibility;
+@@ -979,7 +985,7 @@ const NotificationCenter = new LangClass({
+         panel.statusArea.dateMenu.get_children()[0].add_actor(panel.statusArea.dateMenu._indicator);
+ 
+         // revert messagelist of datemenu in sub panel
+-        panel.statusArea.dateMenu._messageList.get_parent().insert_child_at_index(this.subMessageLists.shift(), 0);
++        this.subMessageListParents.shift().insert_child_at_index(this.subMessageLists.shift(), 0);
+ 
+         // revert visibility of items
+         panel.statusArea.dateMenu._weatherItem.visible = this.defaultWeatherItemVisibility;

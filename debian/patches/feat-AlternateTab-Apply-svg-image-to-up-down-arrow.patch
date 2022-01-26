@@ -1,0 +1,147 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Fri, 7 May 2021 17:01:05 +0900
+Subject: [feat] AlternateTab: Apply svg image to up & down arrow
+
+  - Apply Arrow svg image to up & down arrow figure
+  - Remove unused function
+
+[IMS] N/A
+---
+ .../media/tos_btn_alttab_arrow_down.svg            | 14 ++++++
+ .../media/tos_btn_alttab_arrow_up.svg              | 14 ++++++
+ extensions/alternate-tab/stylesheet.css            |  2 +-
+ extensions/alternate-tab/switcher.js               | 58 +++-------------------
+ 4 files changed, 36 insertions(+), 52 deletions(-)
+ create mode 100644 extensions/alternate-tab/media/tos_btn_alttab_arrow_down.svg
+ create mode 100644 extensions/alternate-tab/media/tos_btn_alttab_arrow_up.svg
+
+diff --git a/extensions/alternate-tab/media/tos_btn_alttab_arrow_down.svg b/extensions/alternate-tab/media/tos_btn_alttab_arrow_down.svg
+new file mode 100644
+index 0000000..dc16ad3
+--- /dev/null
++++ b/extensions/alternate-tab/media/tos_btn_alttab_arrow_down.svg
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="40px" height="34px" viewBox="0 0 40 34" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_btn_alttab_arrow_down</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="06_01_05_TOS5_alttab" transform="translate(-820.000000, -886.000000)">
++            <g id="Group-5-Copy" transform="translate(100.000000, 107.000000)">
++                <g id="Group-Copy-2" transform="translate(720.000000, 769.000000)">
++                    <rect id="Rectangle" x="0" y="7" width="40" height="40"></rect>
++                    <path d="M32.173913,6.09259259 C33.0907494,6.09259259 33.8418827,6.80270845 33.9082733,7.70341981 L33.9130435,7.83333333 L33.9130435,32.2037037 C33.9130435,33.121389 33.2035845,33.8732178 32.3037064,33.9396698 L32.173913,33.9444444 L7.82608696,33.9444444 C6.86559174,33.9444444 6.08695652,33.1650883 6.08695652,32.2037037 C6.08695652,31.2860184 6.79641547,30.5341896 7.69629361,30.4677376 L7.82608696,30.462963 L30.4347826,30.4622446 L30.4347826,7.83333333 C30.4347826,6.91564807 31.1442416,6.16381925 32.0441197,6.09736722 L32.173913,6.09259259 Z" id="Rectangle" fill="#FFFFFF" fill-rule="nonzero" transform="translate(20.000000, 20.018519) scale(1, -1) rotate(-135.000000) translate(-20.000000, -20.018519) "></path>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/alternate-tab/media/tos_btn_alttab_arrow_up.svg b/extensions/alternate-tab/media/tos_btn_alttab_arrow_up.svg
+new file mode 100644
+index 0000000..6e20e3f
+--- /dev/null
++++ b/extensions/alternate-tab/media/tos_btn_alttab_arrow_up.svg
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="40px" height="34px" viewBox="0 0 40 34" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_btn_alttab_arrow_up</title>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="06_01_05_TOS5_alttab" transform="translate(-820.000000, -130.000000)">
++            <g id="Group-5-Copy" transform="translate(100.000000, 107.000000)">
++                <g id="Group" transform="translate(720.000000, 20.000000)">
++                    <rect id="Rectangle" x="0" y="0" width="40" height="39"></rect>
++                    <path d="M32.173913,12.7777778 C33.0907494,12.7777778 33.8418827,13.4727848 33.9082733,14.3543321 L33.9130435,14.4814815 L33.9130435,38.3333333 C33.9130435,39.2314934 33.2035845,39.9673258 32.3037064,40.032364 L32.173913,40.037037 L7.82608696,40.037037 C6.86559174,40.037037 6.08695652,39.2742629 6.08695652,38.3333333 C6.08695652,37.4351733 6.79641547,36.6993408 7.69629361,36.6343027 L7.82608696,36.6296296 L30.4347826,36.6289265 L30.4347826,14.4814815 C30.4347826,13.5833214 31.1442416,12.847489 32.0441197,12.7824508 L32.173913,12.7777778 Z" id="Rectangle" fill="#FFFFFF" fill-rule="nonzero" transform="translate(20.000000, 26.407407) rotate(-135.000000) translate(-20.000000, -26.407407) "></path>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/alternate-tab/stylesheet.css b/extensions/alternate-tab/stylesheet.css
+index 1e8d89a..87c42e0 100644
+--- a/extensions/alternate-tab/stylesheet.css
++++ b/extensions/alternate-tab/stylesheet.css
+@@ -1,7 +1,7 @@
+ /* This extensions requires no special styling */
+ .tos-switcher-list{
+     background-color: rgba(41, 41, 41, 0.8);
+-    padding: 12px;
++    padding: 40px;
+     border-radius: 16px;
+ }
+ 
+diff --git a/extensions/alternate-tab/switcher.js b/extensions/alternate-tab/switcher.js
+index 4197576..a0ed324 100644
+--- a/extensions/alternate-tab/switcher.js
++++ b/extensions/alternate-tab/switcher.js
+@@ -310,16 +310,15 @@ var WindowSwitcher = GObject.registerClass({
+ 
+         this.visibleRows = -1;
+ 
+-        this._topArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
+-            pseudo_class: 'highlighted' });
+-        this._topArrow.connect('repaint', () => {
+-            drawArrow(this._topArrow, St.Side.TOP);
++        let topArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_up.svg`;
++        this._topArrow = new St.Icon({
++            gicon: Gio.icon_new_for_string(topArrowPath),
+         });
+ 
+-        this._bottomArrow = new St.DrawingArea({ style_class: 'switcher-arrow',
+-            pseudo_class: 'highlighted' });
+-        this._bottomArrow.connect('repaint', () => {
+-            drawArrow(this._bottomArrow, St.Side.BOTTOM);
++
++        let bottomArrowPath = `${Me.path + IMAGE_PATH}tos_btn_alttab_arrow_down.svg`;
++        this._bottomArrow = new St.Icon({
++            gicon: Gio.icon_new_for_string(bottomArrowPath),
+         });
+ 
+         this._scrollableDown = true;
+@@ -683,46 +682,3 @@ var WindowSwitcher = GObject.registerClass({
+         this._removeFlag = true;
+     }
+ });
+-
+-function drawArrow(area, side) {
+-    let themeNode = area.get_theme_node();
+-    let borderColor = themeNode.get_border_color(side);
+-
+-    let [width, height] = area.get_surface_size();
+-    let cr = area.get_context();
+-
+-    cr.setLineWidth(2.0);
+-    Clutter.cairo_set_source_color(cr, borderColor);
+-
+-    switch (side) {
+-    case St.Side.TOP:
+-        cr.moveTo(0, height);
+-        cr.lineTo(Math.floor(width * 0.5), 0);
+-        cr.lineTo(width, height);
+-        break;
+-
+-    case St.Side.BOTTOM:
+-        cr.moveTo(width, 0);
+-        cr.lineTo(Math.floor(width * 0.5), height);
+-        cr.lineTo(0, 0);
+-        break;
+-
+-    case St.Side.LEFT:
+-        cr.moveTo(width, height);
+-        cr.lineTo(0, Math.floor(height * 0.5));
+-        cr.lineTo(width, 0);
+-        break;
+-
+-    case St.Side.RIGHT:
+-        cr.moveTo(0, 0);
+-        cr.lineTo(width, Math.floor(height * 0.5));
+-        cr.lineTo(0, height);
+-        break;
+-    }
+-
+-    cr.strokePreserve();
+-
+-    Clutter.cairo_set_source_color(cr, Clutter.Color.get_static(Clutter.StaticColor.WHITE));
+-    cr.stroke();
+-    cr.$dispose();
+-}

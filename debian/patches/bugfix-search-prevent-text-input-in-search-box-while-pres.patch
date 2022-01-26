@@ -1,0 +1,51 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 12 Jul 2021 16:09:49 +0900
+Subject: [bugfix] search : prevent text input in search box while pressing
+ <alt> or <super>
+
+ - The previous code that prevents event when keys other that shift key
+   is pressed can yield unexpected side effects. For example, key event
+   that is created by virtual keyboard has modifier CLUTTER_BUTTON1_MASK
+   and this makes that the event propagation in search box.
+ - So changed to block alt and super key, as it was intended.
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js | 4 ++--
+ extensions/search/menuWidgets.js    | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 8902601..d403c85 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -172,10 +172,10 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             return Clutter.EVENT_PROPAGATE;
+         }
+ 
+-        // To prevent search while pressing modifier other than shift
++        // To prevent search while pressing modifier <alt> or <super>
+         let state = event.get_state();
+         if (state) {
+-            if (state & ~Clutter.ModifierType.SHIFT_MASK)
++            if (state & (Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.MOD4_MASK))
+                 return Clutter.EVENT_STOP;
+         }
+ 
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 83b8374..fd74583 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -957,10 +957,10 @@ var SearchBox = class ArcMenuSearchBox {
+     }
+ 
+     _onKeyPress(actor, event) {
+-        // To prevent search while pressing modifier other than control and shift, especially <super>
++        // To prevent search while pressing modifier <alt> or <super>
+         let state = event.get_state();
+         if (state) {
+-            if (state & ~(Clutter.ModifierType.SHIFT_MASK | Clutter.ModifierType.CONTROL_MASK))
++            if (state & (Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.MOD4_MASK))
+                 return Clutter.EVENT_STOP;
+         }
+ 

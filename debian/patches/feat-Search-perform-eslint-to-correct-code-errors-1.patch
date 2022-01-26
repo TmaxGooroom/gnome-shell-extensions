@@ -1,0 +1,84 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 6 Apr 2021 16:49:30 +0900
+Subject: [feat] Search : perform eslint to correct code errors
+
+- perform eslint to correct code errors
+
+[IMS] N/A
+---
+ extensions/search/extension.js | 22 ++++++++++------------
+ 1 file changed, 10 insertions(+), 12 deletions(-)
+
+diff --git a/extensions/search/extension.js b/extensions/search/extension.js
+index 445d1e3..f670988 100644
+--- a/extensions/search/extension.js
++++ b/extensions/search/extension.js
+@@ -23,29 +23,23 @@
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const { GLib, Gio, St } = imports.gi;
+-const Constants = Me.imports.constants;
+ const Controller = Me.imports.controller;
+ const Convenience = Me.imports.convenience;
+ const Main = imports.ui.main;
+-const Util = imports.misc.util;
+-const Utils = Me.imports.utils;
+-
+ 
+ // Initialize panel button variables
+ let settings;
+ let settingsControllers;
+ let extensionChangedId;
+-let dockToggleID;
+ let dockExtension;
+ 
+ // Initialize menu language translations
+-function init(metadata) {
++function init(metadata) { // eslint-disable-line no-unused-vars
+     Convenience.initTranslations(Me.metadata['gettext-domain']);
+ }
+ 
+ // Enable the extension
+-function enable() {
++function enable() { // eslint-disable-line no-unused-vars
+     if (imports.gi.Meta.is_wayland_compositor())
+         Me.metadata.isWayland = true;
+     else
+@@ -58,7 +52,6 @@ function enable() {
+     if (global.dashToPanel)
+         _enableButtons();
+ 
+-
+     // dash to panel might get enabled after Search
+     extensionChangedId = Main.extensionManager.connect('extension-state-changed', (data, extension) => {
+         if (extension.uuid === 'dash-to-panel@tos-shell-extensions') {
+@@ -93,7 +86,7 @@ function enable() {
+ }
+ 
+ // Disable the extension
+-function disable() {
++function disable() { // eslint-disable-line no-unused-vars
+     if (extensionChangedId > 0) {
+         Main.extensionManager.disconnect(extensionChangedId);
+         extensionChangedId = 0;
+@@ -170,8 +163,7 @@ function _enableButtons() {
+                 settings, settingsControllers, panel, index);
+ 
+             if (global.dashToPanel)
+-                panel._amDestroyId = panel.connect('destroy', () => extensionChangedId ? _disableButton(settingsController, 1) : null);
+-
++                panel._amDestroyId = panel.connect('destroy', () => onPanelDestroyed(settingsController));
+ 
+             settingsController.enableButton();
+             settingsControllers.push(settingsController);
+@@ -191,3 +183,9 @@ function _disableButton(controller, remove) {
+         settingsControllers.splice(settingsControllers.indexOf(controller), 1);
+ 
+ }
++
++function onPanelDestroyed(settingsController) {
++    if (extensionChangedId)
++        _disableButton(settingsController, 1);
++
++}

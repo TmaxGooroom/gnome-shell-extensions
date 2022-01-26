@@ -1,0 +1,27 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 27 Oct 2021 18:47:31 +0900
+Subject: [chore] notification center: always register callback function for
+ subpanel ui change
+
+- to handle with dashtopanel reload while notification center is loaded, always register callback function for subpanel ui change
+
+[IMS] 263023
+---
+ extensions/notification-center/extension.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index f69512c..a540c2d 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -941,8 +941,8 @@ const NotificationCenter = new LangClass({
+ 
+         this.notificationSection._messages.forEach(message => this._setMessageLayout(message));
+ 
+-        if (!this.changeSubPanelUI())
+-            this.changeSubPanelUILater();
++        this.changeSubPanelUI();
++        this.changeSubPanelUILater();
+     },
+ 
+     changeSubPanelUI() {

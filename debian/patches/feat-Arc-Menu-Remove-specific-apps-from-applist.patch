@@ -1,0 +1,108 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 6 Oct 2021 11:37:15 +0900
+Subject: [feat] Arc Menu : Remove specific apps from applist
+
+- Remove specific apps from the applist
+
+[IMS] 271626
+---
+ extensions/arc-menu/arc-applications.menu | 32 ++++++++++++++++++++++++-------
+ 1 file changed, 25 insertions(+), 7 deletions(-)
+
+diff --git a/extensions/arc-menu/arc-applications.menu b/extensions/arc-menu/arc-applications.menu
+index f86d808..50bd326 100644
+--- a/extensions/arc-menu/arc-applications.menu
++++ b/extensions/arc-menu/arc-applications.menu
+@@ -40,7 +40,6 @@
+       <Filename>org.gnome.Dictionary.desktop</Filename>
+       <Filename>org.gnome.DiskUtility.desktop</Filename>
+       <Filename>org.gnome.Evince.desktop</Filename>
+-      <Filename>org.gnome.FileRoller.desktop</Filename>
+       <Filename>org.gnome.font-viewer.desktop</Filename>
+       <Filename>org.gnome.Screenshot.desktop</Filename>
+       <Filename>org.gnome.seahorse.Application.desktop</Filename>
+@@ -50,6 +49,12 @@
+       <Filename>simple-scan.desktop</Filename>
+       <Filename>vinagre.desktop</Filename>
+       <Filename>yelp.desktop</Filename>
++      <Filename>org.gnome.clocks.desktop</Filename>
++      <Filename>org.gnome.Weather.desktop</Filename>
++      <Filename>org.gnome.Todo.desktop</Filename>
++      <Filename>org.gnome.Documents.desktop</Filename>
++      <Filename>org.gnome.Maps.desktop</Filename>
++      <Filename>org.gnome.Extensions.desktop</Filename>
+ 
+     </Exclude>
+   </Menu> <!-- End Accessories -->
+@@ -265,6 +270,10 @@
+         <Category>AudioVideo</Category>
+       </And>
+     </Include>
++    <Exclude>
++        <Filename>rhythmbox.desktop</Filename>
++        <Filename>org.gnome.SoundRecorder.desktop</Filename>
++    </Exclude>
+   </Menu>   <!-- End Multimedia -->
+ 
+   <!-- Office -->
+@@ -276,6 +285,8 @@
+         <Category>Office</Category>
+         <Not><Filename>org.gnome.Dictionary.desktop</Filename></Not>
+         <Not><Filename>org.gnome.Evince.desktop</Filename></Not>
++        <Not><Filename>org.gnome.Calendar.desktop</Filename></Not>
++        <Not><Filename>org.gnome.Contacts.desktop</Filename></Not>
+       </And>
+     </Include>
+   </Menu> <!-- End Office -->
+@@ -301,6 +312,7 @@
+       <Filename>org.gnome.baobab.desktop</Filename>
+       <Filename>org.gnome.Terminal.desktop</Filename>
+       <Filename>org.gnome.Usage.desktop</Filename>
++      <Filename>org.freedesktop.MalcontentControl.desktop</Filename>
+     </Exclude>
+ 
+     <Menu>
+@@ -349,6 +361,11 @@
+           </Not>
+         </And>
+       </Include>
++      <Exclude>
++          <Filename>org.gnome.tweaks.desktop</Filename>
++          <Filename>im-config.desktop</Filename>
++          <Filename>uim.desktop</Filename>
++      </Exclude>
+     </Menu>
+     <Menu>
+       <Name>Administration</Name>
+@@ -419,24 +436,25 @@
+       <Filename>gnome-system-log.desktop</Filename>
+       <Filename>gnome-system-monitor.desktop</Filename>
+       <Filename>gucharmap.desktop</Filename>
+-      <Filename>nm-connection-editor.desktop</Filename>
+       <Filename>org.gnome.baobab.desktop</Filename>
+       <Filename>org.gnome.Calculator.desktop</Filename>
+       <Filename>org.gnome.DejaDup.desktop</Filename>
+       <Filename>org.gnome.Dictionary.desktop</Filename>
+       <Filename>org.gnome.DiskUtility.desktop</Filename>
+-      <Filename>org.gnome.Evince.desktop</Filename>
+-      <Filename>org.gnome.FileRoller.desktop</Filename>
+       <Filename>org.gnome.fonts.desktop</Filename>
+       <Filename>org.gnome.Screenshot.desktop</Filename>
+-      <Filename>org.gnome.seahorse.Application.desktop</Filename>
+       <Filename>org.gnome.Terminal.desktop</Filename>
+-      <Filename>org.gnome.tweaks.desktop</Filename>
+       <Filename>org.gnome.Usage.desktop</Filename>
+-      <Filename>simple-scan.desktop</Filename>
+       <Filename>vinagre.desktop</Filename>
+       <Filename>yelp.desktop</Filename>
+     </Include>
++    <Exclude>
++      <Filename>org.gnome.Logs.desktop</Filename>
++      <Filename>org.gnome.Characters.desktop</Filename>
++      <Filename>org.gnome.font-viewer.desktop</Filename>
++      <Filename>org.gnome.FileRoller.desktop</Filename>
++      <Filename>nm-connection-editor.desktop</Filename>
++    </Exclude>
+   </Menu>
+ 
+   <!-- Other -->

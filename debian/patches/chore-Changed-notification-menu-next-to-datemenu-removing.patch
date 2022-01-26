@@ -1,0 +1,59 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 23 Aug 2021 17:24:49 +0900
+Subject: [chore] Changed notification menu next to datemenu removing logic
+
+- do not try to remove notification menu next to datemenu per every datemenu click
+- remove noti menu when enabling notification center
+
+[IMS] 268482
+---
+ extensions/notification-center/extension.js | 29 ++++++++++++-----------------
+ 1 file changed, 12 insertions(+), 17 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 9555fa0..4014f04 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -893,23 +893,12 @@ const NotificationCenter = new LangClass({
+ 
+ 
+         this.dmSig = Main.panel.statusArea.dateMenu.menu.connect('open-state-changed', () => {
+-            if (Main.panel.statusArea.dateMenu.menu.isOpen) {
+-                switch (this.hideEmptySpace) {
+-                case 0:
+-                    this.manageEvents(1);
+-                    if (this.showLabel === false)
+-                        this.eventsCount = 0;
+-
+-                    this.resetIndicator();
+-                    break;
+-
+-                case 2:
+-                    if (!this.messageListRemoved) {
+-                        this._messageListParent.remove_actor(this._messageList);
+-                        this.messageListRemoved = true;
+-                    }
+-                    break;
+-                }
++            if (Main.panel.statusArea.dateMenu.menu.isOpen && !this.hideEmptySpace) {
++                this.manageEvents(1);
++                if (this.showLabel === false)
++                    this.eventsCount = 0;
++
++                this.resetIndicator();
+             } else {
+                 Main.panel.statusArea.dateMenu._calendar.setDate(new Date());
+                 this.eventsCount = this.seenEvents ? 0 : this.eventsCount;
+@@ -917,6 +906,12 @@ const NotificationCenter = new LangClass({
+             }
+         });
+ 
++        // remove notification menu next to datemenu popup
++        if (this.hideEmptySpace === 2 && !this.messageListRemoved) {
++            this._messageListParent.remove_actor(this._messageList);
++            this.messageListRemoved = true;
++        }
++
+         if (this.menuAutoclose) {
+             this.cmsig = global.display.connect('notify::focus-window', () => {
+                 if (global.display.focus_window !== null && this.menu.isOpen)

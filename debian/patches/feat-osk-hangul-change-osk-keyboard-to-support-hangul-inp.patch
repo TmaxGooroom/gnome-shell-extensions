@@ -1,0 +1,257 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 25 Jun 2021 16:39:28 +0900
+Subject: [feat] osk-hangul : change osk keyboard to support hangul input
+
+ - hook _keyvalPress and _keyvalRelease to change korean char symbols to corresponding english symbols
+ - change flag icon to have same function as when pressing korean/english key of keyboard
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js         | 137 +++++++++++++++++++++++++++++
+ extensions/osk-hangul/meson.build          |  11 +++
+ extensions/osk-hangul/metadata.json.in     |  12 +++
+ extensions/osk-hangul/stylesheet.css       |   0
+ extensions/osk-hangul/xkbcommon_keysyms.js |  36 ++++++++
+ meson.build                                |   1 +
+ 6 files changed, 197 insertions(+)
+ create mode 100644 extensions/osk-hangul/extension.js
+ create mode 100644 extensions/osk-hangul/meson.build
+ create mode 100644 extensions/osk-hangul/metadata.json.in
+ create mode 100644 extensions/osk-hangul/stylesheet.css
+ create mode 100755 extensions/osk-hangul/xkbcommon_keysyms.js
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+new file mode 100644
+index 0000000..5bf0fdd
+--- /dev/null
++++ b/extensions/osk-hangul/extension.js
+@@ -0,0 +1,137 @@
++/*
++ * extension descripttion. TBD.
++ */
++
++const { IBus } = imports.gi;
++
++const Main = imports.ui.main;
++
++const IBusManager = imports.misc.ibusManager;
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++const QwertyKeysyms = Me.imports.xkbcommon_keysyms.qwertyMap;
++
++const HangulKiyeog = 0x0ea1;
++const HangulJYeorinHieuh = 0x0efa;
++
++function isKoreanCharactor(keyval) {
++    if (keyval) {
++        if (HangulKiyeog <= keyval && keyval <= HangulJYeorinHieuh)
++            return true;
++    }
++
++    return false;
++}
++
++function krToUsKeysym(keyval) {
++    if (isKoreanCharactor(keyval))
++        return QwertyKeysyms[keyval];
++
++    return keyval;
++}
++
++function getIBusHangul() {
++    let inputSourceManager = Main.inputMethod._inputSourceManager;
++    let inputSources = inputSourceManager.inputSources;
++    if (!inputSources)
++        return;
++
++    let ibusHangul;
++
++    let numInputSources = Object.keys(inputSources).length;
++    for (let i = 0; i < numInputSources; i++) {
++        if (inputSources[i].id === 'hangul') {
++            ibusHangul = inputSources[i];
++            break;
++        }
++    }
++
++    return ibusHangul;
++}
++
++function getCurrentGroup() {
++    let ibusHangul = getIBusHangul();
++    let groupname;
++
++    if (ibusHangul && ibusHangul.properties) {
++        if (ibusHangul.properties.get(0).get_state() === 0)
++            groupname = 'us';
++        else
++            groupname = 'kr';
++    }
++
++    return groupname;
++}
++
++function nextInputMethod() {
++    let ibusHangul = getIBusHangul();
++
++    if (!ibusHangul)
++        return;
++
++    let inputMethod = Main.inputMethod;
++    if (inputMethod._currentSource !== ibusHangul) {
++        let inputSourceManager = inputMethod._inputSourceManager;
++        inputSourceManager.activateInputSource(ibusHangul, true);
++    }
++
++    let ibusManager = IBusManager.getIBusManager();
++    ibusManager.activateProperty('InputMode', IBus.PropState.CHECKED);
++}
++
++function init() { // eslint-disable-line no-unused-vars
++}
++
++function enable() { // eslint-disable-line no-unused-vars
++    let keyboard = Main.keyboard._keyboard;
++    let controller = keyboard._keyboardController;
++
++    controller._oldKeyvalPress = controller.keyvalPress;
++    controller._oldKeyvalRelease = controller.keyvalRelease;
++
++    // Change the keyval to english keyval.
++    // Because the Hangul combination does not work properly if sending Korean charactor as it is.
++    controller.keyvalPress = keyval => {
++        controller._oldKeyvalPress(krToUsKeysym(keyval));
++    };
++
++    controller.keyvalRelease = keyval => {
++        controller._oldKeyvalRelease(krToUsKeysym(keyval));
++    };
++
++    keyboard._oldPopupLanguageMenu = keyboard._popupLanguageMenu;
++    keyboard._popupLanguageMenu = () => {
++        nextInputMethod();
++    };
++
++    keyboard._ensureKeysForGroup('us');
++
++    // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
++    // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
++    // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
++    keyboard._oldSetActiveLayer = keyboard._setActiveLayer;
++    keyboard._setActiveLayer = activeLevel => {
++        let oldGroupName = controller._currentSource.xkbId;
++        let newGroupname = getCurrentGroup();
++        if (!newGroupname)
++            newGroupname = oldGroupName;
++
++        controller._currentSource.xkbId = newGroupname;
++        keyboard._oldSetActiveLayer(activeLevel);
++        controller._currentSource.xkbId = oldGroupName;
++    };
++
++}
++
++function disable() { // eslint-disable-line no-unused-vars
++    let keyboard = Main.keyboard._keyboard;
++    let controller = keyboard._keyboardController;
++
++    controller.keyvalPress = controller._oldKeyvalPress;
++    controller.keyvalRelease = controller._oldKeyvalRelease;
++    keyboard._setActiveLayer = keyboard._oldSetActiveLayer;
++    keyboard._popupLanguageMenu = keyboard._oldPopupLanguageMenu;
++    controller._oldKeyvalPress = null;
++    controller._oldKeyvalRelease = null;
++    keyboard._oldPopupLanguageMenu = null;
++    keyboard._oldSetActiveLayer = null;
++}
+diff --git a/extensions/osk-hangul/meson.build b/extensions/osk-hangul/meson.build
+new file mode 100644
+index 0000000..bce58aa
+--- /dev/null
++++ b/extensions/osk-hangul/meson.build
+@@ -0,0 +1,11 @@
++extension_data += configure_file(
++  input: metadata_name + '.in',
++  output: metadata_name,
++  configuration: metadata_conf
++)
++
++extension_sources += files(
++  'xkbcommon_keysyms.js',
++)
++
++extension_dir = join_paths(extensiondir, uuid)
+diff --git a/extensions/osk-hangul/metadata.json.in b/extensions/osk-hangul/metadata.json.in
+new file mode 100644
+index 0000000..c77a3d7
+--- /dev/null
++++ b/extensions/osk-hangul/metadata.json.in
+@@ -0,0 +1,12 @@
++{
++"extension-id": "@extension_id@",
++"uuid": "@uuid@",
++"settings-schema": "@gschemaname@",
++"gettext-domain": "osk-hangul",
++"name": "osk-hangul",
++"description": "Gnome-shell on screen keyboard extension for Korean users",
++"original-authors": [  "Jiyun_ha" ],
++"shell-version": [ "@shell_current@" ],
++"url": "@url@",
++"version": 9999
++}
+diff --git a/extensions/osk-hangul/stylesheet.css b/extensions/osk-hangul/stylesheet.css
+new file mode 100644
+index 0000000..e69de29
+diff --git a/extensions/osk-hangul/xkbcommon_keysyms.js b/extensions/osk-hangul/xkbcommon_keysyms.js
+new file mode 100755
+index 0000000..d3200c6
+--- /dev/null
++++ b/extensions/osk-hangul/xkbcommon_keysyms.js
+@@ -0,0 +1,36 @@
++/* exported qwertyMap */
++
++var qwertyMap =
++{ 0x0ea1: 0x72,
++    0x0ea2: 0x52,
++    0x0ea4: 0x53,
++    0x0ea7: 0x65,
++    0x0ea8: 0x45,
++    0x0ea9: 0x46,
++    0x0eb1: 0x41,
++    0x0eb2: 0x71,
++    0x0eb3: 0x51,
++    0x0eb5: 0x74,
++    0x0eb6: 0x54,
++    0x0eb7: 0x44,
++    0x0eb8: 0x77,
++    0x0eb9: 0x57,
++    0x0eba: 0x43,
++    0x0ebb: 0x5a,
++    0x0ebc: 0x58,
++    0x0ebd: 0x56,
++    0x0ebe: 0x47,
++    0x0ebf: 0x4b,
++    0x0ec0: 0x6f,
++    0x0ec1: 0x49,
++    0x0ec2: 0x4f,
++    0x0ec3: 0x4a,
++    0x0ec4: 0x70,
++    0x0ec5: 0x55,
++    0x0ec6: 0x50,
++    0x0ec7: 0x48,
++    0x0ecb: 0x59,
++    0x0ecc: 0x4e,
++    0x0ed0: 0x62,
++    0x0ed1: 0x4d,
++    0x0ed3: 0x4c };
+diff --git a/meson.build b/meson.build
+index bc01d4d..787991b 100644
+--- a/meson.build
++++ b/meson.build
+@@ -50,6 +50,7 @@ tos_extensions = [
+   'alternate-tab',
+   'search',
+   'tos-hotkey',
++  'osk-hangul',
+ ]
+ 
+ 

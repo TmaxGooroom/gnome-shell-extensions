@@ -1,0 +1,429 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 14 Apr 2021 17:32:31 +0900
+Subject: [feat] desktop-icons-ng : add allow .desktop file launching setting
+ to preference
+
+- add new setting for users to set .desktop file launching
+- modify related content in schema file
+- add translations
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopGrid.js         |   6 +-
+ extensions/desktop-icons-ng/fileItem.js            |  67 ++-----------
+ extensions/desktop-icons-ng/po/ko.po               |   9 ++
+ extensions/desktop-icons-ng/preferences.js         | 107 +++++++++++----------
+ .../org.gnome.shell.extensions.ding.gschema.xml    |   5 +
+ 5 files changed, 80 insertions(+), 114 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopGrid.js b/extensions/desktop-icons-ng/desktopGrid.js
+index a0ca2d8..7725bfa 100644
+--- a/extensions/desktop-icons-ng/desktopGrid.js
++++ b/extensions/desktop-icons-ng/desktopGrid.js
+@@ -52,8 +52,8 @@ var DesktopGrid = class {
+         }
+         this._width = Math.floor(desktopDescription.width / sizeDivisor);
+         this._height = Math.floor(desktopDescription.height / sizeDivisor);
+-        this._maxColumns = Math.floor(this._width / (Prefs.get_desired_width() + 4 * elementSpacing));
+-        this._maxRows =  Math.floor(this._height / (Prefs.get_desired_height() + 4 * elementSpacing));
++        this._maxColumns = Math.floor(this._width / (Prefs.getDesiredWidth() + 4 * elementSpacing));
++        this._maxRows =  Math.floor(this._height / (Prefs.getDesiredHeight() + 4 * elementSpacing));
+         this._elementWidth = Math.floor(this._width / this._maxColumns);
+         this._elementHeight = Math.floor(this._height / this._maxRows);
+ 
+@@ -373,7 +373,7 @@ var DesktopGrid = class {
+         let placeX = Math.floor(x / this._elementWidth);
+         let placeY = Math.floor(y / this._elementHeight);
+ 
+-        let cornerInversion = Prefs.get_start_corner();
++        let cornerInversion = Prefs.getStartCorner();
+         if (reverseHorizontal)
+             cornerInversion[0] = !cornerInversion[0];
+ 
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 84e6d39..3a79678 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -69,7 +69,7 @@ var FileItem = class {
+         this._icon = new Gtk.Image();
+         this._iconContainer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+         this._innerContainer.pack_start(this._iconContainer, false, false, 0);
+-        this._iconContainer.set_size_request(Prefs.get_desired_width(), Prefs.get_icon_size());
++        this._iconContainer.set_size_request(Prefs.getDesiredWidth(), Prefs.getIconSize());
+         this._iconContainer.pack_start(this._icon, true, true, 0);
+         this._iconContainer.set_baseline_position(Gtk.BaselinePosition.CENTER);
+ 
+@@ -367,9 +367,9 @@ var FileItem = class {
+         this._attributeCanExecute = fileInfo.get_attribute_boolean('access::can-execute');
+         this._unixmode = fileInfo.get_attribute_uint32('unix::mode');
+         this._writableByOthers = (this._unixmode & Enums.S_IWOTH) !== 0;
+-        this._trusted = fileInfo.get_attribute_as_string('metadata::trusted') === 'true';
+         this._attributeContentType = fileInfo.get_content_type();
+         this._isDesktopFile = this._attributeContentType === 'application/x-desktop';
++        this._trusted = Prefs.desktopSettings.get_boolean('allow-desktop-file-launching');
+ 
+         if (this._isDesktopFile && this._writableByOthers)
+             log(`desktop-icons: File ${this._displayName} is writable by others - will not allow launching`);
+@@ -506,8 +506,8 @@ var FileItem = class {
+         let thumbnailPixbuf = GdkPixbuf.Pixbuf.new_from_stream(thumbnailStream, null);
+ 
+         if (thumbnailPixbuf !== null) {
+-            let width = Prefs.get_desired_width();
+-            let height = Prefs.get_icon_size();
++            let width = Prefs.getDesiredWidth();
++            let height = Prefs.getIconSize();
+             let aspectRatio = thumbnailPixbuf.width / thumbnailPixbuf.height;
+             if (width / height > aspectRatio)
+                 width = height * aspectRatio;
+@@ -535,7 +535,7 @@ var FileItem = class {
+ 
+ 
+         this._copiedPixbuf = true;
+-        let minsize = Prefs.get_icon_size();
++        let minsize = Prefs.getIconSize();
+         if (pixbuf.width < minsize || pixbuf.height < minsize) {
+             let width = pixbuf.width < minsize ? minsize : pixbuf.width;
+             let height = pixbuf.height < minsize ? minsize : pixbuf.height;
+@@ -553,7 +553,7 @@ var FileItem = class {
+     _addEmblemsToPixbufIfNeeded(pixbuf) {
+         this._copiedPixbuf = false;
+         let emblem = null;
+-        let finalSize = Math.floor(Prefs.get_icon_size() / 3);
++        let finalSize = Math.floor(Prefs.getIconSize() / 3);
+         if (this._isSymlink) {
+             if (this._isBrokenSymlink)
+                 emblem = Gio.ThemedIcon.new('emblem-unreadable');
+@@ -619,9 +619,9 @@ var FileItem = class {
+ 
+         let itemIcon = null;
+         try {
+-            itemIcon = theme.lookup_by_gicon(icon, Prefs.get_icon_size(), Gtk.IconLookupFlags.FORCE_SIZE).load_icon();
++            itemIcon = theme.lookup_by_gicon(icon, Prefs.getIconSize(), Gtk.IconLookupFlags.FORCE_SIZE).load_icon();
+         } catch (e) {
+-            itemIcon = theme.load_icon('text-x-generic', Prefs.get_icon_size(), Gtk.IconLookupFlags.FORCE_SIZE);
++            itemIcon = theme.load_icon('text-x-generic', Prefs.getIconSize(), Gtk.IconLookupFlags.FORCE_SIZE);
+         }
+ 
+         itemIcon = this._addEmblemsToPixbufIfNeeded(itemIcon);
+@@ -705,30 +705,6 @@ var FileItem = class {
+         );
+     }
+ 
+-    get metadataTrusted() {
+-        return this._trusted;
+-    }
+-
+-    set metadataTrusted(value) {
+-        this._trusted = value;
+-
+-        let info = new Gio.FileInfo();
+-        info.set_attribute_string('metadata::trusted',
+-            value ? 'true' : 'false');
+-        this._file.set_attributes_async(info,
+-            Gio.FileQueryInfoFlags.NONE,
+-            GLib.PRIORITY_LOW,
+-            null,
+-            (source, result) => {
+-                try {
+-                    source.set_attributes_finish(result);
+-                    this._refreshMetadataAsync(true);
+-                } catch (e) {
+-                    log(`Failed to set metadata::trusted: ${e.message}`);
+-                }
+-            });
+-    }
+-
+     _updateName() {
+         if (this._isValidDesktopFile && !this._desktopManager.writableByOthers && !this._writableByOthers && this.trustedDesktopFile)
+             this._setFileName(this._desktopFile.get_locale_string('Name'));
+@@ -737,25 +713,6 @@ var FileItem = class {
+ 
+     }
+ 
+-    _onAllowDisallowLaunchingClicked() {
+-        this.metadataTrusted = !this.trustedDesktopFile;
+-
+-        /*
+-         * we're marking as trusted, make the file executable too. Note that we
+-         * do not ever remove the executable bit, since we don't know who set
+-         * it.
+-         */
+-        if (this.metadataTrusted && !this._attributeCanExecute) {
+-            let info = new Gio.FileInfo();
+-            let newUnixMode = this._unixmode | Enums.S_IXUSR;
+-            info.set_attribute_uint32(Gio.FILE_ATTRIBUTE_UNIX_MODE, newUnixMode);
+-            this._file.set_attributes(info,
+-                Gio.FileQueryInfoFlags.NONE,
+-                null);
+-        }
+-        this._updateName();
+-    }
+-
+     canRename() {
+         return !this.trustedDesktopFile && this._fileExtra === Enums.FileType.NONE;
+     }
+@@ -850,12 +807,6 @@ var FileItem = class {
+                 });
+                 this._menu.add(this._actionDelete);
+             }
+-            if (this._isValidDesktopFile && !this._desktopManager.writableByOthers && !this._writableByOthers && this._selectedItemsNum === 1) {
+-                this._menu.add(new Gtk.SeparatorMenuItem());
+-                this._allowLaunchingMenuItem = new Gtk.MenuItem({ label: this.trustedDesktopFile ? _("Don't Allow Launching") : _('Allow Launching') });
+-                this._allowLaunchingMenuItem.connect('activate', () => this._onAllowDisallowLaunchingClicked());
+-                this._menu.add(this._allowLaunchingMenuItem);
+-            }
+             break;
+         case Enums.FileType.USER_DIRECTORY_TRASH:
+             this._menu.add(new Gtk.SeparatorMenuItem());
+@@ -1140,7 +1091,7 @@ var FileItem = class {
+     get trustedDesktopFile() {
+         return this._isValidDesktopFile &&
+                this._attributeCanExecute &&
+-               this.metadataTrusted &&
++               this._trusted &&
+                !this._desktopManager.writableByOthers &&
+                !this._writableByOthers;
+     }
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index 5ea4c56..bf32a4d 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -284,6 +284,11 @@ msgstr "바탕화면에 외장 드라이브 표시"
+ msgid "Show network drives in the desktop"
+ msgstr "바탕화면에 네트워크 드라이브 표시"
+ 
++#: ../preferences.js:99
++#: ../schemas/org.gnome.shell.extensions.ding.gschema.xml.h:48
++msgid "Allow all .desktop files launching"
++msgstr ".desktop 확장자 파일 실행 허용"
++
+ #: ../preferences.js:101
+ msgid "New icons alignment"
+ msgstr "새 아이콘 정렬 방식"
+@@ -415,6 +420,10 @@ msgstr "컴퓨터에 연결된 디스크 드라이브 표시"
+ msgid "Show mounted network volumes in the desktop."
+ msgstr "마운트된 네트워크 볼륨을 바탕화면에 표시"
+ 
++#: ../schemas/org.gnome.shell.extensions.ding.gschema.xml.h:49
++msgid "Allow all .desktop extension files launching"
++msgstr "모든 .desktop 확장자 파일 실행 허용"
++
+ #: ../schemas/org.gnome.shell.extensions.ding.gschema.xml.h:14
+ msgid ""
+ "When adding drives and volumes to the desktop, add them to the opposite side "
+diff --git a/extensions/desktop-icons-ng/preferences.js b/extensions/desktop-icons-ng/preferences.js
+index 81026ae..7d74cbb 100644
+--- a/extensions/desktop-icons-ng/preferences.js
++++ b/extensions/desktop-icons-ng/preferences.js
+@@ -16,6 +16,8 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++/* exported init showPreferences getIconSize getDesiredWidth getDesiredHeight getStartCorner CLICK_POLICY_SINGLE mutterSettings */
++
+ imports.gi.versions.Gtk = '3.0';
+ 
+ const GLib = imports.gi.GLib;
+@@ -48,18 +50,18 @@ function init(path) {
+     if (!schemaObj) {
+         nautilusSettings = null;
+     } else {
+-        nautilusSettings = new Gio.Settings({ settings_schema: schemaObj });;
++        nautilusSettings = new Gio.Settings({ settings_schema: schemaObj });
+         nautilusSettings.connect('changed', _onNautilusSettingsChanged);
+         _onNautilusSettingsChanged();
+     }
+-    desktopSettings = get_schema(Enums.SCHEMA);
++    desktopSettings = getSchema(Enums.SCHEMA);
+     let schemaMutter = schemaSource.lookup(Enums.SCHEMA_MUTTER, true);
+-    if (schemaMutter) {
+-        mutterSettings = new Gio.Settings({ settings_schema: schemaMutter});
+-    }
++    if (schemaMutter)
++        mutterSettings = new Gio.Settings({ settings_schema: schemaMutter });
++
+ }
+ 
+-function get_schema(schema) {
++function getSchema(schema) {
+ 
+     // check if this extension was built with "make zip-file", and thus
+     // has the schema files in a subfolder
+@@ -68,15 +70,14 @@ function get_schema(schema) {
+     // in the standard folders)
+     let schemaSource;
+     let schemaFile = Gio.File.new_for_path(GLib.build_filenamev([extensionPath, 'schemas', 'gschemas.compiled']));
+-    if (schemaFile.query_exists(null)) {
++    if (schemaFile.query_exists(null))
+         schemaSource = GioSSS.new_from_directory(GLib.build_filenamev([extensionPath, 'schemas']), GioSSS.get_default(), false);
+-    } else {
++    else
+         schemaSource = GioSSS.get_default();
+-    }
+ 
+     let schemaObj = schemaSource.lookup(schema, true);
+     if (!schemaObj)
+-        throw new Error('Schema ' + schema + ' could not be found for extension ' + '. Please check your installation.');
++        throw new Error(`Schema ${schema} could not be found for extension.Please check your installation.`);
+ 
+     return new Gio.Settings({ settings_schema: schemaObj });
+ }
+@@ -84,54 +85,54 @@ function get_schema(schema) {
+ function showPreferences() {
+ 
+     let window = new Gtk.Window({ resizable: false,
+-                                  window_position: Gtk.WindowPosition.CENTER });
+-    window.set_title(_("Settings"));
++        window_position: Gtk.WindowPosition.CENTER });
++    window.set_title(_('Settings'));
+     let frame = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+     window.add(frame);
+     frame.set_spacing(10);
+     frame.set_border_width(10);
+ 
+-    frame.add(buildSelector(desktopSettings, 'icon-size', _("Size for the desktop icons"), {'tiny': _("Tiny"), 'small': _("Small"), 'standard': _("Standard"), 'large': _("Large") }));
+-    frame.add(buildSwitcher(desktopSettings, 'show-home', _("Show the personal folder in the desktop")));
+-    frame.add(buildSwitcher(desktopSettings, 'show-trash', _("Show the trash icon in the desktop")));
+-    frame.add(buildSwitcher(desktopSettings, 'show-volumes', _("Show external drives in the desktop")));
+-    frame.add(buildSwitcher(desktopSettings, 'show-network-volumes', _("Show network drives in the desktop")));
++    frame.add(buildSelector(desktopSettings, 'icon-size', _('Size for the desktop icons'), { 'tiny': _('Tiny'), 'small': _('Small'), 'standard': _('Standard'), 'large': _('Large') }));
++    frame.add(buildSwitcher(desktopSettings, 'show-home', _('Show the personal folder in the desktop')));
++    frame.add(buildSwitcher(desktopSettings, 'show-trash', _('Show the trash icon in the desktop')));
++    frame.add(buildSwitcher(desktopSettings, 'show-volumes', _('Show external drives in the desktop')));
++    frame.add(buildSwitcher(desktopSettings, 'show-network-volumes', _('Show network drives in the desktop')));
++    frame.add(buildSwitcher(desktopSettings, 'allow-desktop-file-launching', _('Allow all .desktop files launching')));
+     frame.add(buildSelector(desktopSettings,
+-                            'start-corner',
+-                            _("New icons alignment"),
+-                            {'top-left': _("Top-left corner"),
+-                             'top-right': _("Top-right corner"),
+-                             'bottom-left': _("Bottom-left corner"),
+-                             'bottom-right': _("Bottom-right corner")
+-                            }));
+-    frame.add(buildSwitcher(desktopSettings, 'add-volumes-opposite', _("Add new drives to the opposite side of the screen")));
++        'start-corner',
++        _('New icons alignment'),
++        { 'top-left': _('Top-left corner'),
++            'top-right': _('Top-right corner'),
++            'bottom-left': _('Bottom-left corner'),
++            'bottom-right': _('Bottom-right corner') }));
++    frame.add(buildSwitcher(desktopSettings, 'add-volumes-opposite', _('Add new drives to the opposite side of the screen')));
+     frame.add(buildSwitcher(desktopSettings, 'show-drop-place', _("Highlight the drop place during Drag'n'Drop")));
+ 
+     frame.add(new Gtk.Separator({ orientation: Gtk.Orientation.HORIZONTAL }));
+ 
+-    let nautilusFrame = new Gtk.Frame({ label: _("Settings shared with Nautilus"),
+-                                        shadow_type: Gtk.ShadowType.ETCHED_IN });
+-    let nautilusBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin: 5, spacing: 10});
++    let nautilusFrame = new Gtk.Frame({ label: _('Settings shared with Nautilus'),
++        shadow_type: Gtk.ShadowType.ETCHED_IN });
++    let nautilusBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin: 5, spacing: 10 });
+     nautilusFrame.add(nautilusBox);
+     frame.add(nautilusFrame);
+ 
+-    nautilusBox.add(buildSelector(nautilusSettings, 'click-policy', _("Click type for open files"), { 'single': _("Single click"), 'double': _("Double click"), }));
+-    nautilusBox.add(buildSwitcher(gtkSettings, 'show-hidden', _("Show hidden files")));
+-    nautilusBox.add(buildSwitcher(nautilusSettings, 'show-delete-permanently', _("Show a context menu item to delete permanently")));
++    nautilusBox.add(buildSelector(nautilusSettings, 'click-policy', _('Click type for open files'), { 'single': _('Single click'), 'double': _('Double click') }));
++    nautilusBox.add(buildSwitcher(gtkSettings, 'show-hidden', _('Show hidden files')));
++    nautilusBox.add(buildSwitcher(nautilusSettings, 'show-delete-permanently', _('Show a context menu item to delete permanently')));
+     nautilusBox.add(buildSelector(nautilusSettings,
+-                                  'executable-text-activation',
+-                                  _("Action to do when launching a program from the desktop"), {
+-                                      'display': _("Display the content of the file"),
+-                                      'launch': _("Launch the file"),
+-                                      'ask': _("Ask what to do")
+-                                   }));
++        'executable-text-activation',
++        _('Action to do when launching a program from the desktop'), {
++            'display': _('Display the content of the file'),
++            'launch': _('Launch the file'),
++            'ask': _('Ask what to do'),
++        }));
+     nautilusBox.add(buildSelector(nautilusSettings,
+-                                  'show-image-thumbnails',
+-                                  _("Show image thumbnails"), {
+-                                      'never': _("Never"),
+-                                      'local-only': _("Local files only"),
+-                                      'always': _("Always")
+-                                   }));
++        'show-image-thumbnails',
++        _('Show image thumbnails'), {
++            'never': _('Never'),
++            'local-only': _('Local files only'),
++            'always': _('Always'),
++        }));
+     window.show_all();
+ }
+ 
+@@ -147,7 +148,7 @@ function buildSwitcher(settings, key, labelText) {
+ 
+ function buildSelector(settings, key, labelText, elements) {
+     let listStore = new Gtk.ListStore();
+-    listStore.set_column_types ([GObject.TYPE_STRING, GObject.TYPE_STRING]);
++    listStore.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
+     let schemaKey = settings.settings_schema.get_key(key);
+     let values = schemaKey.get_range().get_child_value(1).get_child_value(0).get_strv();
+     for (let val of values) {
+@@ -155,14 +156,14 @@ function buildSelector(settings, key, labelText, elements) {
+         let visibleText = val;
+         if (visibleText in elements)
+             visibleText = elements[visibleText];
+-        listStore.set (iter, [0, 1], [visibleText, val]);
++        listStore.set(iter, [0, 1], [visibleText, val]);
+     }
+     let hbox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 10 });
+     let label = new Gtk.Label({ label: labelText, xalign: 0 });
+-    let combo = new Gtk.ComboBox({model: listStore});
++    let combo = new Gtk.ComboBox({ model: listStore });
+     let rendererText = new Gtk.CellRendererText();
+-    combo.pack_start (rendererText, false);
+-    combo.add_attribute (rendererText, 'text', 0);
++    combo.pack_start(rendererText, false);
++    combo.add_attribute(rendererText, 'text', 0);
+     combo.set_id_column(1);
+     settings.bind(key, combo, 'active-id', 3);
+     hbox.pack_start(label, true, true, 0);
+@@ -171,21 +172,21 @@ function buildSelector(settings, key, labelText, elements) {
+ }
+ 
+ function _onNautilusSettingsChanged() {
+-    CLICK_POLICY_SINGLE = nautilusSettings.get_string('click-policy') == 'single';
++    CLICK_POLICY_SINGLE = nautilusSettings.get_string('click-policy') === 'single';
+ }
+ 
+-function get_icon_size() {
++function getIconSize() {
+     return Enums.ICON_SIZE[desktopSettings.get_string('icon-size')];
+ }
+ 
+-function get_desired_width() {
++function getDesiredWidth() {
+     return Enums.ICON_WIDTH[desktopSettings.get_string('icon-size')];
+ }
+ 
+-function get_desired_height() {
++function getDesiredHeight() {
+     return Enums.ICON_HEIGHT[desktopSettings.get_string('icon-size')];
+ }
+ 
+-function get_start_corner() {
++function getStartCorner() {
+     return Enums.START_CORNER[desktopSettings.get_string('start-corner')].slice();
+ }
+diff --git a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+index d0d7b6b..eaaa750 100644
+--- a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
++++ b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+@@ -43,6 +43,11 @@
+         <summary>Show network drives in the desktop</summary>
+         <description>Show mounted network volumes in the desktop.</description>
+     </key>
++    <key type="b" name="allow-desktop-file-launching">
++        <default>true</default>
++        <summary>Allow all .desktop files launching</summary>
++        <description>Allow all .desktop extension files launching</description>
++    </key>
+     <key type="b" name="add-volumes-opposite">
+         <default>true</default>
+         <summary>Add new drives to the opposite side of the screen</summary>

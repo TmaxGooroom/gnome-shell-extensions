@@ -1,0 +1,515 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 27 Apr 2021 10:40:16 +0900
+Subject: [feat] tos-hotkey : implement alt+f4 widget
+
+ - implemented alt+f4 widget
+ - change close hotkey to custom handler
+
+[IMS] N/A
+---
+ .../assets/tos_desktop_ic_windowf4_logout.svg      |  28 ++++
+ .../assets/tos_desktop_ic_windowf4_power.svg       |  24 +++
+ .../assets/tos_desktop_ic_windowf4_restart.svg     |  23 +++
+ .../assets/tos_desktop_ic_windowf4_sleep.svg       |  21 +++
+ .../assets/tos_desktop_ic_windowf4_user.svg        |  25 ++++
+ extensions/tos-hotkey/extension.js                 |  39 ++++-
+ extensions/tos-hotkey/meson.build                  |   4 +
+ extensions/tos-hotkey/stylesheet.css               |  66 ++++++++-
+ extensions/tos-hotkey/systemDialog.js              | 164 +++++++++++++++++++++
+ 9 files changed, 385 insertions(+), 9 deletions(-)
+ create mode 100644 extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_logout.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_power.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_restart.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_sleep.svg
+ create mode 100644 extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_user.svg
+ create mode 100644 extensions/tos-hotkey/systemDialog.js
+
+diff --git a/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_logout.svg b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_logout.svg
+new file mode 100644
+index 0000000..20d052d
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_logout.svg
+@@ -0,0 +1,28 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="39px" height="38px" viewBox="0 0 39 38" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_windowf4_logout</title>
++    <defs>
++        <linearGradient x1="90.8123804%" y1="0.523005619%" x2="9.28493172%" y2="99.4314159%" id="linearGradient-1">
++            <stop stop-color="#6560BE" offset="0.0343116554%"></stop>
++            <stop stop-color="#4D46AB" offset="100%"></stop>
++        </linearGradient>
++    </defs>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="02_01_11_TOS5_altF4" transform="translate(-653.000000, -520.000000)">
++            <g id="Group-4" transform="translate(610.000000, 425.000000)">
++                <g id="Group-7" transform="translate(22.080435, 95.000000)">
++                    <g id="Group" transform="translate(21.013043, 0.000000)">
++                        <g id="power_settings_new-24px">
++                            <g id="tos_ic/logout" transform="translate(0.340576, 1.266667)">
++                                <g id="save_alt-24px" transform="translate(18.433482, 18.000000) rotate(-270.000000) translate(-18.433482, -18.000000) translate(0.394351, 0.000000)">
++                                    <polygon id="Path" points="0 0 35.5437681 0 35.5437681 35.4666667 0 35.4666667"></polygon>
++                                    <path d="M29.6198068,11.8222222 C30.4343514,11.8222222 31.1007971,12.4872222 31.1007971,13.3 L31.1007971,13.3 L31.1007971,26.6 C31.1007971,28.2255556 29.7679058,29.5555556 28.1388164,29.5555556 L28.1388164,29.5555556 L7.40495169,29.5555556 C5.77586232,29.5555556 4.44297101,28.2255556 4.44297101,26.6 L4.44297101,26.6 L4.44297101,13.3 C4.44297101,12.4872222 5.10941667,11.8222222 5.92396135,11.8222222 C6.73850604,11.8222222 7.40495169,12.4872222 7.40495169,13.3 L7.40495169,13.3 L7.40495169,25.1222222 C7.40495169,25.935 8.07139734,26.6 8.88594203,26.6 L8.88594203,26.6 L26.6578261,26.6 C27.4723708,26.6 28.1388164,25.935 28.1388164,25.1222222 L28.1388164,25.1222222 L28.1388164,13.3 C28.1388164,12.4872222 28.8052621,11.8222222 29.6198068,11.8222222 Z M16.7203809,3.38780556 C17.2979671,2.81147222 18.2309911,2.81147222 18.8085773,3.38780556 L18.8085773,3.38780556 L24.1253326,8.69302778 C24.7029188,9.26936111 24.7029188,10.2003611 24.1253326,10.7766944 C23.5477464,11.3530278 22.6147225,11.3530278 22.0371362,10.7766944 L22.0371362,10.7766944 L19.2528744,7.99847222 L19.2528744,20.8108056 C19.2528744,21.6235833 18.5864287,22.2885833 17.7718841,22.2885833 C16.9573394,22.2885833 16.2908937,21.6235833 16.2908937,20.8108056 L16.2908937,20.8108056 L16.2908937,7.99847222 L13.491822,10.7766944 C12.9142357,11.3530278 11.9812118,11.3530278 11.4036256,10.7766944 C10.8260394,10.2003611 10.8260394,9.26936111 11.4036256,8.69302778 L11.4036256,8.69302778 Z" id="Combined-Shape" fill="url(#linearGradient-1)"></path>
++                                </g>
++                            </g>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_power.svg b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_power.svg
+new file mode 100644
+index 0000000..68694a8
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_power.svg
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="39px" height="38px" viewBox="0 0 39 38" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_windowf4_power</title>
++    <defs>
++        <linearGradient x1="90.84043%" y1="0.538755821%" x2="9.41411823%" y2="99.2251458%" id="linearGradient-1">
++            <stop stop-color="#E24961" offset="0.0343116554%"></stop>
++            <stop stop-color="#CE3047" offset="99.9604096%"></stop>
++        </linearGradient>
++    </defs>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="02_01_11_TOS5_altF4" transform="translate(-989.000000, -520.000000)">
++            <g id="Group-4" transform="translate(610.000000, 425.000000)">
++                <g id="Group-7" transform="translate(22.080435, 95.000000)">
++                    <g id="Group-Copy-2" transform="translate(357.743478, 0.000000)">
++                        <g id="power_settings_new-24px">
++                            <polygon id="Path" points="0 0 38.0826087 0 38.0826087 38 0 38"></polygon>
++                            <path d="M19.0413043,4.75 C18.1685779,4.75 17.454529,5.4625 17.454529,6.33333333 L17.454529,19 C17.454529,19.8708333 18.1685779,20.5833333 19.0413043,20.5833333 C19.9140308,20.5833333 20.6280797,19.8708333 20.6280797,19 L20.6280797,6.33333333 C20.6280797,5.4625 19.9140308,4.75 19.0413043,4.75 Z M27.1973297,9.27833333 C26.5784873,9.89583333 26.5943551,10.8616667 27.181462,11.4791667 C28.9745181,13.3791667 30.0852609,15.9125 30.1487319,18.715 C30.2915417,24.7791667 25.2614638,30.0041667 19.1841141,30.0675 C12.9798225,30.1625 7.93387681,25.175 7.93387681,19 C7.93387681,16.0866667 9.06048732,13.4425 10.9011467,11.4633333 C11.4882536,10.8458333 11.4882536,9.88 10.885279,9.27833333 C10.2505688,8.645 9.21916486,8.66083333 8.61619022,9.31 C6.31536594,11.7483333 4.87140036,14.9941667 4.76032609,18.5883333 C4.53817754,26.315 10.8376757,32.9966667 18.5811395,33.2341667 C26.6736938,33.4875 33.3222826,27.0116667 33.3222826,18.9841667 C33.3222826,15.2316667 31.8624493,11.8433333 29.4822862,9.31 C28.8793116,8.66083333 27.8320399,8.645 27.1973297,9.27833333 L27.1973297,9.27833333 Z" id="tos_ic/power" fill="url(#linearGradient-1)"></path>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_restart.svg b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_restart.svg
+new file mode 100644
+index 0000000..2ba0a92
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_restart.svg
+@@ -0,0 +1,23 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="39px" height="38px" viewBox="0 0 39 38" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_windowf4_restart</title>
++    <defs>
++        <linearGradient x1="90.8963583%" y1="0.421124374%" x2="9.28493172%" y2="99.4314159%" id="linearGradient-1">
++            <stop stop-color="#3E8C65" offset="0%"></stop>
++            <stop stop-color="#337553" offset="100%"></stop>
++        </linearGradient>
++    </defs>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="02_01_11_TOS5_altF4" transform="translate(-905.000000, -520.000000)" fill="url(#linearGradient-1)">
++            <g id="Group-4" transform="translate(610.000000, 425.000000)">
++                <g id="Group-7" transform="translate(22.080435, 95.000000)">
++                    <g id="Group-2" transform="translate(273.560870, 0.000000)">
++                        <g id="tos_ic/restart">
++                            <path d="M19.6954348,24.7 C20.3857907,24.7 20.9454348,25.2596441 20.9454348,25.95 L20.9454348,32.95 C20.9454348,33.6403559 20.3857907,34.2 19.6954348,34.2 L19.0218841,34.2 C18.3315281,34.2 17.7718841,33.6403559 17.7718841,32.95 L17.7718841,25.95 C17.7718841,25.2596441 18.3315281,24.7 19.0218841,24.7 L19.6954348,24.7 Z M25.4028729,22.7919309 L30.3653012,27.7435947 C30.8539863,28.2312197 30.8548456,29.0226755 30.3672206,29.5113606 L30.3653012,29.51328 L29.8909514,29.9866008 C29.4030165,30.4734772 28.6130398,30.4734772 28.1251049,29.9866008 L23.1626767,25.034937 C22.6739916,24.547312 22.6731322,23.7558562 23.1607573,23.2671711 L23.6370264,22.7919309 C24.1249613,22.3050545 24.914938,22.3050545 25.4028729,22.7919309 Z M15.0802924,22.7919309 L15.5546422,23.2652517 C16.0433273,23.7528768 16.0441866,24.5443325 15.5565616,25.0330176 C15.5559225,25.0336581 15.5552827,25.0342979 15.5546422,25.034937 L10.592214,29.9866008 C10.1042791,30.4734772 9.31430233,30.4734772 8.82636744,29.9866008 L8.35201769,29.51328 C7.86333258,29.0256549 7.86247324,28.2341992 8.35009829,27.7455141 L8.35201769,27.7435947 L13.3144459,22.7919309 C13.8023808,22.3050545 14.5923575,22.3050545 15.0802924,22.7919309 Z M33.3417029,17.4166667 C34.0320588,17.4166667 34.5917029,17.9763107 34.5917029,18.6666667 L34.5917029,19.3333333 C34.5917029,20.0236893 34.0320588,20.5833333 33.3417029,20.5833333 L26.3210507,20.5833333 C25.6306948,20.5833333 25.0710507,20.0236893 25.0710507,19.3333333 L25.0710507,18.6666667 C25.0710507,17.9763107 25.6306948,17.4166667 26.3210507,17.4166667 L33.3417029,17.4166667 Z M12.3962681,17.4166667 C13.0866241,17.4166667 13.6462681,17.9763107 13.6462681,18.6666667 L13.6462681,19.3333333 C13.6462681,20.0236893 13.0866241,20.5833333 12.3962681,20.5833333 L5.37561594,20.5833333 C4.68526,20.5833333 4.12561594,20.0236893 4.12561594,19.3333333 L4.12561594,18.6666667 C4.12561594,17.9763107 4.68526,17.4166667 5.37561594,17.4166667 L12.3962681,17.4166667 Z M10.592214,8.01339921 L15.5546422,12.965063 C16.0433273,13.452688 16.0441866,14.2441438 15.5565616,14.7328289 C15.5559225,14.7334694 15.5552827,14.7341092 15.5546422,14.7347483 L15.0802924,15.2080691 C14.5923575,15.6949455 13.8023808,15.6949455 13.3144459,15.2080691 L8.35201769,10.2564053 C7.86333258,9.76878027 7.86247324,8.97732451 8.35009829,8.48863941 L8.35201769,8.48672001 L8.82636744,8.01339921 C9.31430233,7.52652275 10.1042791,7.52652275 10.592214,8.01339921 Z M29.8909514,8.01339921 L30.3653012,8.48672001 C30.8539863,8.97434506 30.8548456,9.76580081 30.3672206,10.2544859 L30.3653012,10.2564053 L25.4028729,15.2080691 C24.914938,15.6949455 24.1249613,15.6949455 23.6370264,15.2080691 L23.1626767,14.7347483 C22.6739916,14.2471232 22.6731322,13.4556675 23.1607573,12.9669824 C23.1613964,12.9663419 23.1620362,12.9657021 23.1626767,12.965063 L28.1251049,8.01339921 C28.6130398,7.52652275 29.4030165,7.52652275 29.8909514,8.01339921 Z M19.6954348,3.8 C20.3857907,3.8 20.9454348,4.35964406 20.9454348,5.05 L20.9454348,12.05 C20.9454348,12.7403559 20.3857907,13.3 19.6954348,13.3 L19.0218841,13.3 C18.3315281,13.3 17.7718841,12.7403559 17.7718841,12.05 L17.7718841,5.05 C17.7718841,4.35964406 18.3315281,3.8 19.0218841,3.8 L19.6954348,3.8 Z" id="Combined-Shape-Copy"></path>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_sleep.svg b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_sleep.svg
+new file mode 100644
+index 0000000..19693f8
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_sleep.svg
+@@ -0,0 +1,21 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="39px" height="38px" viewBox="0 0 39 38" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_windowf4_sleep</title>
++    <defs>
++        <linearGradient x1="72.4394907%" y1="0.20532974%" x2="27.6599816%" y2="99.6465687%" id="linearGradient-1">
++            <stop stop-color="#F6A931" offset="0%"></stop>
++            <stop stop-color="#EB982F" offset="100%"></stop>
++        </linearGradient>
++    </defs>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="02_01_11_TOS5_altF4" transform="translate(-821.000000, -520.000000)" fill="url(#linearGradient-1)">
++            <g id="Group-4" transform="translate(610.000000, 425.000000)">
++                <g id="Group-7" transform="translate(22.080435, 95.000000)">
++                    <g id="Group-3" transform="translate(189.378261, 0.000000)">
++                        <path d="M26.3315675,34.0944691 C24.6179613,34.8392168 22.7276679,35.25 20.7424101,35.25 C12.8843482,35.25 6.51413043,28.8140933 6.51413043,20.875 C6.51413043,12.9359067 12.8843482,6.5 20.7424101,6.5 C23.0060354,6.5 25.1461981,7.03405742 27.0461907,7.98426139 C28.2388927,8.87002892 28.0351122,9.8464478 26.4366704,10.9137401 C23.0319839,12.9010293 20.7424101,16.6178781 20.7424101,20.875 C20.7424101,25.0383892 22.9322709,28.6850349 26.211773,30.703372 L26.5221903,30.8858961 C28.1651305,31.8442294 28.1015896,32.9137538 26.3315675,34.0944691 Z M20.3218451,9.85376588 C14.6450064,9.85376588 10.0430194,14.8905624 10.0430194,21.1037659 C10.0430194,27.3169693 14.6450064,32.3537659 20.3218451,32.3537659 C20.9486335,32.3537659 21.566248,32.2926494 22.1694406,32.1727605 L22.5701933,32.0821883 L22.3282098,31.8653761 C19.5778846,29.332695 17.8767122,25.6127999 17.758708,21.5558786 L17.7521386,21.1037659 C17.7521386,16.9266557 19.4315706,13.0681761 22.2220237,10.4424615 L22.5701933,10.1250008 L22.2133908,10.043331 C21.7501839,9.94920699 21.278678,9.88963861 20.8012116,9.86573717 L20.3218451,9.85376588 Z" id="tos_ic/sleep" transform="translate(17.162228, 20.875000) rotate(-30.000000) translate(-17.162228, -20.875000) "></path>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_user.svg b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_user.svg
+new file mode 100644
+index 0000000..c826084
+--- /dev/null
++++ b/extensions/tos-hotkey/assets/tos_desktop_ic_windowf4_user.svg
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg width="39px" height="38px" viewBox="0 0 39 38" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
++    <title>tos_desktop_ic_windowf4_user</title>
++    <defs>
++        <linearGradient x1="85.9561223%" y1="0.307654429%" x2="14.1296107%" y2="99.6465687%" id="linearGradient-1">
++            <stop stop-color="#42A4B6" offset="0.0343116554%"></stop>
++            <stop stop-color="#32829A" offset="100%"></stop>
++        </linearGradient>
++    </defs>
++    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++        <g id="02_01_11_TOS5_altF4" transform="translate(-737.000000, -520.000000)" fill="url(#linearGradient-1)">
++            <g id="Group-4" transform="translate(610.000000, 425.000000)">
++                <g id="Group-7" transform="translate(22.080435, 95.000000)">
++                    <g id="Group-Copy" transform="translate(105.195652, 0.000000)">
++                        <g id="power_settings_new-24px">
++                            <g id="tos_ic/help-copy-2">
++                                <path d="M19.0413043,20.52 C25.7183222,20.52 31.2277391,25.0473249 31.2277391,30.78 C31.2277391,31.5495168 30.6025664,32.1733333 29.8313768,32.1733333 L29.8313768,32.1733333 L8.25123188,32.1733333 C7.48004227,32.1733333 6.85486957,31.5495168 6.85486957,30.78 C6.85486957,25.0473249 12.3642865,20.52 19.0413043,20.52 Z M19.0413043,23.3066667 C14.469048,23.3066667 10.7255147,25.9032439 9.84423287,29.2621362 L9.84423287,29.2621362 L9.81388826,29.3866667 L28.267451,29.3866667 L28.2383758,29.2621362 C27.3785887,25.9851681 23.7944694,23.4337825 19.3743512,23.311274 L19.3743512,23.311274 Z M19.0413043,6.20666667 C22.6168198,6.20666667 25.5153478,9.09890718 25.5153478,12.6666667 C25.5153478,16.2344262 22.6168198,19.1266667 19.0413043,19.1266667 C15.4657889,19.1266667 12.5672609,16.2344262 12.5672609,12.6666667 C12.5672609,9.09890718 15.4657889,6.20666667 19.0413043,6.20666667 Z M19.0413043,8.99333333 C17.0081681,8.99333333 15.3599855,10.6379407 15.3599855,12.6666667 C15.3599855,14.6953926 17.0081681,16.34 19.0413043,16.34 C21.0744406,16.34 22.7226232,14.6953926 22.7226232,12.6666667 C22.7226232,10.6379407 21.0744406,8.99333333 19.0413043,8.99333333 Z" id="Combined-Shape"></path>
++                            </g>
++                        </g>
++                    </g>
++                </g>
++            </g>
++        </g>
++    </g>
++</svg>
+\ No newline at end of file
+diff --git a/extensions/tos-hotkey/extension.js b/extensions/tos-hotkey/extension.js
+index bf90d3b..6f5a163 100644
+--- a/extensions/tos-hotkey/extension.js
++++ b/extensions/tos-hotkey/extension.js
+@@ -1,12 +1,18 @@
+-const { Gio, Meta, Shell } = imports.gi;
++const { Clutter, Gio, Meta, Shell } = imports.gi;
+ 
+ const Main = imports.ui.main;
+ 
+-// var SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
+-// var WM_KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
+-var SHELL_EXTENSIONS_TOS_HOTKEY = 'org.gnome.shell.extensions.tos-hotkey';
++const ExtensionUtils = imports.misc.extensionUtils;
++const Me = ExtensionUtils.getCurrentExtension();
++const SystemDialog = Me.imports.systemDialog;
+ 
+-function _addKeybinding(key, action, schema, handler) {
++// const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
++// const WM_KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
++const SHELL_EXTENSIONS_TOS_HOTKEY = 'org.gnome.shell.extensions.tos-hotkey';
++
++let systemDialog;
++
++function _addKeybinding(key, schema, flags, action, handler) {
+     if (Main.wm._allowedKeybindings[key])
+         Main.wm.removeKeybinding(key);
+     if (!Main.wm._allowedKeybindings[key]) {
+@@ -15,7 +21,7 @@ function _addKeybinding(key, action, schema, handler) {
+         Main.wm.addKeybinding(
+             key,
+             settings,
+-            Meta.KeyBindingFlags.NONE,
++            flags,
+             action,
+             handler
+         );
+@@ -31,18 +37,35 @@ function _launchApp(desktopAppId) {
+     app.launch(0, -1, gpuPref);
+ }
+ 
++function _handleAltF4(display, window) {
++    if (window && !window.skip_taskbar) {
++        window.delete(Clutter.get_current_event_time());
++    } else if (Me.state === 1) {
++        if (!systemDialog)
++            systemDialog = new SystemDialog.SystemDialog();
++        systemDialog.open();
++    }
++}
++
+ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+     _addKeybinding('open-file-manager',
+-        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         SHELL_EXTENSIONS_TOS_HOTKEY,
++        Meta.KeyBindingFlags.NONE,
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         _launchApp.bind(null, 'org.gnome.Nautilus.desktop'));
++
+     _addKeybinding('open-terminal',
+-        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         SHELL_EXTENSIONS_TOS_HOTKEY,
++        Meta.KeyBindingFlags.NONE,
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+         _launchApp.bind(null, 'org.gnome.Terminal.desktop'));
++
++    Main.wm.setCustomKeybindingHandler('close',
++        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
++        _handleAltF4);
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+diff --git a/extensions/tos-hotkey/meson.build b/extensions/tos-hotkey/meson.build
+index 7225b98..d96d42e 100644
+--- a/extensions/tos-hotkey/meson.build
++++ b/extensions/tos-hotkey/meson.build
+@@ -4,8 +4,12 @@ extension_data += configure_file(
+   configuration: metadata_conf
+ )
+ 
++extension_sources += files(
++'systemDialog.js',
++)
+ 
+ extension_dir = join_paths(extensiondir, uuid)
+ 
++install_subdir('assets', install_dir : extension_dir)
+ schema_data_dir = 'schemas'
+ subdir(schema_data_dir)
+diff --git a/extensions/tos-hotkey/stylesheet.css b/extensions/tos-hotkey/stylesheet.css
+index 6d91483..fd5da27 100644
+--- a/extensions/tos-hotkey/stylesheet.css
++++ b/extensions/tos-hotkey/stylesheet.css
+@@ -1 +1,65 @@
+-/* none used */
++.system-dialog {
++  border-radius: 16px;
++  background-color: white;
++  width: 461px;
++  height: 200px;
++  box-shadow: 0 0 12px 0 rgba(0,0,0,0.30);
++  border: none;
++  margin: 0px;
++  padding: 0px 20px 20px 20px;
++}
++
++.system-dialog-content-box {
++  margin: 36px 0 0 0;
++  padding: 0px;
++}
++
++.system-dialog-title {
++  font-size: 13px;
++  letter-spacing: 0;
++  text-align: center;
++  line-height: 19px;
++  color: #000000;
++}
++
++.system-dialog-button-container {
++  height: 103px;
++  margin-top: 41px;
++}
++
++.system-dialog-button {
++  border: none;
++  border-radius: 10px;
++  background-color: white;
++  margin: 0px 2px;
++
++  font-size: 13px;
++  color: #000000;
++  letter-spacing: 0;
++  text-align: center;
++  line-height: 19px;
++
++  width: 80px;
++  height: 103px;
++}
++
++.system-dialog-button:hover {
++  background-color: rgba(0, 79, 255, 0.12);
++}
++
++.system-dialog-button:active {
++  background-color: rgba(0, 79, 255, 0.2);
++}
++
++.system-dialog-button-image {
++  icon-size: 38px;
++  margin: 18px 21px 15px 21px;
++}
++
++.system-dialog-button-label {
++  font-size: 13px;
++  letter-spacing: 0;
++  text-align: center;
++  line-height: 19px;
++  color: #000000;
++}
+diff --git a/extensions/tos-hotkey/systemDialog.js b/extensions/tos-hotkey/systemDialog.js
+new file mode 100644
+index 0000000..4077e06
+--- /dev/null
++++ b/extensions/tos-hotkey/systemDialog.js
+@@ -0,0 +1,164 @@
++const { Atk, Clutter, GObject, Gio, St } = imports.gi;
++
++const _ = imports.gettext.gettext;
++
++const ModalDialog = imports.ui.modalDialog;
++
++const SystemActions = imports.misc.systemActions;
++const Params = imports.misc.params;
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const LOGOUT_IMG_FILE_PATH = '/assets/tos_desktop_ic_windowf4_logout.svg';
++const USER_SWITCH_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_user.svg';
++const SLEEP_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_sleep.svg';
++const RESTART_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_restart.svg';
++const POWEROFF_IMAGE_PATH = '/assets/tos_desktop_ic_windowf4_power.svg';
++
++const LOGOUT_LABEL_TEXT = _('로그아웃');
++const USER_SWITCH_LABEL_TEXT = _('사용자 전환');
++const SLEEP_LABEL_TEXT = _('잠자기');
++const RESTART_LABEL_TEXT = _('다시 시작');
++const POWEROFF_LABEL_TEXT = _('시스템 종료');
++
++
++var SystemDialogButton = GObject.registerClass(
++class SystemDialogButton extends St.BoxLayout {
++    _init(params) {
++        params = Params.parse(params, {
++            reactive: true,
++            activate: true,
++            hover: true,
++            style_class: null,
++            can_focus: true,
++            x_expand: true,
++            vertical: true,
++            y_align: Clutter.ActorAlign.CENTER,
++            handler: null,
++            systemDialog: null,
++        });
++        super._init({ style_class: 'system-dialog-button',
++            reactive: params.reactive,
++            track_hover: params.reactive,
++            can_focus: params.can_focus,
++            accessible_role: Atk.Role.TOGGLE_BUTTON });
++        this._delegate = this;
++
++        if (params.handler)
++            this._handler = params.handler;
++
++
++        if (params.systemDialog)
++            this._systemDialog = params.systemDialog;
++
++    }
++
++    vfunc_button_press_event() {
++        this.add_style_pseudo_class('active');
++    }
++
++    vfunc_button_release_event() {
++        this.remove_style_pseudo_class('active');
++        if (!this._handler)
++            return Clutter.EVENT_PROPAGATE;
++
++        this._systemDialog.close();
++        this._handler();
++
++        return Clutter.EVENT_STOP;
++
++    }
++});
++
++function createButton(params, iconName, labelText) {
++    let icon = new St.Icon({ style_class: 'system-dialog-button-image',
++        y_align: Clutter.ActorAlign.CENTER,
++        gicon: Gio.icon_new_for_string(iconName),
++        icon_size: 38 });
++    let label = new St.Label({ style_class: 'system-dialog-button-label',
++        text: labelText,
++        y_align: Clutter.ActorAlign.CENTER });
++    let button = new SystemDialogButton(params);
++
++    button.add_child(icon);
++    button.add_child(label);
++
++    button.vertical = true;
++    return button;
++}
++
++var SystemDialog = GObject.registerClass( // eslint-disable-line no-unused-vars
++class SystemDialog extends ModalDialog.ModalDialog {
++// class SystemDialog extends St.Widget {
++    _init() {
++        super._init({
++            styleClass: 'system-dialog',
++            destroyOnClose: false,
++        });
++
++
++        let _title = _('원하는 작업을 선택해 주세요.');
++        let label = new St.Label({ style_class: 'system-dialog-title',
++            text: _title });
++
++        this.contentLayout.set_style_class_name('system-dialog-content-box');
++        this.contentLayout.add_actor(label);
++
++        this.systemActions = SystemActions.getDefault();
++
++        this.buttonLayout.set_style_class_name('system-dialog-button-container');
++
++        let iconPath = Me.path + LOGOUT_IMG_FILE_PATH;
++        let button = createButton({
++            handler: this.systemActions.activateLogout.bind(this.systemActions),
++            systemDialog: this,
++        }, iconPath, LOGOUT_LABEL_TEXT);
++        this.buttonLayout.add_child(button);
++
++        iconPath = Me.path + USER_SWITCH_IMAGE_PATH;
++        button = createButton({
++            handler: this.systemActions.activateSwitchUser.bind(this.systemActions),
++            systemDialog: this,
++        }, iconPath, USER_SWITCH_LABEL_TEXT);
++        this.buttonLayout.add_child(button);
++
++        iconPath = Me.path + SLEEP_IMAGE_PATH;
++        button = createButton({
++            handler: this.systemActions.activateSuspend.bind(this.systemActions),
++            systemDialog: this,
++        }, iconPath, SLEEP_LABEL_TEXT);
++        this.buttonLayout.add_child(button);
++
++        iconPath = Me.path + RESTART_IMAGE_PATH;
++        button = createButton({
++            handler: this.systemActions.activateRestart.bind(this.systemActions),
++            systemDialog: this,
++        }, iconPath, RESTART_LABEL_TEXT);
++        this.buttonLayout.add_child(button);
++
++        iconPath = Me.path + POWEROFF_IMAGE_PATH;
++        button = createButton({
++            handler: this.systemActions.activatePowerOff.bind(this.systemActions),
++            systemDialog: this,
++        }, iconPath, POWEROFF_LABEL_TEXT);
++        this.buttonLayout.add_child(button);
++    }
++
++
++    vfunc_key_release_event(event) {
++        if (event.keyval === Clutter.KEY_Escape) {
++            this.close();
++            return Clutter.EVENT_STOP;
++        }
++
++        return Clutter.EVENT_PROPAGATE;
++    }
++
++    _fadeOpen(onPrimary) {
++        super._fadeOpen(onPrimary);
++
++        if (this._lightbox)
++            this._lightbox.lightOff();
++    }
++
++});

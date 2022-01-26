@@ -1,0 +1,312 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 14 Oct 2021 13:58:24 +0900
+Subject: [feat] osk-hangul : use Adapter to apply OSK keyboard according to
+ the input method
+
+ - Previous version used Wrapper instance to override original GNOME
+   shell Keyboard. This would resolve dependency between keyboard
+   wrapper and extension module.
+ - Used Ibus focus-in signal instead of ready. Since greeter and
+   unlock-dialog also use ibus(system engine), ready signal is always
+   emitted. Use engine name to divide.
+
+[IMS] N/A
+---
+ extensions/osk-hangul/adapter.js         | 68 +++++++++++++++++++++++++
+ extensions/osk-hangul/extension.js       | 86 +++++++++++++++++---------------
+ extensions/osk-hangul/keyboardWrapper.js |  9 ----
+ extensions/osk-hangul/meson.build        |  3 +-
+ 4 files changed, 115 insertions(+), 51 deletions(-)
+ create mode 100644 extensions/osk-hangul/adapter.js
+
+diff --git a/extensions/osk-hangul/adapter.js b/extensions/osk-hangul/adapter.js
+new file mode 100644
+index 0000000..fa2cc64
+--- /dev/null
++++ b/extensions/osk-hangul/adapter.js
+@@ -0,0 +1,68 @@
++/* exported Adapter */
++
++const Signals = imports.signals;
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const KeyboardWrapper = Me.imports.keyboardWrapper;
++
++const LAYOUT_KEY_TYPE_ICON = 'icon';
++const LAYOUT_KEY_TYPE_LABEL = 'label';
++
++var Adapter = class Adapter {
++    constructor() {
++        this.wrappers = {
++            xkb: {
++                inputMethod: 'xkb',
++                wrapper: new KeyboardWrapper.XkbKeyboardWrapper(),
++                type: LAYOUT_KEY_TYPE_ICON,
++            },
++            ibus: {
++                inputMethod: 'ibus',
++                wrapper: new KeyboardWrapper.IbusKeyboardWrapper(),
++                type: LAYOUT_KEY_TYPE_LABEL,
++            },
++        };
++
++        this._layoutKeyType = null;
++        this._currentInputMethod = null;
++        this._currentWrapper = null;
++    }
++
++    get layoutKeyType() {
++        return this._layoutKeyType;
++    }
++
++    set layoutKeyType(type) {
++        if (this.layoutKeyType === type)
++            return;
++
++        this._layoutKeyType = type;
++        this.emit('layout-key-type');
++    }
++
++    setInputMethod(inputMethod) {
++        if (this._currentInputMethod !== inputMethod) {
++            if (this._currentWrapper)
++                this.restoreAll();
++
++            let newWrapper = this.wrappers[inputMethod];
++            this._currentInputMethod = inputMethod;
++            this._currentWrapper = newWrapper.wrapper;
++            this.wrapAll();
++            this.layoutKeyType = newWrapper.type;
++        }
++    }
++
++    wrapAll() {
++        if (this._currentWrapper)
++            this._currentWrapper.wrapAll();
++    }
++
++    restoreAll() {
++        if (this._currentWrapper)
++            this._currentWrapper.restoreAll();
++    }
++};
++
++Signals.addSignalMethods(Adapter.prototype);
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index f30d4da..0609caf 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -3,69 +3,71 @@
+  */
+ 
+ const Main = imports.ui.main;
++const KeyboardManager = Main.keyboard;
+ 
+ const IBusManager = imports.misc.ibusManager;
+-const Me = imports.misc.extensionUtils.getCurrentExtension();
+-const Wrapper = Me.imports.keyboardWrapper;
+-const getIBusHangul = Me.imports.utils.getIBusHangul;
+ 
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++const Adapter = Me.imports.adapter;
+ const { changeIBusPurposeToClutterPurpose } = Me.imports.utils;
+ 
+ const BASIC_KEYBOARD_LAYOUT = 0;
+ 
+-let _ibusReadyId = null;
+ 
+ let _a11ySignalId = null;
+ let _touchModeNotifyId = null;
+ let _lastDeviceChangedId = null;
++
++let _ibusFocusInId = null;
+ let _keyboardDestroyId = null;
++let _layoutKeyTypeChagnedId = null;
+ 
+-let wrapper = null;
++let adapter = null;
+ 
+ function init() { // eslint-disable-line no-unused-vars
+ }
+ 
+ 
+-function _enable() {
+-    if (wrapper) {
+-        wrapper.restoreAll();
+-        wrapper = null;
+-    }
++function _enable(inputMethod = 'xkb') {
++    if (!adapter)
++        adapter = new Adapter.Adapter();
+ 
+-    if (getIBusHangul())
+-        wrapper = new Wrapper.IbusKeyboardWrapper();
+-    else
+-        wrapper = new Wrapper.XkbKeyboardWrapper();
+-
+-    let keyboard = Main.keyboard._keyboard;
+-    let controller = keyboard._keyboardController;
+-    wrapper.wrapAll(keyboard, controller);
++    adapter.setInputMethod(inputMethod);
+ }
+ 
+ // Synchronize with this extension and availability of on-screen-keyboard.
+ // Encapsulate _isOSKEnabled so that it is not contaminated by external factors.
+ function _getSyncKeyboardFunc() {
+     let _isOSKEnabled = false;
+-    let keyboardManager = Main.keyboard;
+ 
+     function applyKoreanKeyboard() {
+-        if (!_isOSKEnabled && keyboardManager._keyboard) {
++        if (!_isOSKEnabled && KeyboardManager._keyboard) {
+             _enable();
+             _isOSKEnabled = true;
+ 
+-            let ibusManager = IBusManager.getIBusManager();
+-            _ibusReadyId = ibusManager.connect('ready', () => {
+-                _enable();
++            const ibusManager = IBusManager.getIBusManager();
++            _ibusFocusInId = ibusManager.connect('focus-in', () => {
++                if (ibusManager._currentEngineName === 'hangul')
++                    _enable('ibus');
++                else
++                    _enable('xkb');
+             });
+ 
+-            _keyboardDestroyId = keyboardManager._keyboard.connect('destroy', () => {
++            _keyboardDestroyId = KeyboardManager._keyboard.connect('destroy', () => {
+                 _resetKeyboard();
+-                if (_ibusReadyId) {
+-                    ibusManager.disconnect(_ibusReadyId);
+-                    _ibusReadyId = null;
+-                }
++                if (_ibusFocusInId)
++                    ibusManager.disconnect(_ibusFocusInId);
++
++                if (_layoutKeyTypeChagnedId)
++                    adapter.disconnect(_layoutKeyTypeChagnedId);
++
+                 _isOSKEnabled = false;
+             });
++
++            _layoutKeyTypeChagnedId = adapter.connect('layout-key-type', () => {
++                log('layout-key-type changed');
++                KeyboardManager._keyboard._onKeyboardGroupsChanged();
++            });
+         }
+     }
+ 
+@@ -73,12 +75,10 @@ function _getSyncKeyboardFunc() {
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+-    let keyboardManager = Main.keyboard;
+-
+     let syncKeyboard = _getSyncKeyboardFunc();
+ 
+-    _a11ySignalId = keyboardManager._a11yApplicationsSettings.connect_after('changed', syncKeyboard);
+-    _touchModeNotifyId = keyboardManager._seat.connect_after('notify::touch-mode', syncKeyboard);
++    _a11ySignalId = KeyboardManager._a11yApplicationsSettings.connect_after('changed', syncKeyboard);
++    _touchModeNotifyId = KeyboardManager._seat.connect_after('notify::touch-mode', syncKeyboard);
+     _lastDeviceChangedId = global.backend.connect_after('last-device-changed', syncKeyboard);
+ 
+     syncKeyboard();
+@@ -89,36 +89,40 @@ function enable() { // eslint-disable-line no-unused-vars
+             Main.inputMethod._purpose = changeIBusPurposeToClutterPurpose(purpose);
+ 
+             // To show the keyboard according to the purpose on the screen, call the method.
+-            Main.keyboard._keyboard._setActiveLayer(BASIC_KEYBOARD_LAYOUT);
++            KeyboardManager._keyboard._setActiveLayer(BASIC_KEYBOARD_LAYOUT);
+         }
+     });
+ }
+ 
+ function _resetKeyboard() {
+-    let keyboard = Main.keyboard._keyboard;
++    let keyboard = KeyboardManager._keyboard;
+     if (keyboard) {
+-        if (wrapper)
+-            wrapper.restoreAll();
++        if (adapter)
++            adapter.restoreAll();
+ 
+         if (_keyboardDestroyId) {
+             keyboard.disconnect(_keyboardDestroyId);
+             _keyboardDestroyId = null;
+         }
++
++        let ibusManager = IBusManager.getIBusManager();
++        if (_ibusFocusInId)
++            ibusManager.disconnect(_ibusFocusInId);
++
++        if (_layoutKeyTypeChagnedId)
++            adapter.disconnect(_layoutKeyTypeChagnedId);
+     }
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+     _resetKeyboard();
+ 
+-    Main.keyboard._a11yApplicationsSettings.disconnect(_a11ySignalId);
+-    Main.keyboard._seat.disconnect(_touchModeNotifyId);
++    KeyboardManager._a11yApplicationsSettings.disconnect(_a11ySignalId);
++    KeyboardManager._seat.disconnect(_touchModeNotifyId);
+     global.backend.disconnect(_lastDeviceChangedId);
+ 
+     _a11ySignalId = null;
+     _touchModeNotifyId = null;
+     _lastDeviceChangedId = null;
+ 
+-    let ibusManager = IBusManager.getIBusManager();
+-    if (_ibusReadyId)
+-        ibusManager.disconnect(_ibusReadyId);
+ }
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index 19521a1..731e5de 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -31,7 +31,6 @@ function _getCurrentGroup() {
+     if (ibusHangul && ibusHangul.properties)
+         return ibusHangul.properties.get('InputMode').get_state() === 0 ? 'us' : 'kr';
+ 
+-
+     return null;
+ }
+ 
+@@ -116,7 +115,6 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+             return layers;
+         });
+ 
+-        keyboard._onKeyboardGroupsChanged();
+         // Since 'xkbId' is a single value indicating which language the input method supports, so xkbId of ibus-hangul is always 'kr'.
+         // This occurs that original _setActiveLayer() function shows only korean keyboard layout even if the actual InputMode is english.
+         // So, temporarily change xkbId to match the InputMode of ibus-hangul and restore it.
+@@ -140,13 +138,6 @@ var IbusKeyboardWrapper = class IbusKeyboardWrapper extends BaseKeyboardWrapper
+             controller._currentSource.xkbId = oldGroupName;
+         });
+     }
+-
+-    restoreAll() {
+-        super.restoreAll();
+-
+-        let keyboard = KeyboardManager._keyboard;
+-        keyboard._onKeyboardGroupsChanged();
+-    }
+ };
+ 
+ var XkbKeyboardWrapper = class XkbKeyboardWrapper extends BaseKeyboardWrapper {
+diff --git a/extensions/osk-hangul/meson.build b/extensions/osk-hangul/meson.build
+index 6d6eb75..5f2d59d 100644
+--- a/extensions/osk-hangul/meson.build
++++ b/extensions/osk-hangul/meson.build
+@@ -7,7 +7,8 @@ extension_data += configure_file(
+ extension_sources += files(
+   'xkbcommon_keysyms.js',
+   'utils.js',
+-  'keyboardWrapper.js'
++  'keyboardWrapper.js',
++  'adapter.js',
+ )
+ 
+ extension_dir = join_paths(extensiondir, uuid)

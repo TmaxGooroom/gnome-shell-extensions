@@ -1,0 +1,379 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 11 Jun 2021 10:15:10 +0900
+Subject: [feat] Search : Show animation while searching
+
+- Add SearchAnimator class that load images to be used in animations and perform animations
+- Start animator during search and stop animator after search
+- Modify ko po file
+
+[IMS] 261364
+---
+ extensions/search/animator.js       | 141 ++++++++++++++++++++++++++++++++++++
+ extensions/search/baseMenuLayout.js |  12 +--
+ extensions/search/menuWidgets.js    |   2 +-
+ extensions/search/meson.build       |   3 +-
+ extensions/search/po/ko.po          |   2 +-
+ extensions/search/search.js         |  58 ++++++++++-----
+ 6 files changed, 192 insertions(+), 26 deletions(-)
+ create mode 100644 extensions/search/animator.js
+
+diff --git a/extensions/search/animator.js b/extensions/search/animator.js
+new file mode 100644
+index 0000000..6308dab
+--- /dev/null
++++ b/extensions/search/animator.js
+@@ -0,0 +1,141 @@
++// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
++/* exported Animator, SearchAnimator */
++
++const Me = imports.misc.extensionUtils.getCurrentExtension();
++
++const { Clutter, Cogl, GdkPixbuf, GLib, GObject, St } = imports.gi;
++
++var FRAME_SIZE = 30;
++var ICON_SIZE = 64;
++var ANIMATED_ICON_UPDATE_TIMEOUT = 30;
++
++var AnimationLoader = class {
++    _createImage(pixbuf) {
++        // Create Clutter.Image and set updated image
++        let image = Clutter.Image.new();
++        image.set_data(pixbuf.get_pixels(),
++            pixbuf.get_has_alpha() ? Cogl.PixelFormat.RGBA_8888
++                : Cogl.PixelFormat.RGB_888,
++            pixbuf.get_width(),
++            pixbuf.get_height(),
++            pixbuf.get_rowstride());
++        return image;
++    }
++
++    _createAnimation(image) {
++        // Create box layout and put updated image in it
++        let animation = new St.BoxLayout({
++            vertical: false,
++            x_align: Clutter.ActorAlign.CENTER,
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++        animation.set_content(image);
++        animation.hide();
++        animation.set_size(ICON_SIZE, ICON_SIZE);
++        return animation;
++    }
++
++    loadFiles() {
++        let animations = new St.BoxLayout({
++            vertical: false,
++            x_align: Clutter.ActorAlign.CENTER,
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++
++        for (let i = 1; i <= FRAME_SIZE; i++) {
++            // Load file
++            try {
++                let fileName = `${Me.path}/media/tos_searching_ic-${i}.png`;
++                let pixbuf = GdkPixbuf.Pixbuf.new_from_file(fileName);
++                let image = this._createImage(pixbuf);
++                let animation = this._createAnimation(image);
++                animations.add_actor(animation);
++            } catch (e) {
++                // No such file error
++                log('Error occurs because there is no image to load.');
++                continue;
++            }
++        }
++
++        return animations;
++    }
++};
++
++var SearchAnimator = GObject.registerClass(
++class SearchAnimator extends St.Bin {
++    _init() {
++        super._init({
++            style: `width: ${ICON_SIZE}px; height: ${ICON_SIZE}px;`,
++        });
++
++        this.connect('destroy', this._onDestroy.bind(this));
++
++        this._frame = 0;
++        this._isPlaying = false;
++        this._timeoutId = 0;
++
++        let animationLoader = new AnimationLoader();
++        this._animations = animationLoader.loadFiles();
++        this.set_child(this._animations);
++
++        this._isLoaded = this._animations.get_n_children() > 0;
++    }
++
++    play() {
++        if (!this._isLoaded)
++            return;
++
++        if (this._timeoutId !== 0)
++            return;
++
++        this.show();
++
++        if (this._frame === 0)
++            this._showFirstFrame();
++
++        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_LOW,
++            ANIMATED_ICON_UPDATE_TIMEOUT, this._update.bind(this));
++
++        this._isPlaying = true;
++    }
++
++    stop() {
++        if (this._timeoutId === 0)
++            return;
++
++        this.hide();
++
++        GLib.source_remove(this._timeoutId);
++        this._timeoutId = 0;
++
++        this._isPlaying = false;
++    }
++
++    _update() {
++        this._showNextFrame();
++        return GLib.SOURCE_CONTINUE;
++    }
++
++    _showFirstFrame() {
++        let firstFrameActor = this._animations.get_child_at_index(0);
++        if (firstFrameActor)
++            firstFrameActor.show();
++    }
++
++    _showNextFrame() {
++        let oldFrameActor = this._animations.get_child_at_index(this._frame);
++        if (oldFrameActor)
++            oldFrameActor.hide();
++
++        // Get next frame
++        this._frame = (this._frame + 1) % this._animations.get_n_children();
++
++        let newFrameActor = this._animations.get_child_at_index(this._frame);
++        if (newFrameActor)
++            newFrameActor.show();
++    }
++
++    _onDestroy() {
++        this.stop();
++    }
++});
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index e93616a..8902601 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -62,10 +62,10 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+         this.detailBox.hide();
+ 
+         // refresh (clear an existing items and replace it with a new one)
+-        this._clearActorsFromBox(this.frequentAppItemsBox);
+-        this._clearActorsFromBox(this.frequentAppsBox);
+-        this._clearActorsFromBox(this.recentFileItemsBox);
+-        this._clearActorsFromBox(this.recentFilesBox);
++        this.clearActorsFromBox(this.frequentAppItemsBox);
++        this.clearActorsFromBox(this.frequentAppsBox);
++        this.clearActorsFromBox(this.recentFileItemsBox);
++        this.clearActorsFromBox(this.recentFilesBox);
+ 
+         this.createDefaultView();
+         this.defaultBox.show();
+@@ -102,7 +102,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             this.mainBox.grab_key_focus();
+     }
+ 
+-    _clearActorsFromBox(box) {
++    clearActorsFromBox(box) {
+         if (!box)
+             box = this.resultBox;
+ 
+@@ -149,7 +149,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             this.defaultBox.hide();
+ 
+             // refresh (clear an existing items and replace it with a new one)
+-            this._clearActorsFromBox(this.resultBox);
++            this.clearActorsFromBox(this.resultBox);
+ 
+             let resultScrollBoxAdj = this.resultScrollBox.get_vscroll_bar().get_adjustment();
+             resultScrollBoxAdj.set_value(0);
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 695ff3c..83b8374 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -805,7 +805,7 @@ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-v
+         }
+ 
+         createDetailView() {
+-            this._menuLayout._clearActorsFromBox(this._menuLayout.detailBox);
++            this._menuLayout.clearActorsFromBox(this._menuLayout.detailBox);
+             this.detailView = new DetailView(this._menuLayout, this.terms, this.metaInfo, this.provider, this._app);
+             this.detailView.x_expand = true;
+             this.detailView.y_expand = true;
+diff --git a/extensions/search/meson.build b/extensions/search/meson.build
+index 9e2b22c..72fa8a6 100644
+--- a/extensions/search/meson.build
++++ b/extensions/search/meson.build
+@@ -14,7 +14,8 @@ extension_sources += files(
+     'utils.js',
+     'dbusUtils.js',
+     'search.js',
+-    'searchMenuLayout.js'
++    'searchMenuLayout.js',
++    'animator.js'
+ )
+ 
+ extension_dir = join_paths(extensiondir, uuid)
+diff --git a/extensions/search/po/ko.po b/extensions/search/po/ko.po
+index 241f106..4f2bdaf 100644
+--- a/extensions/search/po/ko.po
++++ b/extensions/search/po/ko.po
+@@ -100,7 +100,7 @@ msgstr "검색 중..."
+ 
+ #: search.js:735
+ msgid "No results."
+-msgstr "검색 결과 없음"
++msgstr "검색 결과가 없습니다."
+ 
+ #: search.js:825
+ #, javascript-format
+diff --git a/extensions/search/search.js b/extensions/search/search.js
+index 8f4e957..c106a9c 100644
+--- a/extensions/search/search.js
++++ b/extensions/search/search.js
+@@ -24,13 +24,15 @@
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const { Clutter, Gio, GLib, GObject, Shell, St } = imports.gi;
+ const AppDisplay = imports.ui.appDisplay;
+-const appSys = Shell.AppSystem.get_default();
++const Animator = Me.imports.animator;
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const Text = imports.gettext;
+ const MW = Me.imports.menuWidgets;
+ const RemoteSearch = imports.ui.remoteSearch;
+ const Signals = imports.signals;
+ const SystemActions = imports.misc.systemActions;
++
++const appSys = Shell.AppSystem.get_default();
+ const _ = Gettext.gettext;
+ 
+ const SEARCH_PROVIDERS_SCHEMA = 'org.gnome.desktop.search-providers';
+@@ -428,13 +430,12 @@ var SearchResults = class SearchResults {
+     constructor(menuLayout) {
+         this._menuLayout = menuLayout;
+         this._settings = this._menuLayout._settings;
++        this._searchMenu = this._menuLayout.searchMenu;
+ 
+         this.actor = new St.BoxLayout({
+             vertical: true,
+             y_expand: true,
+             x_expand: true,
+-            x_align: Clutter.ActorAlign.FILL,
+-
+         });
+         this.actor._delegate = this.actor;
+ 
+@@ -445,17 +446,26 @@ var SearchResults = class SearchResults {
+ 
+         this.actor.add(this._content);
+ 
+-        this._statusText = new St.Label();
+-        this._statusBin = new St.Bin({
++        this._statusBin = new St.BoxLayout({ vertical: true });
++        this._statusBin.style = 'height: 550px;';
++        this.actor.add(this._statusBin);
++
++        // dummyBox contains animationBox and statusText
++        this._dummyBox = new St.BoxLayout({
++            vertical: true,
+             x_align: Clutter.ActorAlign.CENTER,
+             y_align: Clutter.ActorAlign.CENTER,
+-            x_expand: true,
+             y_expand: true,
+         });
+-        this._statusText.style_class = '';
++        this._statusBin.add(this._dummyBox);
+ 
+-        this.actor.add(this._statusBin);
+-        this._statusBin.add_actor(this._statusText);
++        this._searchAnimator = new Animator.SearchAnimator();
++        this._dummyBox.add(this._searchAnimator);
++
++        this._statusText = new St.Label({
++            x_align: Clutter.ActorAlign.CENTER,
++        });
++        this._dummyBox.add(this._statusText);
+ 
+         this._highlightDefault = false;
+         this._defaultResult = null;
+@@ -483,6 +493,10 @@ var SearchResults = class SearchResults {
+ 
+         this.installChangedID = appSys.connect('installed-changed', this._reloadRemoteProviders.bind(this));
+ 
++        this.menuClosedID = this._searchMenu.connect('menu-closed', () => {
++            this._searchAnimator.stop();
++        });
++
+         this._reloadRemoteProviders();
+     }
+ 
+@@ -493,8 +507,6 @@ var SearchResults = class SearchResults {
+     setStyle(style) {
+         if (this._statusText)
+             this._statusText.style_class = style;
+-
+-
+     }
+ 
+     destroy() {
+@@ -502,6 +514,7 @@ var SearchResults = class SearchResults {
+             GLib.source_remove(this._searchTimeoutId);
+             this._searchTimeoutId = 0;
+         }
++
+         if (this.disabledID > 0) {
+             this._searchSettings.disconnect(this.disabledID);
+             this.disabledID = 0;
+@@ -522,6 +535,10 @@ var SearchResults = class SearchResults {
+             appSys.disconnect(this.installChangedID);
+             this.installChangedID = 0;
+         }
++        if (this.menuClosedID > 0) {
++            this._searchMenu.disconnect(this.menuClosedID);
++            this.menuClosedID = 0;
++        }
+         if (this.unusedSearchProvidersChangedID > 0) {
+             this._settings.disconnect(this.unusedSearchProvidersChangedID);
+             this.unusedSearchProvidersChangedID = 0;
+@@ -726,14 +743,21 @@ var SearchResults = class SearchResults {
+             return display.getFirstResult() !== null;
+         });
+ 
+-        this._statusBin.visible = !haveResults;
++        let isSearching = !haveResults && this.searchInProgress;
++        let noResults = !haveResults && !this.searchInProgress;
+ 
+-        if (!haveResults) {
+-            if (this.searchInProgress)
+-                this._statusText.set_text(_('Searching...'));
+-            else
+-                this._statusText.set_text(_('No results.'));
++        this._statusBin.visible = !haveResults;
+ 
++        if (isSearching) {
++            this._menuLayout.clearActorsFromBox(this._menuLayout.detailBox);
++            this._statusText.set_text(_('Searching...'));
++            this._searchAnimator.play();
++        } else if (noResults) {
++            this._menuLayout.clearActorsFromBox(this._menuLayout.detailBox);
++            this._statusText.set_text(_('No results.'));
++            this._searchAnimator.stop();
++        } else {
++            this._searchAnimator.stop();
+         }
+     }
+ 

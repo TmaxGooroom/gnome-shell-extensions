@@ -1,0 +1,25 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 26 Oct 2021 17:55:16 +0900
+Subject: [bugfix] notification-center: add arrow background color property
+
+- error message displayed due to lack of -arrow-background-color property
+- add property to notification-center-actor
+
+[IMS] 263023
+---
+ extensions/notification-center/stylesheet.css | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/notification-center/stylesheet.css b/extensions/notification-center/stylesheet.css
+index 0a7e2c4..779f301 100644
+--- a/extensions/notification-center/stylesheet.css
++++ b/extensions/notification-center/stylesheet.css
+@@ -41,7 +41,7 @@
+ }
+ 
+ .notification-center-actor {
+-  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px; -arrow-border-radius: 16px; -arrow-border-color: black; -arrow-border-width: 2px;
++  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px; -arrow-border-radius: 16px; -arrow-border-color: black; -arrow-border-width: 2px; -arrow-background-color: white;
+   background-color: rgba(255,255,255,255);
+   width: 328px;
+   border-radius: 18px;

@@ -1,0 +1,23 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 25 Jan 2022 14:09:22 +0900
+Subject: [feat] dash-to-panel : resize tray icons
+
+ - Same as above
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/stylesheet.css | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/extensions/dash-to-panel/stylesheet.css b/extensions/dash-to-panel/stylesheet.css
+index 1c23f61..7bc1202 100644
+--- a/extensions/dash-to-panel/stylesheet.css
++++ b/extensions/dash-to-panel/stylesheet.css
+@@ -153,3 +153,7 @@
+       -progress-bar-border: rgba(0.9, 0.9, 0.9, 1);
+     */
+ }
++
++#panel .panel-button .system-status-icon {
++  icon-size: 1.2em;
++}

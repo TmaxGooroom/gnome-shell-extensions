@@ -1,0 +1,31 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 16 Apr 2021 18:20:19 +0900
+Subject: [feat] search : fix locale error when focusing search from
+ arc-menuWidgets
+
+ - use input method to convert english char to appropriate
+   langauge
+
+[IMS] N/A
+---
+ extensions/search/menuWidgets.js | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 140fca8..0e7b96a 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -908,9 +908,10 @@ var SearchBox = class ArcMenuSearchBox {
+             this.menuLayout.searchMenu.open();
+ 
+         this._stEntry.grab_key_focus();
+-        if (event && event.type() === Clutter.EventType.KEY_PRESS)
+-            this.menuLayout._onMainBoxKeyPress(this.menuLayout, event);
+-
++        if (event && event.type() === Clutter.EventType.KEY_PRESS) {
++            event.set_source(this._text);
++            Clutter.get_default_backend().get_input_method().vfunc_filter_key_event(event);
++        }
+     }
+ 
+     hasKeyFocus() {

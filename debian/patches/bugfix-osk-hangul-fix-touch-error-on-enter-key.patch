@@ -1,0 +1,28 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 6 Oct 2021 10:05:44 +0900
+Subject: [bugfix] osk-hangul : fix touch error on enter key
+
+ - St.Widget instance that have St.Icon as its child will not be able to
+ pass hittest for a while as clutter_actor_queue_relayout() is called
+ in St.Icon when the style is changed so that cause repainting. When an object receives an
+ event at this momtent, it is ignored, which leads to ibus's focus-out
+ event since the event is captured by ding or window in the back. To correct this problem,
+ do not apply style to icon to avoid repainting.
+
+[IMS] 269838
+---
+ extensions/osk-hangul/stylesheet.css | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/osk-hangul/stylesheet.css b/extensions/osk-hangul/stylesheet.css
+index 25134b6..b41630b 100644
+--- a/extensions/osk-hangul/stylesheet.css
++++ b/extensions/osk-hangul/stylesheet.css
+@@ -1 +1,6 @@
+-/* This extensions requires no special styling */
++.enter-key {
++    /* To avoid enter-key's icon is re-colored when its style changing, override its style.
++     * re-coloring Icon may cause touch problem because gicon is asynchronously loaded always when it is repainted,
++     * and while that moment, touch events cannot be received. */
++    color: white;
++}

@@ -1,0 +1,360 @@
+From: junho_lee3 <junho_lee3>
+Date: Thu, 29 Apr 2021 09:33:27 +0900
+Subject: [feat] Reinfoce Logging APIs
+
+ - Add Printing Backtraces for specific functions
+ - Printing object information more detail
+ - Refactor the logics for merging predicates
+
+[IMS] N/A
+---
+ logging/logging.js | 255 ++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 194 insertions(+), 61 deletions(-)
+
+diff --git a/logging/logging.js b/logging/logging.js
+index ce236e2..9a2761a 100644
+--- a/logging/logging.js
++++ b/logging/logging.js
+@@ -78,14 +78,6 @@ var Debugger = class {
+         return 'NONE';
+     }
+ 
+-    _prettyPrintObject(obj) {
+-        let str = obj.toString();
+-        if (str.length > 15)
+-            str = `${str.substr(0, 12)}...`;
+-
+-        return str;
+-    }
+-
+     _getPropertyDescriptor(obj, property) {
+         if (obj.hasOwnProperty(property))
+             return Object.getOwnPropertyDescriptor(obj, property);
+@@ -105,6 +97,14 @@ var Debugger = class {
+         return wrappedFunc;
+     }
+ 
++    _getInnerFunc(func) {
++        if (!func.isWrapped)
++            return func;
++
++
++        return this._getInnerFunc(func.innerFunc);
++    }
++
+     _getTagValue(func, tag) {
+         while (func.isWrapped) {
+             if (func.hasOwnProperty(tag))
+@@ -138,18 +138,162 @@ var Debugger = class {
+ 
+     }
+ 
++    _convertToString(msg, indent, isIndentable) {
++        let str = '';
++
++        if (msg === null)
++            return str;
++
++
++        if (isIndentable) {
++            for (let i = 0; i < indent; i++)
++                str = `${str} `;
++
++        }
++
++        if (msg instanceof Function && msg !== null) {
++            // NOTE: For Function messages
++            str += 'Function';
++        } else if (typeof msg === 'object' && msg.join === undefined) {
++            // NOTE: For General Object
++            str += `${msg.constructor.name}: { \n`;
++            for (let prop in msg) {
++                str += `${this._convertToString(prop, indent + 2, true)}:`;
++                try {
++                    if (msg[prop] === null)
++                        str += 'null';
++                    else if (msg[prop] === undefined)
++                        str += 'undefined';
++
++                    else if (msg[prop] instanceof Function)
++                        str += 'Function';
++
++                    else
++                        str += `${msg[prop].toString()}`;
++
++                } catch (e) {
++                    str += 'Unknown';
++                }
++                str += ',\n';
++            }
++            str = str.slice(0, -2);
++            str += this._convertToString('\n}', indent, true);
++        } else if (typeof msg === 'object' && !(msg.join === undefined)) {
++            // NOTE: For Array Object
++            str += '[';
++            for (let prop in msg)
++                str += `${this._convertToString(prop, indent, false)}, `;
++
++            if (msg.length > 0)
++                str = str.slice(0, -2);
++
++            str += ']';
++        } else {
++            // NOTE: The other values
++            str += msg;
++        }
++
++        return str;
++    }
++
+     _recordLogMessage(msg, logType) {
+         let logFile = Gio.File.new_for_path(this._output);
+         let outputStream = logFile.append_to(0, null);
+ 
+-        msg = `[${this._channel}][${this._levelToString(this._level)}][${logType}][${this._getCurrentDateTime()}] ${msg}\n`;
++        let lines = this._convertToString(msg, 0, false).split(/\r?\n/);
++
++        let res = '';
+ 
+-        let byteStream = ByteArray.fromString(msg);
++        lines.forEach(element => {
++            res += `[${this._channel}][${this._levelToString(this._level)}][${logType}][${this._getCurrentDateTime()}] ${element}\n`;
++        });
++
++        let byteStream = ByteArray.fromString(res);
+         outputStream.write(byteStream, null);
+         outputStream.close(null);
+     }
+ 
++    _mergePredicate(func, predicate, predName) {
++        predicate = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        let prevPred = this._getTagValue(func, predName);
++
++        if (prevPred !== undefined) {
++            Object.defineProperty(func, predName, {
++                value: () => {
++                    return prevPred() || predicate();
++                },
++            });
++            return true;
++        }
++        return false;
++    }
++
+     // PUBLIC API
++    /*
++     * printBacktraceFunction:
++     * channel: channel for logging
++     * level: level of the logging function call
++     * funcName: a string name of function for priting call-trace of functions
++     * obj: Actual object includes the function
++     * predicate: predicates for whether logging or not.
++     *            It should be a function that returns `bool` without any arguments.
++     *
++     * This function is used to wrap the given function with printing call-trace.
++     * If the channel and level are unsuitable for the debugger, it does not record the logs.
++     * Also, we can set the conditions for recording logs.
++     * For example, we can record the call-trace information only when the predicates
++     * are satisfied :
++     * ...
++     * printBacktraceFunction(..., () => { return condition(); });
++     * ...
++     */
++
++    printBacktraceFunction(channel, level, funcName, obj, predicate) {
++        if (!this._isValid(channel, level))
++            return;
++
++        predicate = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        let func = obj[funcName];
++
++        if (this._mergePredicate(func, predicate, 'backtracePredicate')) {
++            // if logging predicate was already registered
++            return;
++        }
++
++        // TODO : How can we capture the member function of debugger in wrapped function..?
++        let print = this.printBacktrace.bind(this);
++        let record = this._recordLogMessage.bind(this);
++
++        function wrappedFunction(...funcArgs) {
++            let log = typeof funcName === undefined ? 'anonymous function'
++                : funcName;
++
++            let isLogging = wrappedFunction['backtracePredicate']();
++
++            let ret = func.apply(obj, funcArgs);
++
++            if (isLogging) {
++                record(`Backtrace for ${log}`, BACKTRACE_LOG);
++                print(channel, level);
++            }
++
++            return ret;
++        }
++
++        let properties = {
++            backtracePredicate: predicate,
++        };
++
++        obj[funcName] = this._wrappingFunc(func, wrappedFunction, properties);
++    }
+ 
+     /*
+      * printBacktrace:
+@@ -212,25 +356,18 @@ var Debugger = class {
+ 
+         let func = obj[funcName];
+ 
+-        let pred = typeof predicate !== 'undefined' ? predicate
++        predicate = typeof predicate !== 'undefined' ? predicate
+             : () => {
+                 return true;
+             };
+ 
+-        let prevPred = this._getTagValue(func, 'loggingPredicate');
+-
+-        // / if logging predicate was already registered
+-        if (prevPred !== undefined) {
+-            Object.defineProperty(func, 'loggingPredicate', {
+-                value: () => {
+-                    return prevPred() || pred();
+-                },
+-            });
++        if (this._mergePredicate(func, predicate, 'loggingPredicate')) {
++            // if logging predicate was already registered
+             return;
+         }
+ 
+         // TODO : How can we capture the member function of debugger in wrapped function..?
+-        let print = this._prettyPrintObject;
++        let print = this._convertToString.bind(this);
+         let record = this._recordLogMessage.bind(this);
+ 
+         function wrappedFunction(...funcArgs) {
+@@ -254,7 +391,7 @@ var Debugger = class {
+ 
+             let ret = func.apply(obj, funcArgs);
+ 
+-            let retStr = print(ret);
++            let retStr = print(ret, 0, false);
+ 
+             if (isLogging)
+                 record(`Leaving ${log} -> ${retStr}`, COMMON_LOG);
+@@ -263,12 +400,41 @@ var Debugger = class {
+         }
+ 
+         let properties = {
+-            loggingPredicate: pred,
++            loggingPredicate: predicate,
+         };
+ 
+         obj[funcName] = this._wrappingFunc(func, wrappedFunction, properties);
+     }
+ 
++    /*
++     * logging:
++     * channel: channel for logging
++     * level: level of the logging function call
++     * message: logging message
++     * predicate: predicates for whether logging or not.
++     *            It should be a function that returns `bool` without any arguments.
++     *
++     * This function is used to log user-defined message.
++     * If the channel and level are unsuitable for the debugger, it does not record the logs.
++     * Also, we can set the conditions for recording logs.
++     * For example, we can logging the message only when the predicates are satisfied.
++     */
++
++    logging(channel, level, message, predicate) {
++        if (!this._isValid(channel, level))
++            return;
++
++        let pred = typeof predicate !== 'undefined' ? predicate
++            : () => {
++                return true;
++            };
++
++        if (pred())
++            this._recordLogMessage(message, COMMON_LOG);
++
++
++    }
++
+     /*
+      * breakpointFunction:
+      * channel: channel for stopping
+@@ -290,19 +456,14 @@ var Debugger = class {
+             return;
+ 
+         let func = obj[funcName];
+-        let pred = typeof predicate !== 'undefined' ? predicate
++
++        predicate = typeof predicate !== 'undefined' ? predicate
+             : () => {
+                 return true;
+             };
+ 
+-        let prevPred = this._getTagValue(func, 'breakPredicate');
+-
+-        if (prevPred !== undefined) {
+-            Object.defineProperty(func, 'breakPredicate', {
+-                value: () => {
+-                    return prevPred() || pred();
+-                },
+-            });
++        if (this._mergePredicate(func, predicate, 'loggingPredicate')) {
++            // if logging predicate was already registered
+             return;
+         }
+ 
+@@ -318,7 +479,7 @@ var Debugger = class {
+ 
+         let properties = {
+             breakpoint: ++this._breakpoints,
+-            breakPredicate: pred,
++            breakPredicate: predicate,
+         };
+ 
+         obj[funcName] = this._wrappingFunc(func, wrappedFunction, properties);
+@@ -353,32 +514,4 @@ var Debugger = class {
+             System.breakpoint();
+ 
+     }
+-
+-    /*
+-     * logging:
+-     * channel: channel for logging
+-     * level: level of the logging function call
+-     * message: logging message
+-     * predicate: predicates for whether logging or not.
+-     *            It should be a function that returns `bool` without any arguments.
+-     *
+-     * This function is used to log user-defined message.
+-     * If the channel and level are unsuitable for the debugger, it does not record the logs.
+-     * Also, we can set the conditions for recording logs.
+-     * For example, we can logging the message only when the predicates are satisfied.
+-     */
+-
+-    logging(channel, level, message, predicate) {
+-        if (!this._isValid(channel, level))
+-            return;
+-
+-        let pred = typeof predicate !== 'undefined' ? predicate
+-            : () => {
+-                return true;
+-            };
+-
+-        if (pred())
+-            this._recordLogMessage(message, COMMON_LOG);
+-
+-    }
+ };

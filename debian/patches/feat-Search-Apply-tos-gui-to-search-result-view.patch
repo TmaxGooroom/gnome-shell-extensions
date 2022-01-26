@@ -1,0 +1,213 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 20 Apr 2021 11:06:07 +0900
+Subject: [feat] Search : Apply tos gui to search result view
+
+- apply tos gui (color, icon size, font size..)
+- set state(hover, active, focus..) style on result item
+- add app label
+
+[IMS] N/A
+---
+ extensions/search/menuWidgets.js      |  9 ++++++++
+ extensions/search/search.js           | 43 ++++++++++++++++++++++++-----------
+ extensions/search/searchMenuLayout.js |  8 ++++---
+ extensions/search/stylesheet.css      | 18 +++++++++++++++
+ 4 files changed, 62 insertions(+), 16 deletions(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 0e7b96a..f185fcb 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -797,6 +797,10 @@ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-v
+             this._app = app;
+             this.hasContextMenu = !!this._app;
+             this._path = path;
++
++            this.actor.style_class = 'search-result-item';
++            this.actor.y_align = Clutter.ActorAlign.START;
++            this.remove_child(this._ornamentLabel);
+         }
+ 
+         _createIcon(iconSize) {
+@@ -817,6 +821,11 @@ var SearchResultItem = GObject.registerClass( // eslint-disable-line no-unused-v
+                 this.contextMenu.toggle();
+             }
+         }
++
++        _onHover() {
++            super._onHover();
++            this.actor.remove_style_pseudo_class('focus');
++        }
+     });
+ 
+ var SearchBox = class ArcMenuSearchBox {
+diff --git a/extensions/search/search.js b/extensions/search/search.js
+index 76f18ba..ee6649c 100644
+--- a/extensions/search/search.js
++++ b/extensions/search/search.js
+@@ -38,7 +38,7 @@ const SEARCH_PROVIDERS_SCHEMA = 'org.gnome.desktop.search-providers';
+ var MAX_LIST_SEARCH_RESULTS_ROWS = 6;
+ var MAX_APPS_SEARCH_RESULTS_ROWS = 6;
+ 
+-var SMALL_ICON_SIZE = 16;
++var RESULT_ICON_SIZE = 27;
+ 
+ var ListSearchResult = class ListSearchResult {
+     constructor(provider, metaInfo, resultsView) {
+@@ -78,10 +78,9 @@ var ListSearchResult = class ListSearchResult {
+             y_align: Clutter.ActorAlign.CENTER,
+         });
+ 
+-        this.menuItem.actor.style = null;
+-        this.label.style = null;
++        this.label.style = 'margin-left: 5px;';
+ 
+-        let icon = this.metaInfo['createIcon'](SMALL_ICON_SIZE);
++        let icon = this.metaInfo['createIcon'](RESULT_ICON_SIZE);
+         if (icon)
+             this.menuItem.box.add_child(icon);
+ 
+@@ -125,16 +124,14 @@ var AppSearchResult = class AppSearchResult {
+         else
+             this.menuItem = new MW.SearchResultItem(this._menuLayout);
+ 
+-        this.menuItem.actor.style = null;
+-        this.label.style = null;
+-
+-        this.icon = this.metaInfo['createIcon'](SMALL_ICON_SIZE);
++        this.icon = this.metaInfo['createIcon'](RESULT_ICON_SIZE);
+         if (this.icon) {
+-            this.icon.icon_size = SMALL_ICON_SIZE;
++            this.icon.icon_size = RESULT_ICON_SIZE;
+             this.icon.y_align = Clutter.ActorAlign.CENTER;
+             this.icon.x_align = Clutter.ActorAlign.CENTER;
+             this.menuItem.box.add_child(this.icon);
+         }
++        this.label.style = 'margin-left: 5px;';
+         this.menuItem.box.add_child(this.label);
+ 
+         if (this.menuItem instanceof MW.SearchResultItem)
+@@ -218,7 +215,8 @@ var SearchResultsBase = class SearchResultsBase {
+         }
+     }
+ 
+-    _setMoreCount(/* count*/) {
++    _setMoreCount(count) {
++        let count_ = count;
+     }
+ 
+     _ensureResultActors(results, callback) {
+@@ -367,16 +365,34 @@ var ListSearchResults = class ListSearchResults extends SearchResultsBase {
+     }
+ };
+ Signals.addSignalMethods(ListSearchResults.prototype);
++
+ var AppSearchResults = class AppSearchResults extends SearchResultsBase {
+     constructor(provider, resultsView) {
+         super(provider, resultsView);
+         this._parentContainer = resultsView.actor;
+         this._menuLayout = resultsView._menuLayout;
+-        this._grid = new St.BoxLayout({
++
++        this._container = new St.BoxLayout({
+             vertical: true,
++            x_align: Clutter.ActorAlign.FILL,
++            y_align: Clutter.ActorAlign.FILL,
++            x_expand: true,
++            y_expand: true,
+         });
+ 
+-        this._resultDisplayBin.set_child(this._grid);
++        this.label = new St.Label({
++            text: '앱',
++            x_align: Clutter.ActorAlign.START,
++            y_align: Clutter.ActorAlign.CENTER,
++        });
++        this.label.style = 'font-weight: bold; font-size: 15px; margin-top: 10px; padding-left: 20px; padding-bottom: 3px;';
++        this._container.add(this.label);
++
++        this._grid = new St.BoxLayout({
++            vertical: true,
++        });
++        this._container.add(this._grid);
++        this._resultDisplayBin.set_child(this._container);
+     }
+ 
+     _getMaxDisplayedResults() {
+@@ -767,7 +783,7 @@ var SearchProviderInfo = GObject.registerClass(class SearchProviderInfo extends
+             style: 'text-align: left;',
+         });
+ 
+-        this.label.style = 'font-weight: bold;';
++        this.label.style = 'font-weight: bold; font-size: 15px; margin-top: 10px; padding-left: 20px;';
+         this.actor.x_fill = true;
+         this.actor.y_fill = false;
+         this.actor.x_align = Clutter.ActorAlign.FILL;
+@@ -776,6 +792,7 @@ var SearchProviderInfo = GObject.registerClass(class SearchProviderInfo extends
+         this._moreText = '';
+         this.actor.style = null;
+         this.box.add_child(this.label);
++        this.remove_child(this._ornamentLabel);
+     }
+ 
+     _onHover() {
+diff --git a/extensions/search/searchMenuLayout.js b/extensions/search/searchMenuLayout.js
+index afcff53..fcebc8e 100644
+--- a/extensions/search/searchMenuLayout.js
++++ b/extensions/search/searchMenuLayout.js
+@@ -81,12 +81,14 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         // Search Result View
+         this.resultBox = new St.BoxLayout({
+             vertical: true,
++            y_align: Clutter.ActorAlign.START,
+         });
++        this.resultBox.style = 'width: 300px; background-color: rgb(255, 255, 255); color: rgb(0, 0 ,0); border-radius: 14px 0px 0px 14px;';
+         this.resultScrollBox = this._createScrollBox({
+-            y_align: Clutter.ActorAlign.START,
++            y_align: Clutter.ActorAlign.FILL,
+             overlay_scrollbars: true,
+         });
+-        this.resultScrollBox.style = 'width: 300px;';
++        this.resultScrollBox.style = 'background-color:rgb(255, 255, 255); border-radius: 14px 0px 0px 14px;';
+         this.resultScrollBox.add_actor(this.resultBox);
+         this.subMainBox.add(this.resultScrollBox);
+ 
+@@ -94,11 +96,11 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         this.detailBox = new St.BoxLayout({
+             vertical: true,
+         });
++        this.detailBox.style = 'width: 362px; height: 550px; background-color: rgb(237, 237, 242); color: rgb(0, 0 ,0); border-radius: 0px 14px 14px 0px;';
+         this.detailScrollBox = this._createScrollBox({
+             y_align: Clutter.ActorAlign.START,
+             overlay_scrollbars: true,
+         });
+-        this.detailScrollBox.style = 'width: 362px; height: 400px;';
+         this.detailScrollBox.add_actor(this.detailBox);
+         this.subMainBox.add(this.detailScrollBox);
+ 
+diff --git a/extensions/search/stylesheet.css b/extensions/search/stylesheet.css
+index 0b9bb8f..0d8234a 100644
+--- a/extensions/search/stylesheet.css
++++ b/extensions/search/stylesheet.css
+@@ -332,3 +332,21 @@ background-color: rgb(204, 220, 255);
+ background-color: rgb(255, 255, 255);
+ box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
+ }
++
++.search-result-item {
++background-color: rgb(255, 255, 255);
++border-radius: 12px;
++height: 43px;
++margin: 0px 20px;
++padding: 0px 10px;
++}
++.search-result-item:hover {
++background-color: rgb(224, 233, 255);
++}
++.search-result-item:active {
++background-color: rgb(204, 220, 255);
++}
++.search-result-item:focus, .search-result-item:selected {
++background-color: rgb(255, 255, 255);
++box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
++}

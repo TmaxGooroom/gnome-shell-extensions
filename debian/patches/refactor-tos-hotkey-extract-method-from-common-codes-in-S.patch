@@ -1,0 +1,63 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 30 Aug 2021 14:47:19 +0900
+Subject: [refactor] tos-hotkey : extract method from common codes in
+ SwitchMonitor
+
+ - extract method from common codes in SwitchMonitor
+
+[IMS] N/A
+---
+ extensions/tos-hotkey/switchMonitor.js | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/tos-hotkey/switchMonitor.js b/extensions/tos-hotkey/switchMonitor.js
+index 2e5b1eb..539c691 100644
+--- a/extensions/tos-hotkey/switchMonitor.js
++++ b/extensions/tos-hotkey/switchMonitor.js
+@@ -142,12 +142,17 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+         return this._monitorManager.can_switch_config();
+     }
+ 
+-    async setDisplayMirrored() {
++    async _getDisplayConfig() {
+         let resources = await this._proxy.call('GetResources');
+         let currentState = await this._proxy.call('GetCurrentState');
+-
+         let displayConfig = new DisplayConfig(resources, currentState);
+ 
++        return displayConfig;
++    }
++
++    async setDisplayMirrored() {
++        let displayConfig = await this._getDisplayConfig();
++
+         let serial = displayConfig._serial;
+         let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+ 
+@@ -181,11 +186,9 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+     }
+ 
+     async setDisplayJoined() {
+-        let resources = await this._proxy.call('GetResources');
+-        let currentState = await this._proxy.call('GetCurrentState');
+-
+-        let displayConfig = new DisplayConfig(resources, currentState);
+         try {
++            let displayConfig = await this._getDisplayConfig();
++
+             let serial = displayConfig._serial;
+             let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;
+ 
+@@ -245,11 +248,8 @@ var SwitchMonitorManager = class { // eslint-disable-line no-unused-vars
+     }
+ 
+     async setSingleDisplay(index = 0) {
+-        let resources = await this._proxy.call('GetResources');
+-        let currentState = await this._proxy.call('GetCurrentState');
+-
+         try {
+-            let displayConfig = new DisplayConfig(resources, currentState);
++            let displayConfig = await this._getDisplayConfig();
+ 
+             let serial = displayConfig._serial;
+             let method = META_MONITORS_CONFIG_METHOD_PERSISTENT;

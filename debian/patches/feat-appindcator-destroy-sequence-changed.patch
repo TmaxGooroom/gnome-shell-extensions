@@ -1,0 +1,90 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 13 Apr 2021 16:39:09 +0900
+Subject: [feat] appindcator : destroy sequence changed
+
+- destroy topIcon object and destroy icon in it
+- disconnect signal when extension becomes disable
+
+[IMS] N/A
+---
+ extensions/appindicator/indicatorStatusIcon.js |  3 +++
+ extensions/appindicator/topicons.js            | 21 +++++++++++----------
+ 2 files changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/extensions/appindicator/indicatorStatusIcon.js b/extensions/appindicator/indicatorStatusIcon.js
+index 777141c..ef5b142 100644
+--- a/extensions/appindicator/indicatorStatusIcon.js
++++ b/extensions/appindicator/indicatorStatusIcon.js
+@@ -164,6 +164,9 @@ var IndicatorStatusTopIcon = GObject.registerClass(
+             this.add_child(this._box);
+ 
+             this._box.add_child(this._iconBox);
++            this.connect('destroy', () => {
++                icon.destroy();
++            });
+ 
+             Main.panel.addToStatusArea(`appindicator-${this._uniqueId}`, this, 1, 'right');
+         }
+diff --git a/extensions/appindicator/topicons.js b/extensions/appindicator/topicons.js
+index 5ad9093..ff93e1e 100644
+--- a/extensions/appindicator/topicons.js
++++ b/extensions/appindicator/topicons.js
+@@ -25,13 +25,15 @@ const ExtensionUtils = imports.misc.extensionUtils;
+ const Me = ExtensionUtils.getCurrentExtension();
+ const IndicatorStatusIcon = Me.imports.indicatorStatusIcon;
+ 
+-var tray = null;
++let tray = null;
+ let icons = [];
++let trayAddedId = 0;
++let trayRemovedId = 0;
+ 
+ function createTray() {
+     tray = new Shell.TrayManager();
+-    tray.connect('tray-icon-added', onTrayIconAdded);
+-    tray.connect('tray-icon-removed', onTrayIconRemoved);
++    trayAddedId = tray.connect('tray-icon-added', onTrayIconAdded);
++    trayRemovedId  = tray.connect('tray-icon-removed', onTrayIconRemoved);
+ 
+     tray.manage_screen(Main.panel);
+ }
+@@ -39,11 +41,6 @@ function createTray() {
+ function onTrayIconAdded(o, icon, role, unusedDelay = 1000) {
+     const topIcon = new IndicatorStatusIcon.IndicatorStatusTopIcon(icon);
+ 
+-    icon.connect('destroy', () => {
+-        icon.clear_effects();
+-        topIcon.destroy();
+-    });
+-
+     icon.connect('button-release-event', (actor, event) => {
+         icon.click(event);
+     });
+@@ -55,14 +52,16 @@ function onTrayIconAdded(o, icon, role, unusedDelay = 1000) {
+ function onTrayIconRemoved(o, icon) {
+     let index = -1;
+     for (let i = 0; i < icons.length; i++) {
+-        if (icons[i].getIcon() === icon)
++        if (icons[i].getIcon() === icon) {
+             index = i;
++            break;
++        }
+     }
+ 
+     if (index === -1)
+         return;
+ 
+-    icon.destroy();
++    icons[index].destroy();
+     icons.splice(index, 1);
+ }
+ 
+@@ -70,6 +69,8 @@ function destroyTray() {
+     for (let i = 0; i < icons.length; i++)
+         icons[i].destroy();
+ 
++    tray.disconnect(trayAddedId);
++    tray.disconnect(trayRemovedId);
+ 
+     icons = [];
+ 

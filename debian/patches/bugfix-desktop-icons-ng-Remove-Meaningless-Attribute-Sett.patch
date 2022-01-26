@@ -1,0 +1,26 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 13 Oct 2021 13:16:43 +0900
+Subject: [bugfix] desktop-icons-ng : Remove Meaningless Attribute Setting For
+ Desktop Directory
+
+- Remove Meaningless Attribute Setting For Desktop Directory
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 6b74f03..9b41f8e 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -786,9 +786,6 @@ var DesktopManager = class {
+ 
+         Prefs.desktopSettings.set_string('sort-criteria', sortCriteria);
+         Prefs.desktopSettings.set_boolean('sort-order', order);
+-
+-        let info = new Gio.FileInfo();
+-        this._desktopDir.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+     }
+ 
+     _onOpenDesktopInFilesClicked() {

@@ -1,0 +1,128 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Tue, 19 Oct 2021 14:55:14 +0900
+Subject: [refactor] osk-hangul: clean up codes
+
+ - declare Object for layout key type
+ - remove meaningleass null allocation
+ - modified constants names to reveal its meaning more clear
+
+[IMS] N/A
+---
+ extensions/osk-hangul/adapter.js         | 22 +++++++++-------------
+ extensions/osk-hangul/extension.js       |  9 +--------
+ extensions/osk-hangul/keyboardWrapper.js |  8 +++-----
+ 3 files changed, 13 insertions(+), 26 deletions(-)
+
+diff --git a/extensions/osk-hangul/adapter.js b/extensions/osk-hangul/adapter.js
+index 1ad762e..967c28b 100644
+--- a/extensions/osk-hangul/adapter.js
++++ b/extensions/osk-hangul/adapter.js
+@@ -6,8 +6,10 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+ const KeyboardWrapper = Me.imports.keyboardWrapper;
+ 
+-const LAYOUT_KEY_TYPE_ICON = 'icon';
+-const LAYOUT_KEY_TYPE_LABEL = 'label';
++const LayoutKeyType = {
++    ICON: 0,  // original icon(keyboard-layout-filled-symbolic) for gnome-shell OSK keyboard
++    LABEL: 1, // 한/영 label for this extension
++};
+ 
+ var Adapter = class Adapter {
+     constructor() {
+@@ -15,17 +17,17 @@ var Adapter = class Adapter {
+             xkb: {
+                 inputMethod: 'xkb',
+                 wrapper: new KeyboardWrapper.XkbKeyboardWrapper(),
+-                type: LAYOUT_KEY_TYPE_ICON,
++                type: LayoutKeyType.ICON,
+             },
+             ibus: {
+                 inputMethod: 'ibus',
+                 wrapper: new KeyboardWrapper.IbusKeyboardWrapper(),
+-                type: LAYOUT_KEY_TYPE_LABEL,
++                type: LayoutKeyType.LABEL,
+             },
+             nimf: {
+                 inputMethod: 'nimf',
+                 wrapper: new KeyboardWrapper.NimfKeyboardWrapper(),
+-                type: LAYOUT_KEY_TYPE_LABEL,
++                type: LayoutKeyType.LABEL,
+             },
+         };
+ 
+@@ -48,22 +50,16 @@ var Adapter = class Adapter {
+ 
+     setInputMethod(inputMethod) {
+         if (this._currentInputMethod !== inputMethod) {
+-            if (this._currentWrapper)
+-                this.restoreAll();
++            this.restoreAll();
+ 
+             let newWrapper = this.wrappers[inputMethod];
+             this._currentInputMethod = inputMethod;
+             this._currentWrapper = newWrapper.wrapper;
+-            this.wrapAll();
++            this._currentWrapper.wrapAll();
+             this.layoutKeyType = newWrapper.type;
+         }
+     }
+ 
+-    wrapAll() {
+-        if (this._currentWrapper)
+-            this._currentWrapper.wrapAll();
+-    }
+-
+     restoreAll() {
+         if (this._currentWrapper)
+             this._currentWrapper.restoreAll();
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index b2814f5..583924e 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -101,10 +101,8 @@ function _resetKeyboard() {
+         if (_nimfFocusOutId)
+             nimfService.disconnect(_nimfFocusOutId);
+ 
+-        if (_keyboardDestroyId) {
++        if (_keyboardDestroyId)
+             keyboard.disconnect(_keyboardDestroyId);
+-            _keyboardDestroyId = null;
+-        }
+     }
+ }
+ 
+@@ -135,9 +133,4 @@ function disable() { // eslint-disable-line no-unused-vars
+     KeyboardManager._seat.disconnect(_touchModeNotifyId);
+     global.backend.disconnect(_lastDeviceChangedId);
+     IBusManager.getIBusManager().disconnect(_ibusSetContentTypeId);
+-
+-    _a11ySignalId = null;
+-    _touchModeNotifyId = null;
+-    _lastDeviceChangedId = null;
+-    _ibusSetContentTypeId = null;
+ }
+diff --git a/extensions/osk-hangul/keyboardWrapper.js b/extensions/osk-hangul/keyboardWrapper.js
+index 26f17a0..710bd6d 100644
+--- a/extensions/osk-hangul/keyboardWrapper.js
++++ b/extensions/osk-hangul/keyboardWrapper.js
+@@ -8,16 +8,14 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const QwertyKeysyms = Me.imports.xkbcommon_keysyms.QwertyMap;
+ const { getIBusHangul, getNimfService } = Me.imports.utils;
+ 
+-// Korean Charactor that indicates kiyeog. First letter of korean key symbols.
+-const HangulKiyeog = 0x0ea1;
+-// Korean Charactor that indicates yeorin higuh of jongseong that is last letter of Korean key symbols
+-const HangulJYeorinHieuh = 0x0efa;
++const HangulKeysymStart = 0x0ea1;
++const HangulKeysymEnd = 0x0efa;
+ 
+ function _isKoreanCharactor(keyval) {
+     if (!keyval)
+         return false;
+ 
+-    return HangulKiyeog <= keyval && keyval <= HangulJYeorinHieuh;
++    return HangulKeysymStart <= keyval && keyval <= HangulKeysymEnd;
+ }
+ 
+ function _krToUsKeysym(keyval) {
