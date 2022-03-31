@@ -1,0 +1,37 @@
+<Project xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:foaf="http://xmlns.com/foaf/0.1/"
+         xmlns:gnome="http://api.gnome.org/doap-extensions#"
+         xmlns="http://usefulinc.com/ns/doap#">
+
+  <name xml:lang="en">gnome-shell-extensions</name>
+  <shortdesc xml:lang="en">Modify and extend GNOME Shell functionality and behavior</shortdesc>
+  <description xml:lang="en">
+GNOME Shell Extensions is a collection of extensions providing
+additional and optional functionality to GNOME Shell.
+Most extensions can be installed by configuring --prefix=$HOME/.local,
+and will be picked automatically at next login.
+  </description>
+  <homepage rdf:resource="https://wiki.gnome.org/Projects/GnomeShell/Extensions" />
+  <mailing-list rdf:resource="http://mail.gnome.org/mailman/listinfo/gnome-shell-list" />
+  <download-page rdf:resource="http://download.gnome.org/sources/gnome-shell-extensions/" />
+  <bug-database rdf:resource="https://gitlab.gnome.org/GNOME/gnome-shell-extensions/issues" />
+
+  <category rdf:resource="http://api.gnome.org/doap-extensions#core" />
+  <programming-language>JavaScript</programming-language>
+
+  <maintainer>
+    <foaf:Person>
+      <foaf:name>Giovanni Campagna</foaf:name>
+      <foaf:mbox rdf:resource="mailto:gcampagna@src.gnome.org" />
+      <gnome:userid>gcampagna</gnome:userid>
+    </foaf:Person>
+  </maintainer>
+  <maintainer>
+    <foaf:Person>
+      <foaf:name>Florian Müllner</foaf:name>
+      <foaf:mbox rdf:resource="mailto:fmuellner@gnome.org" />
+      <gnome:userid>fmuellner</gnome:userid>
+    </foaf:Person>
+  </maintainer>
+</Project>

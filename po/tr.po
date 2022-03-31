@@ -1,0 +1,355 @@
+# Turkish translation for gnome-shell-extensions.
+# Copyright (C) 2012-2019 gnome-shell-extensions's COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extensions package.
+#
+# Osman Karagöz <osmank3@gmail.com>, 2012.
+# Gökhan Gurbetoğlu <ggurbet@gmail.com>, 2014.
+# Muhammet Kara <muhammetk@gmail.com>, 2013, 2014, 2015.
+# Furkan Tokaç <developmentft@gmail.com>, 2017.
+# Sabri Ünal <libreajans@gmail.com>, 2014, 2019.
+# Emin Tufan Çetin <etcetin@gmail.com>, 2019, 2020.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extensions master\n"
+"Report-Msgid-Bugs-To: https://gitlab.gnome.org/GNOME/gnome-shell-extensions/"
+"issues\n"
+"POT-Creation-Date: 2020-05-03 17:53+0000\n"
+"PO-Revision-Date: 2020-05-05 17:28+0300\n"
+"Last-Translator: Emin Tufan Çetin <etcetin@gmail.com>\n"
+"Language-Team: Turkish <gnome-turk@gnome.org>\n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 2.2.3\n"
+
+#: data/gnome-classic.desktop.in:3 data/gnome-classic.session.desktop.in:3
+msgid "GNOME Classic"
+msgstr "GNOME Klasik"
+
+#: data/gnome-classic.desktop.in:4
+msgid "This session logs you into GNOME Classic"
+msgstr "Bu oturum, GNOME Klasik sürümüne giriş yapmanızı sağlar"
+
+#: extensions/apps-menu/extension.js:113
+msgid "Favorites"
+msgstr "Gözdeler"
+
+#: extensions/apps-menu/extension.js:369
+msgid "Applications"
+msgstr "Uygulamalar"
+
+#: extensions/auto-move-windows/org.gnome.shell.extensions.auto-move-windows.gschema.xml:6
+msgid "Application and workspace list"
+msgstr "Uygulama ve çalışma alanı listesi"
+
+#: extensions/auto-move-windows/org.gnome.shell.extensions.auto-move-windows.gschema.xml:7
+msgid ""
+"A list of strings, each containing an application id (desktop file name), "
+"followed by a colon and the workspace number"
+msgstr ""
+"Her biri, bir uygulama kimliği (masaüstü dosya adı) ardından gelen iki nokta "
+"üst üste ve çalışma alanı numarasını içeren dizgeler listesi"
+
+#: extensions/auto-move-windows/prefs.js:35
+msgid "Workspace Rules"
+msgstr "Çalışma Alanı Kuralları"
+
+#: extensions/auto-move-windows/prefs.js:243
+msgid "Add Rule"
+msgstr "Kural Ekle"
+
+#. TRANSLATORS: %s is the filesystem name
+#: extensions/drive-menu/extension.js:112
+#: extensions/places-menu/placeDisplay.js:233
+#, javascript-format
+msgid "Ejecting drive “%s” failed:"
+msgstr "“%s” sürücüsü çıkarılamadı:"
+
+#: extensions/drive-menu/extension.js:128
+msgid "Removable devices"
+msgstr "Çıkarılabilir aygıtlar"
+
+#: extensions/drive-menu/extension.js:155
+msgid "Open Files"
+msgstr "Dosyaları Aç"
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:5
+msgid "Use more screen for windows"
+msgstr "Pencereler için ekranın daha fazla kısmını kullan"
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:6
+msgid ""
+"Try to use more screen for placing window thumbnails by adapting to screen "
+"aspect ratio, and consolidating them further to reduce the bounding box. "
+"This setting applies only with the natural placement strategy."
+msgstr ""
+"Ekran en-boy oranına uyum sağlayarak ve sınır kutucuğunu küçültmek için daha "
+"da sıkılaştırarak, pencere küçük resimlerini yerleştirmek için ekranda daha "
+"fazla alan kullanmayı dene. Bu seçenek sadece doğal yerleştirme stratejisi "
+"ile geçerlidir."
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:11
+msgid "Place window captions on top"
+msgstr "Pencere başlığını üste yerleştir"
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:12
+msgid ""
+"If true, place window captions on top the respective thumbnail, overriding "
+"shell default of placing it at the bottom. Changing this setting requires "
+"restarting the shell to have any effect."
+msgstr ""
+"Eğer doğruysa, pencere açıklamalarını ilgili küçük resimlerin üzerine "
+"yerleştir ve kabukta öntanımlı olan alta yerleştirme ayarını geçersiz kıl. "
+"Yapılan değişikliklerin etkili olması için kabuğun yeniden başlatılması "
+"gerekir."
+
+#: extensions/places-menu/extension.js:89
+#: extensions/places-menu/extension.js:93
+msgid "Places"
+msgstr "Yerler"
+
+#: extensions/places-menu/placeDisplay.js:46
+#, javascript-format
+msgid "Failed to launch “%s”"
+msgstr "“%s” başlatılamadı"
+
+#: extensions/places-menu/placeDisplay.js:61
+#, javascript-format
+msgid "Failed to mount volume for “%s”"
+msgstr "“%s” için birim bağlanamadı"
+
+#: extensions/places-menu/placeDisplay.js:148
+#: extensions/places-menu/placeDisplay.js:171
+msgid "Computer"
+msgstr "Bilgisayar"
+
+#: extensions/places-menu/placeDisplay.js:359
+msgid "Home"
+msgstr "Başlangıç"
+
+#: extensions/places-menu/placeDisplay.js:404
+msgid "Browse Network"
+msgstr "Ağa Gözat"
+
+#: extensions/screenshot-window-sizer/org.gnome.shell.extensions.screenshot-window-sizer.gschema.xml:7
+msgid "Cycle Screenshot Sizes"
+msgstr "Ekran Görüntüsü Boyutları Arasında Geçiş Yap"
+
+#: extensions/screenshot-window-sizer/org.gnome.shell.extensions.screenshot-window-sizer.gschema.xml:11
+msgid "Cycle Screenshot Sizes Backward"
+msgstr "Ekran Görüntüsü Boyutları Arasında Tersine Geçiş Yap"
+
+#: extensions/user-theme/org.gnome.shell.extensions.user-theme.gschema.xml:5
+msgid "Theme name"
+msgstr "Tema adı"
+
+#: extensions/user-theme/org.gnome.shell.extensions.user-theme.gschema.xml:6
+msgid "The name of the theme, to be loaded from ~/.themes/name/gnome-shell"
+msgstr "~/.themes/name/gnome-shell konumundan edinilen tema adı"
+
+#: extensions/window-list/extension.js:98
+msgid "Close"
+msgstr "Kapat"
+
+#: extensions/window-list/extension.js:118
+msgid "Unminimize"
+msgstr "Önceki duruma getir"
+
+#: extensions/window-list/extension.js:118
+msgid "Minimize"
+msgstr "Simge durumuna küçült"
+
+#: extensions/window-list/extension.js:125
+msgid "Unmaximize"
+msgstr "Önceki duruma getir"
+
+#: extensions/window-list/extension.js:125
+msgid "Maximize"
+msgstr "En büyük duruma getir"
+
+#: extensions/window-list/extension.js:429
+msgid "Minimize all"
+msgstr "Tümünü simge durumuna küçült"
+
+#: extensions/window-list/extension.js:435
+msgid "Unminimize all"
+msgstr "Tümünü önceki duruma getir"
+
+#: extensions/window-list/extension.js:441
+msgid "Maximize all"
+msgstr "Tümünü en büyük duruma getir"
+
+#: extensions/window-list/extension.js:449
+msgid "Unmaximize all"
+msgstr "Tümünü önceki duruma getir"
+
+#: extensions/window-list/extension.js:457
+msgid "Close all"
+msgstr "Tümünü kapat"
+
+#: extensions/window-list/extension.js:737
+msgid "Window List"
+msgstr "Pencere Listesi"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:12
+msgid "When to group windows"
+msgstr "Pencerelerin ne zaman kümeleneceği"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:13
+msgid ""
+"Decides when to group windows from the same application on the window list. "
+"Possible values are “never”, “auto” and “always”."
+msgstr ""
+"Pencere listesinde aynı uygulamaların ne zaman kümeleneceğine karar verir. "
+"Olası değerler: “never” (hiçbir zaman), “auto” (kendiliğinden) ve "
+"“always” (her zaman)."
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:20
+#: extensions/window-list/prefs.js:100
+msgid "Show windows from all workspaces"
+msgstr "Tüm çalışma alanlarındaki pencereleri göster"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:21
+msgid "Whether to show windows from all workspaces or only the current one."
+msgstr ""
+"Pencerelerin tüm çalışma alanlarından mi yoksa yalnızca geçerli olandan mı "
+"gösterileceğini belirtir."
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:27
+msgid "Show the window list on all monitors"
+msgstr "Pencere listesini tüm monitörlerde göster"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:28
+msgid ""
+"Whether to show the window list on all connected monitors or only on the "
+"primary one."
+msgstr ""
+"Pencere listesinin tüm bağlı monitörlerde mi yoksa sadece birincil monitörde "
+"mi gösterileceğini belirtir."
+
+#: extensions/window-list/prefs.js:29
+msgid "Window Grouping"
+msgstr "Pencere Kümeleme"
+
+#: extensions/window-list/prefs.js:58
+msgid "Never group windows"
+msgstr "Pencereleri hiçbir zaman kümeleme"
+
+#: extensions/window-list/prefs.js:59
+msgid "Group windows when space is limited"
+msgstr "Yer kısıtlı olduğunda pencereleri kümele"
+
+#: extensions/window-list/prefs.js:60
+msgid "Always group windows"
+msgstr "Pencereleri her zaman kümele"
+
+#: extensions/window-list/prefs.js:94
+msgid "Show on all monitors"
+msgstr "Tüm monitörlerde göster"
+
+#: extensions/window-list/workspaceIndicator.js:209
+#: extensions/workspace-indicator/extension.js:215
+msgid "Workspace Indicator"
+msgstr "Çalışma Alanı Belirteci"
+
+#: extensions/workspace-indicator/prefs.js:34
+msgid "Workspace Names"
+msgstr "Çalışma Alanı Adları"
+
+#: extensions/workspace-indicator/prefs.js:67
+#, javascript-format
+msgid "Workspace %d"
+msgstr "Çalışma Alanı %d"
+
+#: extensions/workspace-indicator/prefs.js:218
+msgid "Add Workspace"
+msgstr "Çalışma Alanı Ekle"
+
+#~ msgid "Application"
+#~ msgstr "Uygulama"
+
+#~ msgid "Create new matching rule"
+#~ msgstr "Yeni bir eşleşme kuralı oluştur"
+
+#~ msgid "Add"
+#~ msgstr "Ekle"
+
+#~ msgid "Name"
+#~ msgstr "Ad"
+
+#~ msgid "Attach modal dialog to the parent window"
+#~ msgstr "Yardımcı iletişim penceresini ana pencereye iliştir"
+
+#~ msgid ""
+#~ "This key overrides the key in org.gnome.mutter when running GNOME Shell."
+#~ msgstr ""
+#~ "Bu anahtar, GNOME Shell çalışırken org.gnome.mutter içindeki anahtarı "
+#~ "geçersiz kılar."
+
+#~ msgid "Arrangement of buttons on the titlebar"
+#~ msgstr "Başlık çubuğundaki düğmelerin düzeni"
+
+#~ msgid ""
+#~ "This key overrides the key in org.gnome.desktop.wm.preferences when "
+#~ "running GNOME Shell."
+#~ msgstr ""
+#~ "Bu anahtar, GNOME Kabuğu çalışırken org.gnome.desktop.wm.preferences "
+#~ "içindeki anahtarı geçersiz kılar."
+
+#~ msgid "Enable edge tiling when dropping windows on screen edges"
+#~ msgstr ""
+#~ "Pencereler ekran kenarlarında bırakıldığında kenar döşemeyi etkinleştir"
+
+#~ msgid "Workspaces only on primary monitor"
+#~ msgstr "Çalışma alanları sadece birincil ekranda"
+
+#~ msgid "Delay focus changes in mouse mode until the pointer stops moving"
+#~ msgstr ""
+#~ "Fare kipinde odak değişikliklerini işaretçi hareketi durana kadar beklet"
+
+#~ msgid "Thumbnail only"
+#~ msgstr "Yalnızca küçük resim"
+
+#~ msgid "Application icon only"
+#~ msgstr "Sadece uygulama simgesi"
+
+#~ msgid "Thumbnail and application icon"
+#~ msgstr "Küçük resim ve uygulama simgesi"
+
+#~ msgid "Present windows as"
+#~ msgstr "Pencereleri farklı sun"
+
+#~ msgid "Activities Overview"
+#~ msgstr "Etkinlikler Genel Görünümü"
+
+#~ msgid "Hello, world!"
+#~ msgstr "Merhaba dünya!"
+
+#~ msgid "Alternative greeting text."
+#~ msgstr "Alternatif karşılama metni."
+
+#~ msgid ""
+#~ "If not empty, it contains the text that will be shown when clicking on "
+#~ "the panel."
+#~ msgstr "Eğer boş değilse, panele tıklandığında gösterilecek metni içerir."
+
+#~ msgid "Message"
+#~ msgstr "İleti"
+
+#~ msgid ""
+#~ "Example aims to show how to build well behaved extensions for the Shell "
+#~ "and as such it has little functionality on its own.\n"
+#~ "Nevertheless it’s possible to customize the greeting message."
+#~ msgstr ""
+#~ "Bu örnek, Shell için uygun eklentilerin nasıl geliştirileceğini "
+#~ "göstermeyi amaçlar; bu yüzden kendi başına çok az işleve sahiptir.\n"
+#~ "Yine de karşılama iletisini özelleştirmek mümkündür."
+
+#~ msgid "CPU"
+#~ msgstr "İşlemci"
+
+#~ msgid "Memory"
+#~ msgstr "Bellek"

@@ -1,0 +1,409 @@
+# Vietnamese translation for gnome-shell-extensions.
+# Copyright © 2016 GNOME i18n Project for Vietnamese.
+# This file is distributed under the same license as the gnome-shell-extensions package.
+# Nguyễn Thái Ngọc Duy <pclouds@gmail.com>, 2011.
+# Trần Ngọc Quân <vnwildman@gmail.com>, 2014, 2016, 2017.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extensions master\n"
+"Report-Msgid-Bugs-To: https://bugzilla.gnome.org/enter_bug.cgi?product=gnome-"
+"shell&keywords=I18N+L10N&component=extensions\n"
+"POT-Creation-Date: 2017-09-03 13:30+0000\n"
+"PO-Revision-Date: 2017-09-04 14:34+0700\n"
+"Last-Translator: Trần Ngọc Quân <vnwildman@gmail.com>\n"
+"Language-Team: Vietnamese <gnome-vi-list@gnome.org>\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Gtranslator 2.91.7\n"
+
+#: data/gnome-classic.desktop.in:3 data/gnome-classic.session.desktop.in:3
+msgid "GNOME Classic"
+msgstr "GNOME cổ điển"
+
+#: data/gnome-classic.desktop.in:4
+msgid "This session logs you into GNOME Classic"
+msgstr "Phiên làm việc này đăng nhập bạn vào GNOME Cổ điển"
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:7
+msgid "Attach modal dialog to the parent window"
+msgstr "Gắn hộp thoại dạng luôn nằm trên cửa sổ mẹ"
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:8
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:25
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:33
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:41
+msgid ""
+"This key overrides the key in org.gnome.mutter when running GNOME Shell."
+msgstr ""
+"Khóa này sẽ đè lên khóa có trong org.gnome.mutter khi chạy Hệ vỏ GNOME."
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:16
+msgid "Arrangement of buttons on the titlebar"
+msgstr "Sắp xếp các nút trên thanh tiêu đề"
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:17
+msgid ""
+"This key overrides the key in org.gnome.desktop.wm.preferences when running "
+"GNOME Shell."
+msgstr ""
+"Khóa này sẽ đè lên khóa có trong org.gnome.desktop.wm.preferences khi đang "
+"chạy Hệ vỏ GNOME."
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:24
+msgid "Enable edge tiling when dropping windows on screen edges"
+msgstr "Bật xếp lớp ở cạnh khi thả cửa sổ vào cạnh màn hình"
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:32
+msgid "Workspaces only on primary monitor"
+msgstr "Không gian làm việc chỉ ở trên màn hình chính"
+
+#: data/org.gnome.shell.extensions.classic-overrides.gschema.xml:40
+msgid "Delay focus changes in mouse mode until the pointer stops moving"
+msgstr "Khoảng trễ chờ cho con chuột ngừng di chuyển"
+
+#: extensions/alternate-tab/prefs.js:20
+msgid "Thumbnail only"
+msgstr "Chỉ ảnh nhỏ"
+
+#: extensions/alternate-tab/prefs.js:21
+msgid "Application icon only"
+msgstr "Chỉ có ảnh nhỏ đại diện cho ứng dụng"
+
+#: extensions/alternate-tab/prefs.js:22
+msgid "Thumbnail and application icon"
+msgstr "Ảnh thu nhỏ và biểu tượng của ứng dụng"
+
+#: extensions/alternate-tab/prefs.js:38
+msgid "Present windows as"
+msgstr "Cửa sổ hiện tại như là"
+
+#: extensions/alternate-tab/prefs.js:69
+msgid "Show only windows in the current workspace"
+msgstr "Chỉ hiển thị các cửa sổ trong không gian làm việc hiện tại"
+
+#: extensions/apps-menu/extension.js:41
+msgid "Activities Overview"
+msgstr "Tổng quan hoạt động"
+
+#: extensions/apps-menu/extension.js:141
+msgid "Favorites"
+msgstr "Ưa thích"
+
+#: extensions/apps-menu/extension.js:436
+msgid "Applications"
+msgstr "Ứng dụng"
+
+#: extensions/auto-move-windows/org.gnome.shell.extensions.auto-move-windows.gschema.xml:6
+msgid "Application and workspace list"
+msgstr "Danh sách ứng dụng và không gian làm việc"
+
+#: extensions/auto-move-windows/org.gnome.shell.extensions.auto-move-windows.gschema.xml:7
+msgid ""
+"A list of strings, each containing an application id (desktop file name), "
+"followed by a colon and the workspace number"
+msgstr ""
+"Một danh sách chuỗi, mỗi chuỗi là một mã số của ứng dụng (tên tập tin ."
+"desktop), theo sau là dấu hai chấm và mã số không gian làm việc"
+
+#: extensions/auto-move-windows/prefs.js:60
+msgid "Application"
+msgstr "Ứng dụng"
+
+#: extensions/auto-move-windows/prefs.js:69
+#: extensions/auto-move-windows/prefs.js:127
+msgid "Workspace"
+msgstr "Không gian làm việc"
+
+#: extensions/auto-move-windows/prefs.js:85
+msgid "Add Rule"
+msgstr "Thêm quy tắc"
+
+#: extensions/auto-move-windows/prefs.js:106
+msgid "Create new matching rule"
+msgstr "Tạo mới một quy tắc khớp mẫu"
+
+#: extensions/auto-move-windows/prefs.js:111
+msgid "Add"
+msgstr "Thêm"
+
+#. TRANSLATORS: %s is the filesystem name
+#: extensions/drive-menu/extension.js:107
+#, javascript-format
+msgid "Ejecting drive “%s” failed:"
+msgstr "Gặp lỗi khi đẩy đĩa “%s” ra:"
+
+#: extensions/drive-menu/extension.js:125
+msgid "Removable devices"
+msgstr "Đĩa di động"
+
+#: extensions/drive-menu/extension.js:150
+msgid "Open Files"
+msgstr "Mở tập tin"
+
+#: extensions/example/extension.js:17
+msgid "Hello, world!"
+msgstr "Xin chào!"
+
+#: extensions/example/org.gnome.shell.extensions.example.gschema.xml:5
+msgid "Alternative greeting text."
+msgstr "Lời chào thay thế."
+
+#: extensions/example/org.gnome.shell.extensions.example.gschema.xml:6
+msgid ""
+"If not empty, it contains the text that will be shown when clicking on the "
+"panel."
+msgstr ""
+"Nếu không rỗng, nó sẽ chứa chữ mà chữ này sẽ được hiển thị khi bấm chuột "
+"trên bảng điều khiển."
+
+#: extensions/example/prefs.js:30
+msgid "Message"
+msgstr "Thông báo"
+
+#. TRANSLATORS: Example is the name of the extension, should not be
+#. translated
+#: extensions/example/prefs.js:43
+msgid ""
+"Example aims to show how to build well behaved extensions for the Shell and "
+"as such it has little functionality on its own.\n"
+"Nevertheless it’s possible to customize the greeting message."
+msgstr ""
+"Ví dụ có mục đích hướng dẫn làm cách nào để xây dựng các phần mở rộng chạy "
+"tốt cho Hệ vỏ và do vậy nó chỉ có một ít chức năng.\n"
+"Tuy thế nó có khả năng cá nhân hóa lời chào."
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:5
+msgid "Use more screen for windows"
+msgstr "Dùng nhiều màn hình cho các cửa sổ"
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:6
+msgid ""
+"Try to use more screen for placing window thumbnails by adapting to screen "
+"aspect ratio, and consolidating them further to reduce the bounding box. "
+"This setting applies only with the natural placement strategy."
+msgstr ""
+"Hãy thử dùng nhiều màn hình để đặt ảnh thu nhỏ của cửa sổ bằng cách chỉnh "
+"sửa cho thích hợp với tỷ lệ dạng màn hình, và hợp nhất chúng hơn nữa để giảm "
+"bớt ô hạn biên. Cài đặt này chỉ áp dụng với chiến lược sắp đặt tự nhiên."
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:11
+msgid "Place window captions on top"
+msgstr "Đặt thanh tiêu đề cửa sổ ở trên đỉnh"
+
+#: extensions/native-window-placement/org.gnome.shell.extensions.native-window-placement.gschema.xml:12
+msgid ""
+"If true, place window captions on top the respective thumbnail, overriding "
+"shell default of placing it at the bottom. Changing this setting requires "
+"restarting the shell to have any effect."
+msgstr ""
+"Nếu chọn, đặt thanh tiêu đề của cửa sổ trên đỉnh của ảnh thu nhỏ tương ứng, "
+"đè lên cách ứng xử mặc định của hệ vỏ là ở dưới đáy. Những thay đổi này cần "
+"khởi động lại hệ vỏ để có tác dụng."
+
+#: extensions/places-menu/extension.js:78
+#: extensions/places-menu/extension.js:81
+msgid "Places"
+msgstr "Mở nhanh"
+
+#: extensions/places-menu/placeDisplay.js:65
+#, javascript-format
+msgid "Failed to mount volume for “%s”"
+msgstr "Gặp lỗi khi gắn đĩa cho “%s”"
+
+#: extensions/places-menu/placeDisplay.js:78
+#, javascript-format
+msgid "Failed to launch “%s”"
+msgstr "Gặp lỗi khi khởi chạy \"%s\""
+
+#: extensions/places-menu/placeDisplay.js:137
+#: extensions/places-menu/placeDisplay.js:160
+msgid "Computer"
+msgstr "Máy tính"
+
+#: extensions/places-menu/placeDisplay.js:303
+msgid "Home"
+msgstr "Thư mục riêng"
+
+#: extensions/places-menu/placeDisplay.js:347
+msgid "Browse Network"
+msgstr "Duyệt mạng"
+
+#: extensions/screenshot-window-sizer/org.gnome.shell.extensions.screenshot-window-sizer.gschema.xml:7
+msgid "Cycle Screenshot Sizes"
+msgstr "Đổi kích thước cửa sổ để chụp màn hình"
+
+#: extensions/screenshot-window-sizer/org.gnome.shell.extensions.screenshot-window-sizer.gschema.xml:11
+msgid "Cycle Screenshot Sizes Backward"
+msgstr "Đổi kích thước cửa sổ để chụp màn hình ngược lại"
+
+#: extensions/user-theme/org.gnome.shell.extensions.user-theme.gschema.xml:5
+msgid "Theme name"
+msgstr "Tên chủ đề"
+
+#: extensions/user-theme/org.gnome.shell.extensions.user-theme.gschema.xml:6
+msgid "The name of the theme, to be loaded from ~/.themes/name/gnome-shell"
+msgstr "Tên của chủ đề, được tải từ ~/.themes/name/gnome-shell"
+
+#: extensions/window-list/extension.js:110
+msgid "Close"
+msgstr "Đóng"
+
+#: extensions/window-list/extension.js:129
+msgid "Unminimize"
+msgstr "Thôi thu nhỏ"
+
+#: extensions/window-list/extension.js:130
+msgid "Minimize"
+msgstr "Thu nhỏ"
+
+#: extensions/window-list/extension.js:136
+msgid "Unmaximize"
+msgstr "Thôi phóng lớn"
+
+#: extensions/window-list/extension.js:137
+msgid "Maximize"
+msgstr "Phóng to hết cỡ"
+
+#: extensions/window-list/extension.js:420
+msgid "Minimize all"
+msgstr "Thu nhỏ tất cả"
+
+#: extensions/window-list/extension.js:428
+msgid "Unminimize all"
+msgstr "Thôi thu nhỏ tất cả"
+
+#: extensions/window-list/extension.js:436
+msgid "Maximize all"
+msgstr "Phóng to tất cả"
+
+#: extensions/window-list/extension.js:445
+msgid "Unmaximize all"
+msgstr "Thôi phóng to tất cả"
+
+#: extensions/window-list/extension.js:454
+msgid "Close all"
+msgstr "Đóng tất cả"
+
+#: extensions/window-list/extension.js:678
+#: extensions/workspace-indicator/extension.js:30
+msgid "Workspace Indicator"
+msgstr "Bộ chỉ thị không gian làm việc"
+
+#: extensions/window-list/extension.js:842
+msgid "Window List"
+msgstr "Danh sách cửa sổ"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:12
+msgid "When to group windows"
+msgstr "Khi nào thì nhóm các cửa sổ lại"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:13
+msgid ""
+"Decides when to group windows from the same application on the window list. "
+"Possible values are “never”, “auto” and “always”."
+msgstr ""
+"Quyết định khi nào thì nhóm các cửa sổ của cùng một ứng dụng trên danh sách "
+"cửa số. Các giá trị có thể là “never”, “auto” và “always”."
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:20
+msgid "Show the window list on all monitors"
+msgstr "Hiển thị danh sách cửa sổ ở mọi màn hình"
+
+#: extensions/window-list/org.gnome.shell.extensions.window-list.gschema.xml:21
+msgid ""
+"Whether to show the window list on all connected monitors or only on the "
+"primary one."
+msgstr ""
+"Có hiển thị danh sách cửa sổ trên mọi màn hình đã kết nối hay chỉ trên màn "
+"hình chính mà thôi."
+
+#: extensions/window-list/prefs.js:32
+msgid "Window Grouping"
+msgstr "Nhóm cửa sổ lại"
+
+#: extensions/window-list/prefs.js:50
+msgid "Never group windows"
+msgstr "Không bao giờ nhóm các cửa sổ lại với nhau"
+
+#: extensions/window-list/prefs.js:51
+msgid "Group windows when space is limited"
+msgstr "Nhóm các cửa sổ lại với nhau khi không đủ chỗ"
+
+#: extensions/window-list/prefs.js:52
+msgid "Always group windows"
+msgstr "Luôn nhóm các cửa sổ lại với nhau"
+
+#: extensions/window-list/prefs.js:75
+msgid "Show on all monitors"
+msgstr "Hiển thị trên mọi màn hình"
+
+#: extensions/workspace-indicator/prefs.js:141
+msgid "Workspace Names"
+msgstr "Tên không gian làm việc"
+
+#: extensions/workspace-indicator/prefs.js:157
+msgid "Name"
+msgstr "Tên"
+
+#: extensions/workspace-indicator/prefs.js:198
+#, javascript-format
+msgid "Workspace %d"
+msgstr "Không gian làm việc %d"
+
+#~ msgid "CPU"
+#~ msgstr "CPU"
+
+#~ msgid "Memory"
+#~ msgstr "Bộ nhớ"
+
+#~ msgid "GNOME Shell Classic"
+#~ msgstr "Hệ vỏ GNOME cổ điển"
+
+#~ msgid "Window management and application launching"
+#~ msgstr "Quản lý cửa sổ và chạy ứng dụng"
+
+#~ msgid "Suspend"
+#~ msgstr "Ngừng"
+
+#~ msgid "Hibernate"
+#~ msgstr "Ngủ đông"
+
+#~ msgid "Power Off"
+#~ msgstr "Tắt máy"
+
+#~ msgid "Enable suspending"
+#~ msgstr "Cho phép tạm dừng"
+
+#~ msgid "Control the visibility of the Suspend menu item"
+#~ msgstr "Cấu hình trình đơn con “Tạm dừng” hiện hay ẩn đi"
+
+#~ msgid "Enable hibernating"
+#~ msgstr "Cho phép ngủ đông"
+
+#~ msgid "Control the visibility of the Hibernate menu item"
+#~ msgstr "Cấu hình trình đơn con “Ngủ đông” hiện hay ẩn đi"
+
+#~ msgid "Normal"
+#~ msgstr "Bình thường"
+
+#~ msgid "Left"
+#~ msgstr "Trái"
+
+#~ msgid "Right"
+#~ msgstr "Phải"
+
+#~ msgid "Upside-down"
+#~ msgstr "Trên-xuống"
+
+#~ msgid "Display"
+#~ msgstr "Hiển thị"
+
+#~ msgid "Display Settings"
+#~ msgstr "Cài đặt hiển thị"
+
+#~ msgid "Notifications"
+#~ msgstr "Thông báo"
