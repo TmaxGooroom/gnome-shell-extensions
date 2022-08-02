@@ -1,0 +1,38 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Wed, 1 Dec 2021 18:02:17 +0900
+Subject: [refactor] arc-menu : change recently installed app area UX
+
+- change UX of Expand, Collapse Button
+
+[IMS] 274549
+---
+ extensions/arc-menu/menuLayout.js  | 1 -
+ extensions/arc-menu/stylesheet.css | 2 +-
+ 2 files changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/extensions/arc-menu/menuLayout.js b/extensions/arc-menu/menuLayout.js
+index d8c074b..84fe4dc 100644
+--- a/extensions/arc-menu/menuLayout.js
++++ b/extensions/arc-menu/menuLayout.js
+@@ -306,7 +306,6 @@ var createMenu = class extends BaseMenuLayout.BaseLayout { // eslint-disable-lin
+         let minSize = this._settings.get_int('min-recent-app-size');
+         if (size > minSize) {
+             let expandButton = new MW.ExpandButton(this);
+-            expandButton.x_align = Clutter.ActorAlign.CENTER;
+             this.recentAppsBox.add_actor(expandButton);
+         }
+     }
+diff --git a/extensions/arc-menu/stylesheet.css b/extensions/arc-menu/stylesheet.css
+index 1884f49..f6187d4 100644
+--- a/extensions/arc-menu/stylesheet.css
++++ b/extensions/arc-menu/stylesheet.css
+@@ -303,8 +303,8 @@ box-shadow: 0 0 0 3px rgb(153, 153, 153) inset;
+ .expand-button {
+ background-color: rgb(255, 255, 255);
+ border-radius: 10px;
+-width: 80px;
+ height: 28px;
++margin: 0px 15px;
+ color:rgb(0,0,0);
+ }
+ .expand-button:hover {

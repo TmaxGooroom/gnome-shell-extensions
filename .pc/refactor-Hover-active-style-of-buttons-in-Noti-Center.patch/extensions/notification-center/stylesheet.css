@@ -1,0 +1,59 @@
+.notification-center-message-list {
+  padding: 8px 8px 0 20px
+}
+
+.notification-center-message {
+  background-color: rgb(237, 237, 242);
+  border-radius: 16px;
+  border-width: 0px;
+  color: rgb(27, 27, 27);
+  font-size: 14px;
+  font-weight: bold
+}
+
+.notification-center-clear-button {
+
+  margin: 8px 26px 0 26px;
+}
+
+.notification-center-message-list-section {
+  padding-bottom: 6px;
+}
+
+.notification-center-actor {
+  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px;
+  background-color: rgba(255,255,255,255);
+  width: 328px;
+  border-radius: 16px;
+}
+
+.notification-center-button-box {
+  background-color: rgba(41, 41, 41, 255);
+  width: 328px;
+  height: 92px;
+  border-radius: 16px;
+}
+
+.notification-center-empty-icon {
+  padding-top: 200px;
+}
+
+.notification-center-title-label {
+  color: rgb(0,0,0);
+  padding-top: 14px;
+  padding-left: 20px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.notification-center-empty-label {
+  color: rgb(128, 128, 128);
+  padding-top: 16px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.notification-center-dnd-label {
+  color: rgb(255,255,255);
+  font-weight: bold;
+}

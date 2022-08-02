@@ -1,0 +1,17 @@
+appIcons.js
+convenience.js
+extension.js
+intellihide.js
+overview.js
+panel.js
+panelManager.js
+panelPositions.js
+panelStyle.js
+prefs.js
+progress.js
+proximity.js
+taskbar.js
+transparency.js
+update.js
+utils.js
+windowPreview.js

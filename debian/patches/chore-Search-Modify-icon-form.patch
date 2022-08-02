@@ -1,0 +1,24 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Wed, 26 Jan 2022 13:48:16 +0900
+Subject: [chore] Search :  Modify icon form
+
+- symbolic -> color
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index d403c85..05cbba0 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -348,7 +348,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+ 
+             let fileUri = this._recentFiles[i].get_uri();
+             let name = this._recentFiles[i].get_display_name();
+-            let icon = Gio.content_type_get_symbolic_icon(this._recentFiles[i].get_mime_type()).to_string();
++            let icon = Gio.content_type_get_icon(this._recentFiles[i].get_mime_type()).to_string();
+             let recentFileItem = this.createRecentFileItem([name, icon, fileUri]);
+             recentFileItem.description = this._recentFiles[i].get_uri_display().replace(homeRegExp, '~');
+             recentFileItem.fileUri = fileUri;

@@ -1,0 +1,9 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"name": "calibrator",
+"description": "Calibrator for Touchscreen",
+"original-authors": [  "tmax" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

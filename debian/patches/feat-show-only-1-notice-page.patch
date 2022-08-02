@@ -1,0 +1,192 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Thu, 14 Apr 2022 17:39:46 +0900
+Subject: [feat] show only 1 notice page
+
+- only 1 notice page is shown
+- when new notice page opened, previous notice page closed
+- code cleanup
+
+[IMS] N/A
+---
+ extensions/notification-center/noticeAlarm.js  | 12 ++++++---
+ extensions/notification-center/noticeApplet.js | 35 ++------------------------
+ extensions/notification-center/noticeView.js   | 20 +++++----------
+ 3 files changed, 16 insertions(+), 51 deletions(-)
+
+diff --git a/extensions/notification-center/noticeAlarm.js b/extensions/notification-center/noticeAlarm.js
+index c6a015b..9788a41 100755
+--- a/extensions/notification-center/noticeAlarm.js
++++ b/extensions/notification-center/noticeAlarm.js
+@@ -1,5 +1,4 @@
+ const { Notify, GLib } = imports.gi;
+-// const Mainloop = imports.mainloop;
+ 
+ /*
+ ARGV[0] - title
+@@ -14,9 +13,14 @@ var NOTIFICATION_TIMEOUT = 5000;
+ Notify.init(ARGV[0]);
+ let loop = GLib.MainLoop.new(null, false);
+ let notification = new Notify.Notification({ summary: 'Notice', body: ARGV[0] });
+-notification.add_action('default', ' ', () => {
+-    GLib.spawn_command_line_async(`gjs /usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js ${ARGV[1]} ${ARGV[2]} ${ARGV[3]} ${ARGV[4]}`);
+-});
++
++if (ARGV[1] && ARGV[2] && ARGV[3] && ARGV[4]) {
++    notification.add_action('default', ' ', () => {
++        GLib.spawn_command_line_sync('sh -c "kill $(ps -aux | grep noticeView.js | grep gjs | awk \'{print $2}\')"');
++        GLib.spawn_command_line_sync(`gjs /usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js ${ARGV[1]} ${ARGV[2]} ${ARGV[3]} ${ARGV[4]}`);
++    });
++}
++
+ let closeId = notification.connect('closed', () => {
+     notification.clear_actions();
+     notification.disconnect(closeId);
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index c12a9bf..1ca6433 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -25,10 +25,6 @@ const _ = Gettext.gettext;
+ 
+ var NOTIFICATION_LIMIT = 5;
+ var NOTIFICATION_TEXT_LIMIT = 17;
+-// var PANEL_TRAY_ICON_SIZE = 22;
+-// var NOTIFICATION_MSG_ICON = 'notice-applet-msg';
+-// var DEFAULT_TRAY_ICON = 'notice-applet-panel';
+-// var DEFAULT_NOTICE_TRAY_ICON = 'notice-applet-event-panel';
+ 
+ var noticeApplet = class applet {
+     init(notificationCenter) {
+@@ -95,7 +91,6 @@ var noticeApplet = class applet {
+             return;
+ 
+         this.isConnected = available;
+-        // this.trayIconChange();
+ 
+         if (this.isConnected) {
+             if (!this.agentProxy && !this.isAgent)
+@@ -165,9 +160,6 @@ var noticeApplet = class applet {
+         if (total <= 0 && this.disabledCnt <= 0)
+             return;
+ 
+-        // this.imgStatus = true;
+-        // this.trayIconChange();
+-
+         if (this.isJob)
+             return;
+ 
+@@ -190,8 +182,6 @@ var noticeApplet = class applet {
+         let total = this.queue.length;
+ 
+         if (total > 0 || this.disabledCnt > 0) {
+-        // this.imgStatus = true;
+-
+             if (this.isJob)
+                 return;
+ 
+@@ -201,7 +191,6 @@ var noticeApplet = class applet {
+                 GLib.timeout_add(0, 500, () => this.noticeClickToJob());
+         }
+         this.isAgent = true;
+-    // this.trayIconChange ();
+     }
+ 
+     getNoticeFromJson(data, urgency) {
+@@ -309,32 +298,12 @@ var noticeApplet = class applet {
+     }
+ 
+     noticePopup() {
+-        if (this.window) {
+-            if (!this.window.get_if_exited()) {
+-                this.window.force_exit();
+-                this.window = null;
+-            }
+-        }
+-
+         if (!this.defaultDomain || !this.signing || !this.sessionId || !this.clientId) {
+             log('Wrong access information');
+             return;
+         }
+-
+-        // this.imgStatus = false;
+-        // this.trayIconChange();
+-
+-        this.window = new Gio.Subprocess({
+-            argv: [
+-                'gjs',
+-                '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js',
+-                this.defaultDomain,
+-                this.signing,
+-                this.sessionId,
+-                this.clientId,
+-            ],
+-        });
+-        this.window.init(null);
++        GLib.spawn_command_line_sync('sh -c "kill $(ps -aux | grep noticeView.js | grep gjs | awk \'{print $2}\')"');
++        GLib.spawn_command_line_sync(`gjs /usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js ${this.defaultDomain} ${this.signing} ${this.sessionId} ${this.clientId}`);
+ 
+         this.queue = [];
+     }
+diff --git a/extensions/notification-center/noticeView.js b/extensions/notification-center/noticeView.js
+index fb5834b..4bc3ebd 100755
+--- a/extensions/notification-center/noticeView.js
++++ b/extensions/notification-center/noticeView.js
+@@ -8,8 +8,8 @@ ARGV[3] - clientId
+ */
+ 
+ function onNotificationWindowClosed() {
+-    [offsetX, offsetY] = window.get_position();
+-    // send offset?
++    // save offset?
++    // [offsetX, offsetY] = window.get_position();
+ 
+     Gtk.main_quit();
+ }
+@@ -36,8 +36,6 @@ function addCookie(manager, key, value, domain) {
+     manager.add_cookie(cookie, null, null);
+ }
+ 
+-let offsetX, offsetY;
+-
+ Gtk.init(null);
+ 
+ let window = new Gtk.Window({ type: Gtk.WindowType.TOPLEVEL });
+@@ -46,6 +44,7 @@ window.set_type_hint(Gdk.WindowTypeHint.DIALOG);
+ window.set_skip_taskbar_hint(true);
+ window.set_title('Notice');
+ window.set_default_size(600, 550);
++window.connect('delete-event', () => onNotificationWindowClosed());
+ 
+ let mainVbox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 5 });
+ window.add(mainVbox);
+@@ -57,16 +56,12 @@ mainVbox.pack_start(scrollWindow, true, true, 0);
+ scrollWindow.show();
+ 
+ let view = new WebKit2.WebView();
+-scrollWindow.add(view);
+-
+-window.connect('delete-event', () => onNotificationWindowClosed());
+ view.connect('close', () => onNotificationWindowClosed());
+-
+ view.load_uri(ARGV[0]);
++scrollWindow.add(view);
+ 
+ let context = view.get_context();
+ let manager = context.get_cookie_manager();
+-
+ let lang = getLanguage();
+ let domain = getDomain(ARGV[0]);
+ 
+@@ -90,11 +85,8 @@ button.set_can_focus(true);
+ hbox.pack_end(button, false, false, 0);
+ button.connect('clicked', () => onNotificationWindowClosed());
+ button.show();
+-window.show_all();
+ 
+-if (offsetX !== 0 && offsetY !== 0)
+-    window.move(offsetX, offsetY);
+-else
+-    window.set_position(Gtk.WIN_POS_CENTER);
++window.show_all();
++window.set_position(Gtk.WindowPosition.CENTER);
+ 
+ Gtk.main();

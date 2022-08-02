@@ -1,0 +1,20 @@
+[org.gnome.shell.extensions.dash-to-panel]
+dot-style-focused = 'DOTS'
+dot-style-unfocused = 'DOTS'
+dot-color-override = true
+dot-color-1 = '#4e6cb0'
+dot-color-2 = '#4e6cb0'
+dot-color-3 = '#4e6cb0'
+dot-color-4 = '#4e6cb0'
+dot-size = 4
+trans-use-custom-bg = true
+trans-use-custom-opacity = true
+trans-panel-opacity = 1.0
+show-apps-icon-side-padding = 0
+isolate-workspace = true
+overview-click-to-exit = true
+isolate-monitors = true
+scroll-panel-show-ws-popup = false
+scroll-icon-action = 'NOTHING'
+panel-element-positions = '{"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
+secondarymenu-contains-showdetails = false

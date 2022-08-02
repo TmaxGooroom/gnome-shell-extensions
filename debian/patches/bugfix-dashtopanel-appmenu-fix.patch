@@ -1,0 +1,77 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 9 Nov 2021 13:24:39 +0900
+Subject: [bugfix] dashtopanel: appmenu fix
+
+- do not add or remove appmenu actor from panel, but show or hide
+- error log will not displayed due to appmenu parent actor not exist
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/panel.js | 24 +++++++++---------------
+ 1 file changed, 9 insertions(+), 15 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index 9a5323a..a196eb5 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -314,7 +314,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+         if (this.statusArea.appMenu) {
+             setMenuArrow(this.statusArea.appMenu._arrow, position);
+-            this._leftBox.remove_child(this.statusArea.appMenu.container);
++            this._setAppmenuVisible(Me.settings.get_boolean('show-appmenu'));
+         }
+ 
+         if (this.statusArea.keyboard)
+@@ -327,7 +327,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+         this.panel.actor.add_child(this.taskbar.actor);
+ 
+-        this._setAppmenuVisible(Me.settings.get_boolean('show-appmenu'));
+         this._setShowDesktopButton(true);
+ 
+         this._setAllocationMap();
+@@ -452,7 +451,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+         this._disablePanelCornerSignals();
+ 
+         this.panel.actor.remove_child(this.taskbar.actor);
+-        this._setAppmenuVisible(false);
+ 
+         if (this.intellihide)
+             this.intellihide.destroy();
+@@ -505,7 +503,7 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+ 
+                 if (this.statusArea.appMenu) {
+                     setMenuArrow(this.statusArea.appMenu._arrow, St.Side.TOP);
+-                    this._leftBox.add_child(this.statusArea.appMenu.container);
++                    this._setAppmenuVisible(true);
+                 }
+ 
+                 if (this.statusArea.keyboard)
+@@ -1231,19 +1229,15 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+     },
+ 
+     _setAppmenuVisible(isVisible) {
+-        let parent;
+-        let appMenu = this.statusArea.appMenu;
+-
+-        if (appMenu)
+-            parent = appMenu.container.get_parent();
+-
+-        if (parent)
+-            parent.remove_child(appMenu.container);
+-
++        // appmenu only exist in main panel
++        if (this.isStandalone)
++            return;
+ 
++        let appMenu = this.statusArea.appMenu;
+         if (isVisible && appMenu)
+-            this._leftBox.insert_child_above(appMenu.container, null);
+-
++            appMenu.container.show();
++        else
++            appMenu.container.hide();
+     },
+ 
+     _formatVerticalClock() {

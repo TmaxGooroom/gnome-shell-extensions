@@ -1,0 +1,563 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 15 Feb 2022 18:46:16 +0900
+Subject: [feat] notification center: notice applet popup function
+
+- added notice popup function in notice applet
+- when press button in notification center, show gpms notice page with webview window
+
+[IMS] N/A
+---
+ extensions/notification-center/noticeApplet.js | 289 +++++++------------------
+ extensions/notification-center/noticeView.js   |  94 ++++++++
+ 2 files changed, 170 insertions(+), 213 deletions(-)
+ create mode 100755 extensions/notification-center/noticeView.js
+
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index c777c3a..48da9eb 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -18,19 +18,19 @@
+  *
+  */
+ 
+-const { Gtk, Gdk, Gio, GLib, Soup, Notify, WebKit2 } = imports.gi;
++const { Gio, GLib, Notify } = imports.gi;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const _ = Gettext.gettext;
+ 
+-var PANEL_TRAY_ICON_SIZE = 22;
+ var NOTIFICATION_LIMIT = 5;
+ var NOTIFICATION_TEXT_LIMIT = 17;
+ var NOTIFICATION_TIMEOUT = 5000;
+ var NOTIFICATION_MSG_ICON = 'notice-applet-msg';
+-var NOTIFICATION_MSG_URGENCY_ICON = 'notice-applet-msg-urgency';
+-var DEFAULT_TRAY_ICON = 'notice-applet-panel';
+-var DEFAULT_NOTICE_TRAY_ICON = 'notice-applet-event-panel';
++// var NOTIFICATION_MSG_URGENCY_ICON = 'notice-applet-msg-urgency';
++// var PANEL_TRAY_ICON_SIZE = 22;
++// var DEFAULT_TRAY_ICON = 'notice-applet-panel';
++// var DEFAULT_NOTICE_TRAY_ICON = 'notice-applet-event-panel';
+ 
+ var noticeApplet = class applet {
+     init(notificationCenter) {
+@@ -39,10 +39,11 @@ var noticeApplet = class applet {
+     }
+ 
+     enable() {
++
+         this.window = null;
+ 
+         this.total      = 0;
+-        this.queue      = {};
++        this.queue      = [];
+         // this.dataList = GLib.HashTable.new_full(GLib.direct_hash, GLib.direct_equal, this.onHashKeyDestroy, this.onHashValueDestroy);
+ 
+         this.signing    = null;
+@@ -57,8 +58,9 @@ var noticeApplet = class applet {
+         this.isJob = false;
+         this.isAgent = false;
+         this.isConnected = false;
+-        this.imgStatus = false;
++        // this.imgStatus = false;
+         this.agentProxy = null;
++        this.subProc = null;
+ 
+         this.button = this.notificationCenter.noticeButton;
+         this.button.connect('clicked', () => this.onButtonToggled());
+@@ -97,20 +99,6 @@ var noticeApplet = class applet {
+             delete data.icon;
+     }
+ 
+-    trayIconChange() {
+-        let icon = this.img_status ? DEFAULT_NOTICE_TRAY_ICON : DEFAULT_TRAY_ICON;
+-
+-        this.tray.set_from_icon_name(icon, Gtk.Iconsize.BUTTON);
+-        this.tray.set_pixel_size(PANEL_TRAY_ICON_SIZE);
+-
+-        if (this.is_connected && this.is_agent) {
+-            this.button.show_all();
+-            this.button.set_sensitive(true);
+-        } else {
+-            this.button.hide();
+-        }
+-    }
+-
+     onButtonToggled() {
+         if (!this.button.get_checked())
+             return;
+@@ -118,9 +106,11 @@ var noticeApplet = class applet {
+         this.button.set_checked(false);
+ 
+         if (this.window) {
+-            this.window.destroy();
+-            this.window = null;
+-            return;
++            if (!this.window.get_if_exited()) {
++                this.window.force_exit();
++                this.window = null;
++                return;
++            }
+         }
+         this.noticePopup(null);
+     }
+@@ -156,7 +146,9 @@ var noticeApplet = class applet {
+             return;
+ 
+         let json = `{"module":{"module_name":"noti","task":{"task_name":"get_noti","in":{"login_id":"${GLib.get_user_name()}"}}}}`;
+-        let arg = new GLib.Variant('(s)', json);
++        let arg = GLib.Variant.new('(s)', [json]);
++        // let ret = this.agentProxy.call_sync('do_task', arg, Gio.DBusCallFlags.NONE, -1, null);
++
+         this.agentProxy.call('do_task', arg, Gio.DBusCallFlags.NONE, -1, null, (source, res) => this.noticeDoneCallback(source, res));
+     }
+ 
+@@ -173,12 +165,12 @@ var noticeApplet = class applet {
+ 
+         let res = parameters.get_child_value(0).get_variant();
+         this.getNoticeFromJson(res.get_string()[0], true);
+-        let total = Object.keys(this.queue).length;
++        let total = this.queue.length;
+ 
+         if (total <= 0 && this.disabledCnt <= 0)
+             return;
+ 
+-        this.imgStatus = true;
++        // this.imgStatus = true;
+         // this.trayIconChange();
+ 
+         if (this.isJob)
+@@ -196,19 +188,16 @@ var noticeApplet = class applet {
+ 
+         if (variant) {
+             let v = variant.get_child_value(0);
+-            if (v) {
++            if (v)
+                 data = v.get_variant();
+-                log(data.get_string());
+-                log(data.get_string()[0]);
+-            }
+         }
+ 
+         if (data) {
+-            this.getNoticeFromJson(data.get_string(), false);
+-            let total = Object.keys(this.queue).length;
++            this.getNoticeFromJson(data.get_string()[0], false);
++            let total = this.queue.length;
+ 
+             if (total > 0 || this.disabledCnt > 0) {
+-                this.imgStatus = true;
++                // this.imgStatus = true;
+ 
+                 if (this.isJob)
+                     return;
+@@ -246,27 +235,30 @@ var noticeApplet = class applet {
+                 return;
+         }
+ 
+-        if (notiObj['signing'])
+-            this.signing = notiObj['signing'];
+-        if (notiObj['client_id'])
+-            this.clientId = notiObj['client_id'];
+-        if (notiObj['session_id'])
+-            this.sessionId = notiObj['session_id'];
+-        if (notiObj['disabled_title_view_cnt'])
+-            this.disabledCnt = notiObj['disabled_title_view_cnt'];
+-        if (notiObj['default_noti_domain'])
+-            this.defaultDomain = notiObj['default_noti_domain'];
++        this.disabledCnt = notiObj['disabled_title_view_cnt'];
++        this.signing = notiObj['signing'];
++        this.clientId = notiObj['client_id'];
++        this.sessionId = notiObj['session_id'];
++        this.defaultDomain = notiObj['default_noti_domain'];
++        if (!this.signing)
++            this.signing = 'empty';
++        if (!this.clientId)
++            this.clientId = 'empty';
++        if (!this.sessionId)
++            this.sessionId = 'empty';
++        if (!this.defaultDomain)
++            this.defaultDomain = 'empty';
+ 
+         if (notiObj['enabled_title_view_notis']) {
+-            for (let i = 0; i < notiObj['enabled_title_view_notis'].length(); i++) {
++            for (let i = 0; i < notiObj['enabled_title_view_notis'].length; i++) {
+                 if (!notiObj['enabled_title_view_notis'][i])
+                     continue;
+ 
+-                let n = new Notify.Notification();
+-                n.title = notiObj['enabled_title_view_notis'][i]['title'];
+-                n.url = notiObj['enabled_title_view_notis'][i]['url'];
+-                n.icon = urgency ? NOTIFICATION_MSG_URGENCY_ICON : NOTIFICATION_MSG_ICON;
+-                this.queue.push(n);
++                // let n = new Notify.Notification();
++                // n.title = notiObj['enabled_title_view_notis'][i]['title'];
++                // n.url = notiObj['enabled_title_view_notis'][i]['url'];
++                // n.icon = urgency ? NOTIFICATION_MSG_URGENCY_ICON : NOTIFICATION_MSG_ICON;
++                // this.queue.push(n);
+             }
+         }
+     }
+@@ -275,7 +267,7 @@ var noticeApplet = class applet {
+         this.isJob = true;
+         let n;
+ 
+-        while (Object.keys(this.queue).length) {
++        while (this.queue.length) {
+             n = this.queue.shift();
+ 
+             if (NOTIFICATION_LIMIT <= this.total) {
+@@ -320,25 +312,25 @@ var noticeApplet = class applet {
+     }
+ 
+     noticeLimitText(text, limit) {
+-        let title = text.strip();
+-        if (limit < title.length())
++        let title = text.trim();
++        if (limit < title.length)
+             title = `${title.substring(0, limit)}...`;
+         return title;
+     }
+ 
+     noticeOtherText(text, otherCnt) {
+-        let title = text.strip();
++        let title = text.trim();
+         if (otherCnt > 1)
+             title = `${title}other ${otherCnt} cases`;
+         return title;
+     }
+ 
+     notificationOpened(title, icon) {
+-        let notification = new Notify.notification(title, '', icon);
+-        notification.add_action('default', _('detail view'), data => this.onNotificationPopupOpened(data), null);
++        let notification = new Notify.Notification({ summary: title, body: '', 'icon_name': icon });
++        notification.add_action('default', _('detail view'), data => this.onNotificationPopupOpened(data));
+         notification.set_urgency(Notify.Urgency.NORMAL);
+         notification.set_timeout(NOTIFICATION_TIMEOUT);
+-        notification.show(null);
++        // notification.show(null);
+ 
+         return notification;
+     }
+@@ -353,151 +345,46 @@ var noticeApplet = class applet {
+     }
+ 
+     onNotificationPopupOpened(data) {
+-        // let res;
+-        // let key;
++        /* let res;
++        let key;
+ 
+-        // if (!GLib.HashTable.lookup_extended(this.dataList, data, key, res))
+-        // return;
++        if (!GLib.HashTable.lookup_extended(this.dataList, data, key, res))
++        return;*/
+ 
+         this.noticePopup(data.url);
+     }
+ 
+     noticePopup(url) {
+         if (this.window) {
+-            this.window.destroy();
+-            this.window = null;
++            if (!this.window.get_if_exited()) {
++                this.window.force_exit();
++                this.window = null;
++            }
+         }
+ 
+         if (!url && this.defaultDomain)
+             url = this.defaultDomain;
+ 
+-        if (!url) {
++        if (url === 'empty') {
+             log('no url');
+             return;
+         }
+ 
+-        this.imgStatus = false;
++        // this.imgStatus = false;
+         // this.trayIconChange();
+ 
+-        let window = new Gtk.Window({ type: Gtk.WindowType.TOPLEVEL });
+-        window.set_border_width(5);
+-        window.set_type_hint(Gdk.WindowTypeHint.DIALOG);
+-        window.set_skip_taskbar_hint(true);
+-        window.set_title(_('Notice'));
+-        window.set_default_size(600, 550);
+-
+-        let mainVbox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 5 });
+-        window.add(mainVbox);
+-        mainVbox.show();
+-
+-        let scrollWindow = new Gtk.ScrolledWindow();
+-        scrollWindow.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
+-        mainVbox.pack_start(scrollWindow, true, true, 0);
+-        scrollWindow.show();
+-
+-        let view = new WebKit2.WebView();
+-        scrollWindow.add(view);
+-
+-        window.connect('delete-event', () => this.onNotificationWindowClosed());
+-        view.connect('close', () => this.onNotificationPopupWebviewClosed());
+-
+-        view.load_uri(url);
+-
+-        let context = view.get_context();
+-        let manager = context.get_cookie_manager();
+-
+-        let lang = this.getLanguage();
+-        let domain = this.getDomain(url);
++        this.window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', url, this.signing, this.sessionId, this.clientId] });
++        this.window.init(null);
+ 
+-        this.addCookie(manager, 'SIGNING', this.signing, domain);
+-        this.addCookie(manager, 'SESSION_ID', this.sessionId, domain);
+-        this.addCookie(manager, 'CLIENT_ID', this.clientId, domain);
+-        this.addCookie(manager, 'LANG_CODE', lang, domain);
+-
+-        view.grab_focus();
+-        view.show();
+-
+-        let hbox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 0 });
+-        mainVbox.pack_end(hbox, false, true, 0);
+-        hbox.show();
+-
+-        let button = new Gtk.Button({ label: _('Close') });
+-        button.set_can_focus(true);
+-        hbox.pack_end(button, false, false, 0);
+-        button.connect('clicked', () => this.onNotificationPopupClosed());
+-        button.show();
+-        window.show_all();
+-
+-        if (this.offsetX !== 0 && this.offsetY !== 0)
+-            window.move(this.offsetX, this.offsetY);
+-        else
+-            window.set_position(Gtk.WIN_POS_CENTER);
+-
+-
+-        this.window = window;
+-
+-        this.queue = {};
++        this.queue = [];
+     // GLib.HashTable.remove_all(this.dataList);
+     }
+ 
+-    onNotificationWindowClosed() {
+-        if (!this.window)
+-            return;
+-
+-        [this.offsetX, this.offsetY] = this.window.get_position();
+-        this.window.destroy();
+-        this.window = null;
+-    }
+-
+-    onNotificationPopupWebviewClosed() {
+-        if (!this.window())
+-            return;
+-
+-        [this.offsetX, this.offsetY] = this.window.get_position();
+-        this.window.destroy();
+-    }
+-
+-    getLanguage() {
+-        let language = Gtk.get_default_language();
+-        if (!language)
+-            return;
+-
+-        if (language.to_string() === 'ko-kr')
+-            return 'ko';
+-        else
+-            return 'en';
+-    }
+-
+-    getDomain(url) {
+-        let urlToken = url.split('/');
+-        if (urlToken)
+-            return urlToken[2];
+-    }
+-
+-    addCookie(manager, key, value, domain) {
+-        let cookie = new Soup.Cookie(key, value, domain, '/', -1);
+-        manager.add_cookie(cookie, null, this.onNotificationPopupCookieCallback());
+-    }
+-
+-    onNotificationPopupCookieCallback() {}
+-
+-    onNotificationPopupClosed() {
+-        if (!this.window)
+-            return;
+-
+-        [this.offsetX, this.offsetY] = this.window.get_position();
+-        this.window.destroy();
+-        this.window = null;
+-    }
+-
+     onDestroy() {
+         if (this.agentId)
+             this.agentProxy.disconnect(this.agentId);
+-    /* if (this.window)
+-        this.window.destroy();
+-    if (this.data_list)
+-        this.dataList.destroy();
+-    G_OBJECT_CLASS (gooroom_notice_applet_parent_class)->finalize (object);*/
++    /* if (this.data_list)
++        this.dataList.destroy();*/
+     }
+ 
+ };
+@@ -538,42 +425,18 @@ typedef struct
+     gchar    *icon;
+ }NoticeData;
+ 
+-gooroom_notice_applet_size_allocate (widget, allocation) {
+-    let size;
+-    GtkOrientation orientation;
+-    GooroomNoticeApplet *applet;
+-
+-    GTK_WIDGET_CLASS (gooroom_notice_applet_parent_class)->size_allocate(widget, allocation);
+-
+-    orientation = gp_applet_get_orientation(GP_APPLET (applet));
+-    let alloc = widget.get_allocation(widget);
+-
+-    if (orientation == Gtk.Orientation.HORIZONTAL)
+-        size = alloc.height;
+-    else
+-        size = alloc.width;
+-
+-    if (this.panel_size == size)
+-        return;
+-
+-    this.panel_size = size;
+-
+-    let ctx = this.buttonget_style_context(this.button);
+-    let padding = ctx.get_padding(this.button.get_state_flags());
+-    let border = ctx.get_border(this.button.get_state_flags());
++    trayIconChange() {
++        let icon = this.img_status ? DEFAULT_NOTICE_TRAY_ICON : DEFAULT_TRAY_ICON;
+ 
+-    let minus = padding.top+padding.bottom+border.top+border.bottom;
+-    this.minus_size = minus;
+-}
++        this.tray.set_from_icon_name(icon, Gtk.Iconsize.BUTTON);
++        this.tray.set_pixel_size(PANEL_TRAY_ICON_SIZE);
+ 
+-gooroom_notice_applet_constructed() {
+-    applet.show_all();
+-    if (!(this.isConnected && this.isAgent))
+-        this.button.hide();
+-}
++        if (this.is_connected && this.is_agent) {
++            this.button.show_all();
++            this.button.set_sensitive(true);
++        } else {
++            this.button.hide();
++        }
++    }
+ 
+-gooroom_notice_applet_class_init() {
+-    this.size_allocate = gooroom_notice_applet_size_allocate;
+-    this.constructed = gooroom_notice_applet_constructed;
+-    this.finalize = gooroom_notice_applet_finalize;
+-}*/
++*/
+diff --git a/extensions/notification-center/noticeView.js b/extensions/notification-center/noticeView.js
+new file mode 100755
+index 0000000..c819845
+--- /dev/null
++++ b/extensions/notification-center/noticeView.js
+@@ -0,0 +1,94 @@
++const { Gtk, Gdk, Soup, WebKit2 } = imports.gi;
++
++function onNotificationWindowClosed() {
++    [offsetX, offsetY] = window.get_position();
++    // send offset?
++
++    // window.destroy();
++    Gtk.main_quit();
++}
++
++function getLanguage() {
++    let language = Gtk.get_default_language();
++    if (!language)
++        return;
++
++    if (language.to_string() === 'ko-kr')
++        return 'ko';
++    else
++        return 'en';
++}
++
++function getDomain(url) {
++    let urlToken = url.split('/');
++    if (urlToken)
++        return urlToken[2];
++}
++
++function addCookie(manager, key, value, domain) {
++    let cookie = new Soup.Cookie(key, value, domain, '/', -1);
++    manager.add_cookie(cookie, null, null);
++}
++
++let offsetX, offsetY;
++
++Gtk.init(null);
++
++let window = new Gtk.Window({ type: Gtk.WindowType.TOPLEVEL });
++window.set_border_width(5);
++window.set_type_hint(Gdk.WindowTypeHint.DIALOG);
++window.set_skip_taskbar_hint(true);
++window.set_title('Notice');
++window.set_default_size(600, 550);
++
++let mainVbox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 5 });
++window.add(mainVbox);
++mainVbox.show();
++
++let scrollWindow = new Gtk.ScrolledWindow();
++scrollWindow.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
++mainVbox.pack_start(scrollWindow, true, true, 0);
++scrollWindow.show();
++
++let view = new WebKit2.WebView();
++scrollWindow.add(view);
++
++window.connect('delete-event', () => onNotificationWindowClosed());
++view.connect('close', () => onNotificationWindowClosed());
++
++view.load_uri(ARGV[0]);
++
++let context = view.get_context();
++let manager = context.get_cookie_manager();
++
++let lang = getLanguage();
++let domain = getDomain(ARGV[0]);
++
++if (ARGV[1] !== 'emtpy')
++    addCookie(manager, 'SIGNING', ARGV[1], domain);
++if (ARGV[2] !== 'emtpy')
++    addCookie(manager, 'SESSION_ID', ARGV[2], domain);
++if (ARGV[3] !== 'emtpy')
++    addCookie(manager, 'CLIENT_ID', ARGV[3], domain);
++addCookie(manager, 'LANG_CODE', lang, domain);
++
++view.grab_focus();
++view.show();
++
++let hbox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 0 });
++mainVbox.pack_end(hbox, false, true, 0);
++hbox.show();
++
++let button = new Gtk.Button({ label: 'Close' });
++button.set_can_focus(true);
++hbox.pack_end(button, false, false, 0);
++button.connect('clicked', () => onNotificationWindowClosed());
++button.show();
++window.show_all();
++
++if (offsetX !== 0 && offsetY !== 0)
++    window.move(offsetX, offsetY);
++else
++    window.set_position(Gtk.WIN_POS_CENTER);
++
++Gtk.main();

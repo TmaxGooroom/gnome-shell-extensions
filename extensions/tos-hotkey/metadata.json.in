@@ -1,0 +1,8 @@
+{
+    "uuid": "tos-hotkey@tmax-shell-extensions",
+    "name": "tos hotkey",
+    "description": "To support TOS specific hotkeys",
+    "gettext-domain": "tos-hotkey",
+    "version": 1,
+    "shell-version": [ "3.38" ]
+}

@@ -1,0 +1,63 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 26 May 2022 14:46:33 +0900
+Subject: [bugfix] notification-center: Resolve problem that background is not
+ displayed when you return from sleep mode
+
+- The case of a dual monitor was not considered.
+- Add an exception for adding a monitor after logging in.
+
+[IMS] 263023
+---
+ extensions/notification-center/extension.js | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index f2ad191..b36a6f4 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -954,6 +954,7 @@ const NotificationCenter = new LangClass({
+ 
+         this.notificationSection._messages.forEach(message => this._setMessageLayout(message));
+ 
++        this.subPanelElements = [];
+         this.changeSubPanelUI();
+         this.changeSubPanelUILater();
+         if (this.noticeApplet)
+@@ -969,7 +970,6 @@ const NotificationCenter = new LangClass({
+         if (global.dashToPanel.panels.length < 2)
+             return false;
+ 
+-        this.subPanelElements = [];
+         global.dashToPanel.panels.forEach(panel => {
+             if (panel === Main.panel.get_parent())
+                 return;
+@@ -979,6 +979,9 @@ const NotificationCenter = new LangClass({
+             let subPanelElement = [];
+             let messageList = panel.statusArea.dateMenu._messageList;
+             let messageListParent = messageList.get_parent();
++            if (!messageListParent)
++                return;
++
+             let dtActor = panel.statusArea.dateMenu.get_children()[0].get_children()[0];
+             let dtActorParent = panel.statusArea.dateMenu.get_children()[0];
+             let indicator = panel.statusArea.dateMenu._indicator;
+@@ -1010,6 +1013,9 @@ const NotificationCenter = new LangClass({
+             if (extension.uuid === 'dash-to-panel@tmax-shell-extensions' && extension.state === 1)
+                 this.changeSubPanelUI();
+         });
++
++        this._monitorsChangedId =
++            Main.layoutManager.connect('monitors-changed', this.changeSubPanelUI.bind(this));
+     },
+ 
+     revertSubPanelUI() {
+@@ -1047,7 +1053,9 @@ const NotificationCenter = new LangClass({
+     undoChanges() {
+         if (this.noticeApplet)
+             this.noticeApplet.onDestroy();
++
+         Main.extensionManager.disconnect(this.subPanelId);
++        Main.layoutManager.disconnect(this._monitorsChangedId);
+         this.revertSubPanelUI();
+ 
+         this.blinkIconStopIfBlinking();

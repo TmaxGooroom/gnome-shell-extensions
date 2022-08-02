@@ -1,0 +1,40 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Wed, 25 May 2022 15:12:03 +0900
+Subject: [bugfix] Search: Enlarge area where searchbox cursor is generated
+
+- When click rest of the text area and search icon, grab focus and display search menu.
+- Center searchbox
+
+[IMS] 273092
+---
+ extensions/search/menuWidgets.js | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 79575e4..c64721a 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -826,7 +826,7 @@ var SearchBox = class ArcMenuSearchBox {
+             can_focus: true,
+             x_expand: true,
+             x_align: Clutter.ActorAlign.FILL,
+-            y_align: Clutter.ActorAlign.START,
++            y_align: Clutter.ActorAlign.CENTER,
+         });
+         this.actor.style = 'margin: 0px; padding: 0px; width: 270px;';
+         this._stEntry.style = 'border-radius:20px; padding: 7px 9px; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); margin: 6px 0px 3px 0px; font-weight: normal; height: 40px;';
+@@ -849,6 +849,14 @@ var SearchBox = class ArcMenuSearchBox {
+         this._keyPressId = this._text.connect('key-press-event', this._onKeyPress.bind(this));
+         this._keyFocusInId = this._text.connect('key-focus-in', this._onKeyFocusIn.bind(this));
+         this._text.connect('button-press-event', this._onButtonPress.bind(this));
++        this._stEntry.connect('button-release-event', () => {
++            this._onButtonPress();
++            this._text.grab_key_focus();
++        });
++        this._stEntry.connect('primary-icon-clicked', () => {
++            this._onButtonPress();
++            this._text.grab_key_focus();
++        });
+         this._searchIconClickedId = 0;
+         this._inputHistory = [];
+         this._maxInputHistory = 5;

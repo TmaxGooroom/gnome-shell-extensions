@@ -4,6 +4,10 @@ project('gnome-shell-extensions',
   license: 'GPL2+'
 )
 
+#Apply Git Hook Directory
+hook_dir = join_paths(meson.source_root(), 'hooks')
+run_command('git', 'config', 'core.hooksPath', hook_dir)
+
 gettext_domain = meson.project_name()
 
 gnome = import('gnome')
@@ -27,7 +31,7 @@ else
   shell_version = '.'.join(ver_arr)
 endif
 
-uuid_suffix = '@gnome-shell-extensions.gcampax.github.com'
+uuid_suffix = '@tmax-shell-extensions'
 
 classic_extensions = [
   'apps-menu',
@@ -37,6 +41,24 @@ classic_extensions = [
   'window-list'
 ]
 
+tos_extensions = [
+  'arc-menu',
+  'dash-to-panel',
+  'notification-center',
+  'appindicator',
+  'desktop-icons-ng',
+  'alternate-tab',
+  'search',
+  'tos-hotkey',
+  'osk-hangul',
+  'greeter',
+  'calibrator',
+  'screenshot',
+  'monitor-settings-saver',
+  'gooroom-security'
+]
+
+
 default_extensions = classic_extensions
 default_extensions += [
   'drive-menu',
@@ -45,7 +67,7 @@ default_extensions += [
   'workspace-indicator'
 ]
 
-all_extensions = default_extensions
+all_extensions = default_extensions + tos_extensions
 all_extensions += [
   'auto-move-windows',
   'native-window-placement',
@@ -59,6 +81,8 @@ if enabled_extensions.length() == 0
 
   if set == 'classic'
     enabled_extensions += classic_extensions
+  elif set == 'tos'
+    enabled_extensions += tos_extensions
   elif set == 'default'
     enabled_extensions += default_extensions
   elif set == 'all'
@@ -92,3 +116,4 @@ endif
 
 subdir('extensions')
 subdir('po')
+subdir('logging')

@@ -1,0 +1,34 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 8 Nov 2021 15:37:34 +0900
+Subject: [chore] Search: Remove warning log
+
+- Remove 'Usage of object.actor is deprecated for SearchMenuMenuButton' warning log
+- Change to use 'this' instead of 'this.actor'
+
+[IMS] N/A
+---
+ extensions/search/menuButton.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/search/menuButton.js b/extensions/search/menuButton.js
+index cc53ba4..bfb46af 100644
+--- a/extensions/search/menuButton.js
++++ b/extensions/search/menuButton.js
+@@ -123,7 +123,7 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+         });
+         this.mainBox._delegate = this.mainBox;
+ 
+-        let monitorIndex = Main.layoutManager.findIndexForActor(this.actor);
++        let monitorIndex = Main.layoutManager.findIndexForActor(this);
+         let scaleFactor = Main.layoutManager.monitors[monitorIndex].geometry_scale;
+         let monitorWorkArea = Main.layoutManager.getWorkAreaForMonitor(monitorIndex);
+         let height = Math.round(550 / scaleFactor);
+@@ -206,7 +206,7 @@ var MenuButton = GObject.registerClass(class SearchMenuMenuButton extends PanelM
+     }
+ 
+     updateHeight() {
+-        let monitorIndex = Main.layoutManager.findIndexForActor(this.actor);
++        let monitorIndex = Main.layoutManager.findIndexForActor(this);
+         let scaleFactor = Main.layoutManager.monitors[monitorIndex].geometry_scale;
+         let monitorWorkArea = Main.layoutManager.getWorkAreaForMonitor(monitorIndex);
+         let height = Math.round(550 / scaleFactor);

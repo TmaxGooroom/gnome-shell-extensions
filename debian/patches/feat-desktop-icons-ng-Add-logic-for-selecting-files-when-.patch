@@ -1,0 +1,115 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Fri, 11 Mar 2022 11:35:19 +0900
+Subject: [feat] desktop-icons-ng : Add logic for selecting files when mouse
+ click with shift key
+
+- When mouse is clicked with shift key pressed, calculate the range of selection and select the fileItems
+- Focus item after giving selected effect
+
+[IMS] 277168
+---
+ extensions/desktop-icons-ng/desktopManager.js      | 24 +++++++++++++++++++++-
+ extensions/desktop-icons-ng/fileItem.js            |  5 +----
+ extensions/desktop-icons-ng/selectionCalculator.js |  9 +++++---
+ 3 files changed, 30 insertions(+), 8 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 2a0f52e..1b23156 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -968,9 +968,10 @@ var DesktopManager = class {
+ 
+                 }
+             }
++            fileItem.focusItem();
+             break;
+         case Enums.Selection.WITH_SHIFT:
+-            fileItem.toggleSelected();
++            this._calculateSelectionRange(fileItem);
+             break;
+         case Enums.Selection.RIGHT_BUTTON:
+             if (!fileItem.isSelected) {
+@@ -982,6 +983,7 @@ var DesktopManager = class {
+ 
+                 }
+             }
++            fileItem.focusItem();
+             break;
+         case Enums.Selection.ENTER:
+             if (this.rubberBand)
+@@ -1797,6 +1799,26 @@ var DesktopManager = class {
+         }
+     }
+ 
++    _calculateSelectionRange(item) {
++        let focusedItem = this._fileList.find(i => i.actor.has_focus === true);
++        if (!focusedItem) {
++            item.toggleSelected();
++            return;
++        }
++
++        this._selectionCalculator.setPivot(focusedItem);
++        let nextSelection = this._selectionCalculator.getShiftSelectedButtons(this._fileList,
++            item);
++
++        for (let fileItem of this._fileList)
++            fileItem.unsetSelected();
++
++
++        for (let fileItem of nextSelection)
++            fileItem.setSelected();
++
++    }
++
+     _calculateNextSelection(isShift, symbol) {
+         let currentSelection = this.getCurrentSelection(false);
+         let nextSelection =
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 2e1e81c..19ec595 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -99,8 +99,7 @@ var FileItem = class {
+          * in a second EventBox, located outside.
+          */
+ 
+-        this.actor.connect('button-press-event', (actor, unusedEvent) => {
+-            actor.grab_focus();
++        this.actor.connect('button-press-event', (unusedActor, unusedEvent) => {
+             return true;
+         });
+ 
+@@ -904,8 +903,6 @@ var FileItem = class {
+     }
+ 
+     _onPressButton(actor, event) {
+-        this.actor.grab_focus();
+-
+         let button = event.get_button()[1];
+         if (button === 3) {
+             if (!this._isSelected)
+diff --git a/extensions/desktop-icons-ng/selectionCalculator.js b/extensions/desktop-icons-ng/selectionCalculator.js
+index 13b4e83..ed8ac7e 100644
+--- a/extensions/desktop-icons-ng/selectionCalculator.js
++++ b/extensions/desktop-icons-ng/selectionCalculator.js
+@@ -104,10 +104,9 @@ var SelectionCalculator = class SelectionCalculator {
+ 
+     getShiftSelectedButtons(fileList, toItem) {
+         let selectedFiles = [];
+-        if (!this._pivotToShiftSelection) {
+-            log('no pivot to select in range');
++        if (!this._pivotToShiftSelection)
+             return selectedFiles;
+-        }
++
+ 
+         let [x1, y1, endX1_, endY1_, grid1_] = this._pivotToShiftSelection.getCoordinates();
+         let [x2, y2, endX2_, endY2_, grid2_] = toItem.getCoordinates();
+@@ -147,4 +146,8 @@ var SelectionCalculator = class SelectionCalculator {
+     resetPivot() {
+         this._pivotToShiftSelection = null;
+     }
++
++    setPivot(item) {
++        this._pivotToShiftSelection = item;
++    }
+ };

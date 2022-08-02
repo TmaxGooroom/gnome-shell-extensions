@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extensions">
+  <schema path="/org/gnome/shell/extensions/tos-hotkey/" id="org.gnome.shell.extensions.tos-hotkey">
+    <key name="open-file-manager" type="as">
+      <default>["&lt;Super&gt;e"]</default>
+      <summary>Keybinding to open default file manager.</summary>
+      <description>
+        Keybinding to open the application menu.
+      </description>
+    </key>
+    <key name="open-terminal" type="as">
+      <default>["&lt;Super&gt;r"]</default>
+      <summary>Keybinding to open default file manager.</summary>
+      <description>
+        Keybinding to open the application menu.
+      </description>
+    </key>
+  </schema>
+</schemalist>

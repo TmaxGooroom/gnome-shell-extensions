@@ -1,0 +1,202 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-04-12 13:24+0900\n"
+"PO-Revision-Date: 2021-04-12 13:33+0900\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.2\n"
+"Last-Translator: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: ko_KR\n"
+
+#: constants.js:50
+msgid "Favorites"
+msgstr ""
+
+#: constants.js:51
+msgid "Frequent Apps"
+msgstr "자주 사용하는 앱"
+
+#: constants.js:52
+msgid "All Programs"
+msgstr "모든 프로그램"
+
+#: constants.js:53 menuLayout.js:335
+msgid "Pinned Apps"
+msgstr "고정 앱"
+
+#: constants.js:54
+msgid "Recent Files"
+msgstr "최근 사용한 파일"
+
+#: baseMenuLayout.js:341 placeDisplay.js:443
+msgid "Home"
+msgstr "홈"
+
+#: baseMenuLayout.js:357
+msgid "Network"
+msgstr "네트워크"
+
+#: baseMenuLayout.js:369 baseMenuLayout.js:371
+msgid "Software"
+msgstr "소프트웨어"
+
+#: baseMenuLayout.js:377 baseMenuLayout.js:379 placeDisplay.js:713
+msgid "Trash"
+msgstr "쓰레기통"
+
+#: utils.js:42
+msgid "Home Screen"
+msgstr "바탕화면"
+
+#: placeDisplay.js:129
+#, javascript-format
+msgid "Failed to launch “%s”"
+msgstr "\"%s\" 실행 실패"
+
+#: placeDisplay.js:144
+#, javascript-format
+msgid "Failed to mount volume for “%s”"
+msgstr "\"%s\" 마운트 실패"
+
+#: placeDisplay.js:228 placeDisplay.js:252
+msgid "Computer"
+msgstr "내 컴퓨터"
+
+#: placeDisplay.js:317
+#, javascript-format
+msgid "Ejecting drive “%s” failed:"
+msgstr "\"%s\" 드라이브 제거 실패"
+
+#: placeDisplay.js:723 placeDisplay.js:729
+msgid "Empty Trash"
+msgstr "휴지통 비우기"
+
+#: menuWidgets.js:155
+msgid "Open Folder Location"
+msgstr ""
+
+#: menuWidgets.js:170
+msgid "Current Windows:"
+msgstr "현재 창"
+
+#: menuWidgets.js:188
+msgid "New Window"
+msgstr "새 창"
+
+#: menuWidgets.js:198
+msgid "Launch using Dedicated Graphics Card"
+msgstr ""
+
+#: menuWidgets.js:241
+msgid "Delete Desktop Shortcut"
+msgstr "바탕화면에 바로가기 제거"
+
+#: menuWidgets.js:248
+msgid "Create Desktop Shortcut"
+msgstr "바탕화면에 바로가기 생성"
+
+#: menuWidgets.js:262
+msgid "Remove from Favorites"
+msgstr "작업 표시줄에서 제거"
+
+#: menuWidgets.js:268
+msgid "Add to Favorites"
+msgstr "작업 표시줄에 추가"
+
+#: menuWidgets.js:285 menuWidgets.js:332
+msgid "Unpin from ArcMenu"
+msgstr "시작메뉴에서 제거"
+
+#: menuWidgets.js:298
+msgid "Pin to ArcMenu"
+msgstr "시작메뉴에 고정"
+
+#: menuWidgets.js:311
+msgid "Show Details"
+msgstr "자세히 보기"
+
+#: menuWidgets.js:1019
+msgid "Settings"
+msgstr "설정"
+
+#: menuWidgets.js:1029
+msgid "Leave"
+msgstr "나가기"
+
+#: menuWidgets.js:1051
+msgid "Power Off"
+msgstr "시스템 종료"
+
+#: menuWidgets.js:1061
+msgid "Restart"
+msgstr "재시작"
+
+#: menuWidgets.js:1074 menuLayout.js:172
+msgid "Log Out"
+msgstr "로그 아웃"
+
+#: menuWidgets.js:1084 menuLayout.js:178
+msgid "Suspend"
+msgstr "잠자기"
+
+#: menuWidgets.js:1094 menuLayout.js:169
+msgid "Lock"
+msgstr "잠금 모드"
+
+#: menuWidgets.js:1402
+msgid "ArcMenu Settings"
+msgstr "메뉴 설정"
+
+#: menuWidgets.js:1404
+msgid "Terminal"
+msgstr "터미널"
+
+#: menuWidgets.js:1645
+msgid "New"
+msgstr "새로 설치됨"
+
+#: menuWidgets.js:1926
+msgid "Applications"
+msgstr "어플리케이션"
+
+#: menuLayout.js:65
+msgid "Documents"
+msgstr "문서"
+
+#: menuLayout.js:167
+msgid "Session"
+msgstr "세션"
+
+#: menuLayout.js:176
+msgid "System"
+msgstr "시스템"
+
+#: menuLayout.js:182
+msgid "Restart..."
+msgstr "재시작"
+
+#: menuLayout.js:186
+msgid "Power Off..."
+msgstr "시스템 종료"
+
+#: menuLayout.js:279
+msgid "Recently Installed App"
+msgstr "최근 설치한 앱"
+
+#: menuWidget.js:1682
+msgid "Expand"
+msgstr "확장"
+
+#: menuWidgets.js:1679
+msgid "Collapse"
+msgstr "축소"

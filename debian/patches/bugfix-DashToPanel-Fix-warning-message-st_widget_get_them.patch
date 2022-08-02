@@ -1,0 +1,69 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Thu, 11 Nov 2021 15:56:07 +0900
+Subject: [bugfix] DashToPanel : Fix warning message -
+ st_widget_get_theme_node function
+
+- The warning message occurs because the actor is not connected to the stage as a result.
+- In clearMenus methods, actor is removed from stage.
+- add_child & remove -> show & hide
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/tray.js | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index 1d42e50..497712a 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -15,7 +15,6 @@ class Tray {
+         this._originalTray = aggregateMenu;
+         this._menu = this._originalTray.menu;
+         this._indicators = this._originalTray._indicators;
+-        this._originalMenuItems = this._menu._getMenuItems();
+ 
+         this._originalEventFunc = this._originalTray.vfunc_event;
+         // remove original event function when aggregateMenu is pressed
+@@ -80,6 +79,7 @@ class Tray {
+         });
+ 
+         this._indicators.get_last_child().visible = false;
++        this._clearMenu();
+     }
+ 
+     disable() {
+@@ -109,14 +109,13 @@ class Tray {
+         this._originalTray = null;
+         this._menu = null;
+         this._indicators = null;
+-        this._originalMenuItems = null;
+         this._originalEventFunc = null;
+     }
+ 
+     _restoreOriginalMenu() {
+-        this._clearMenu();
+-        this._originalMenuItems.forEach(menuItem => {
+-            this._menu.addMenuItem(menuItem);
++        let menus = this._menu._getMenuItems();
++        menus.forEach(menu => {
++            menu.actor.show();
+         });
+         this._menu.sourceActor = this._originalTray;
+     }
+@@ -124,13 +123,13 @@ class Tray {
+     _clearMenu() {
+         let menus = this._menu._getMenuItems();
+         menus.forEach(menu => {
+-            this._menu.box.remove_child(menu.actor);
++            menu.actor.hide();
+         });
+     }
+ 
+     _changeSourceIndicator(actor) {
+-        this._clearMenu();
+-        this._menu.addMenuItem(actor.menu);
++        this._menu.sourceActor.menu.actor.hide();
++        actor.menu.actor.show();
+         this._menu.sourceActor = actor;
+     }
+ 

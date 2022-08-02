@@ -1,0 +1,10 @@
+*.sw?
+*.gmo
+*gschemas.compiled
+obj-x86-linux-gnu/
+obj-x86_64-linux-gnu/
+debian/.debhelper
+debian/debhelper-build-stamp
+debian/gnome-shell-extensions/
+debian/gnome-shell-extensions.debhelper.log
+debian/gnome-shell-extensions.substvars

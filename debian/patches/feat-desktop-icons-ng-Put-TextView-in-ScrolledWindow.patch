@@ -1,0 +1,724 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Mon, 1 Nov 2021 18:04:36 +0900
+Subject: [feat] desktop-icons-ng : Put TextView in ScrolledWindow
+
+- Put TextView in ScrolloedWindow to fix its width
+- Change hide, show function to set_visible()
+- Oveerride TextBuffer object to handle insertion error
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/askRenamePopup.js |  90 -----------------
+ extensions/desktop-icons-ng/desktopManager.js |  29 ++++--
+ extensions/desktop-icons-ng/enums.js          |   3 +-
+ extensions/desktop-icons-ng/fileItem.js       | 128 ++++++++++++++++++++++--
+ extensions/desktop-icons-ng/meson.build       |   2 +-
+ extensions/desktop-icons-ng/preferences.js    |   6 +-
+ extensions/desktop-icons-ng/renameArea.js     | 138 ++++++++++++++++++++++++++
+ extensions/desktop-icons-ng/stylesheet.css    |  23 ++++-
+ 8 files changed, 309 insertions(+), 110 deletions(-)
+ delete mode 100644 extensions/desktop-icons-ng/askRenamePopup.js
+ create mode 100644 extensions/desktop-icons-ng/renameArea.js
+
+diff --git a/extensions/desktop-icons-ng/askRenamePopup.js b/extensions/desktop-icons-ng/askRenamePopup.js
+deleted file mode 100644
+index cb6238a..0000000
+--- a/extensions/desktop-icons-ng/askRenamePopup.js
++++ /dev/null
+@@ -1,90 +0,0 @@
+-/* exported AskRenamePopup*/
+-/* DING: Desktop Icons New Generation for GNOME Shell
+- *
+- * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+- * Based on code original (C) Carlos Soriano
+- *
+- * This program is free software: you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation, version 3 of the License.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-const Gtk = imports.gi.Gtk;
+-const Gio = imports.gi.Gio;
+-const GLib = imports.gi.GLib;
+-const DBusUtils = imports.dbusUtils;
+-const DesktopIconsUtil = imports.desktopIconsUtil;
+-const Gettext = imports.gettext.domain('ding');
+-
+-const _ = Gettext.gettext;
+-
+-var AskRenamePopup = class {
+-
+-    constructor(fileItem) {
+-
+-        this._desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+-        this._fileItem = fileItem;
+-        this._popover = new Gtk.Popover({ relative_to: fileItem.actor,
+-            modal: true });
+-        let contentBox = new Gtk.Grid({ row_spacing: 6,
+-            column_spacing: 6,
+-            margin: 10 });
+-        this._popover.add(contentBox);
+-        let label = new Gtk.Label({ label: fileItem.isDirectory ? _('Folder name') : _('File name'),
+-            justify: Gtk.Justification.LEFT,
+-            halign: Gtk.Align.START });
+-        contentBox.attach(label, 0, 0, 2, 1);
+-        this._textArea = new Gtk.Entry();
+-        this._textArea.text = fileItem.fileName;
+-        contentBox.attach(this._textArea, 0, 1, 1, 1);
+-        this._button = new Gtk.Button({ label: _('Rename') });
+-        contentBox.attach(this._button, 1, 1, 1, 1);
+-        this._button.connect('clicked', () => {
+-            this._doRename();
+-        });
+-        this._textArea.connect('changed', () => {
+-            this._validate();
+-        });
+-        this._textArea.connect('activate', () => {
+-            if (this._button.sensitive)
+-                this._doRename();
+-
+-        });
+-        this._textArea.set_can_default(true);
+-        this._popover.set_default_widget(this._textArea);
+-        this._button.get_style_context().add_class('suggested-action');
+-        this._popover.show_all();
+-        this._validate();
+-        this._textArea.grab_focus_without_selecting();
+-        this._textArea.select_region(0, DesktopIconsUtil.getFileExtensionOffset(fileItem.fileName, fileItem.isDirectory));
+-    }
+-
+-    _validate() {
+-        let text = this._textArea.text;
+-        let finalPath = `${this._desktopPath}/${text}`;
+-        let finalFile = Gio.File.new_for_commandline_arg(finalPath);
+-        if (text === '' || text.indexOf('/') !== -1 || text === this._fileItem.fileName || finalFile.query_exists(null))
+-            this._button.sensitive = false;
+-        else
+-            this._button.sensitive = true;
+-
+-    }
+-
+-    _doRename() {
+-        DBusUtils.FileOperationsProxy.RenameFileRemote(this._fileItem.file.get_uri(),
+-            this._textArea.text,
+-            (result, error) => {
+-                if (error)
+-                    throw new Error(`Error renaming file: ${error.message}`);
+-            }
+-        );
+-    }
+-};
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 9b41f8e..a0be05c 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -31,7 +31,6 @@ const Enums = imports.enums;
+ const SortUtil = imports.sortUtil;
+ const DBusUtils = imports.dbusUtils;
+ const AskNamePopup = imports.askNamePopup;
+-const AskRenamePopup = imports.askRenamePopup;
+ const AskConfirmPopup = imports.askConfirmPopup;
+ const ShowErrorPopup = imports.showErrorPopup;
+ const TemplateManager = imports.templateManager;
+@@ -424,6 +423,8 @@ var DesktopManager = class {
+     }
+ 
+     onPressButton(x, y, event, unusedGrid) {
++        for (let fileItem of this._fileList)
++            fileItem.clear();
+ 
+         this._clickX = Math.floor(x);
+         this._clickY = Math.floor(y);
+@@ -528,6 +529,12 @@ var DesktopManager = class {
+     }
+ 
+     onKeyPress(event, unusedGrid) {
++        if (this.beingRenamed()) {
++            log('desktop key press is voer');
++            return false;
++        }
++        // FIXME : while renaming, doesnt accept key press
++        log('desktopManager key press');
+         let symbol = event.get_keyval()[1];
+         let isCtrl = (event.get_state()[1] & Gdk.ModifierType.CONTROL_MASK) !== 0;
+         let isShift = (event.get_state()[1] & Gdk.ModifierType.SHIFT_MASK) !== 0;
+@@ -563,7 +570,8 @@ var DesktopManager = class {
+             let selection = this.getCurrentSelection(false);
+             if (selection && selection.length === 1) {
+                 // Support renaming other grids file items.
+-                this.doRename(selection[0]);
++                log('askRename');
++                this.askRename(selection[0]);
+                 return true;
+             }
+         } else if (symbol === Gdk.KEY_space) {
+@@ -1405,11 +1413,11 @@ var DesktopManager = class {
+                 filelist += `"${fileItem.fileName}"`;
+             }
+         }
+-        let renameWindow = new AskConfirmPopup.AskConfirmPopup(
++        let confirmWindow = new AskConfirmPopup.AskConfirmPopup(
+             _('Are you sure you want to permanently delete these items?'),
+             `${_('If you delete an item, it will be permanently lost.')}\n\n${filelist}`,
+             null);
+-        if (renameWindow.run()) {
++        if (confirmWindow.run()) {
+             this._permanentDeleteError = false;
+             for (let fileItem of this._fileList) {
+                 if (fileItem.isSelected)
+@@ -1473,11 +1481,11 @@ var DesktopManager = class {
+         return count;
+     }
+ 
+-    doRename(fileItem) {
++    askRename(fileItem) {
+         for (let fileItem2 of this._fileList)
+             fileItem2.unsetSelected();
+ 
+-        this._renameWindow = new AskRenamePopup.AskRenamePopup(fileItem);
++        fileItem.startRename();
+     }
+ 
+     doOpenWith(fileItem) {
+@@ -1693,4 +1701,13 @@ var DesktopManager = class {
+         // To ensure next shift selection
+         nextFocusItem.focusItem();
+     }
++
++    beingRenamed() {
++        for (let item of this._fileList) {
++            if (item.beingRenamed())
++                return true;
++
++        }
++        return false;
++    }
+ };
+diff --git a/extensions/desktop-icons-ng/enums.js b/extensions/desktop-icons-ng/enums.js
+index 472a3c9..6e415ff 100644
+--- a/extensions/desktop-icons-ng/enums.js
++++ b/extensions/desktop-icons-ng/enums.js
+@@ -1,4 +1,4 @@
+-/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria StringToSortingCriteria SortingCriteriaToString DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH LABEL_STYLE ICON_STYLE */
++/* exported ICON_SIZE ICON_WIDTH ICON_HEIGHT START_CORNER FileType StoredCoordinates Selection UndoStatus FileExistOperation WhatToDoWithExecutable SortingCriteria StringToSortingCriteria SortingCriteriaToString DEFAULT_ATTRIBUTES TERMINAL_SCHEMA SCHEMA_GTK SCHEMA SCHEMA_MUTTER EXEC_KEY S_IXUSR S_IWOTH LABEL_STYLE ICON_STYLE EDIT_STYLE */
+ /* DING: Desktop Icons New Generation for GNOME Shell
+  *
+  * Copyright (C) 2019 Sergio Costas (rastersoft@gmail.com)
+@@ -22,6 +22,7 @@ var ICON_WIDTH = { 'small': 90, 'standard': 90, 'large': 108 };
+ var ICON_HEIGHT = { 'small': 86, 'standard': 100, 'large': 150 };
+ var LABEL_STYLE = { 'small': 'file-label-small', 'standard': 'file-label-standard', 'large': 'file-label-large' };
+ var ICON_STYLE = { 'small': 'file-icon-small', 'standard': 'file-icon-standard', 'large': 'file-icon-large' };
++var EDIT_STYLE = { 'small': 'edit-area-small', 'standard': 'edit-area-standard', 'large': 'edit-area-large' };
+ 
+ var START_CORNER = { 'top-left': [false, false],
+     'top-right': [true, false],
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 156ca6e..b97d2a8 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -30,6 +30,7 @@ const Prefs = imports.preferences;
+ const Enums = imports.enums;
+ const DBusUtils = imports.dbusUtils;
+ const Constants = imports.constants;
++const RenameArea = imports.renameArea;
+ 
+ const ByteArray = imports.byteArray;
+ const Mainloop = imports.mainloop; /* eslint-disable-line no-restricted-properties */
+@@ -41,6 +42,8 @@ const _ = Gettext.gettext;
+ var FileItem = class {
+ 
+     constructor(desktopManager, file, fileInfo, fileExtra, codePath, custom) {
++        log('new fileitem');
++        this._desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+         this._custom = custom;
+         this._codePath = codePath;
+         this._desktopManager = desktopManager;
+@@ -65,6 +68,7 @@ var FileItem = class {
+ 
+         this._innerContainer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+         this._container = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
++        this._container.set_size_request(Prefs.getDesiredWidth(), -1);
+         this._styleContext = this._innerContainer.get_style_context();
+         this._eventBox.add(this._innerContainer);
+         this._styleContext.add_class('container-style');
+@@ -87,12 +91,35 @@ var FileItem = class {
+         this._label.set_yalign(0.0);
+         this._label.set_justify(Gtk.Justification.CENTER);
+         this._label.set_lines(2);
+-        this._setFileName(fileInfo.get_display_name());
++
++        this._renameArea = new RenameArea.RenameArea(this);
++
++        this._renameScrollView = new Gtk.ScrolledWindow();
++        this._renameScrollView.add(this._renameArea);
++        this._renameScrollView.set_max_content_width(90);
++        this._renameScrollView.set_min_content_width(90);
++        this._renameScrollView.set_policy(Gtk.PolicyType.EXTERNAL, Gtk.PolicyType.NEVER);
++
++        this._vAdjustment = new Gtk.Adjustment();
++        this._renameScrollView.set_vadjustment(this._vAdjustment);
+ 
+         this._innerContainer.pack_start(this._label, false, true, 0);
++        this._innerContainer.pack_start(this._renameScrollView, true, true, 0);
+         this._container.pack_start(this._eventBox, false, false, 0);
+         this.actor.add(this._container);
+ 
++        this._setFileName(fileInfo.get_display_name());
++
++        this._bubbleError = new Gtk.Popover({ relative_to: this.actor,
++            modal: false });
++        this._errorLabel = new Gtk.Label({ label: 'too long' });
++        this._bubbleContents = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
++        this._bubbleContents.pack_start(this._errorLabel, false, false, 0);
++
++        // FIXME : perhaps, set position to
++        this._bubbleError.set_position(Gtk.PositionType.BOTTOM);
++        this._bubbleError.add(this._bubbleContents);
++
+         /* We need to allow the "button-press" event to pass through the callbacks, to allow the DnD to work
+          * But we must avoid them to reach the main window.
+          * The solution is to allow them to pass in a EventBox, used both for detecting the events and the DnD, and block them
+@@ -103,11 +130,16 @@ var FileItem = class {
+             actor.grab_focus();
+             return true;
+         });
++
+         this._eventBox.connect('button-press-event', (actor, event) => this._onPressButton(actor, event));
+         this._eventBox.connect('enter-notify-event', (actor, event) => this._onEnter(actor, event));
+         this._eventBox.connect('leave-notify-event', (actor, event) => this._onLeave(actor, event));
+         this._eventBox.connect('button-release-event', (actor, event) => this._onReleaseButton(actor, event));
+ 
++        this._vAdjustment.connect('value-changed', () => {
++            this._vAdjustment.set_value(0);
++        });
++
+         /* Set the metadata and update relevant UI */
+         this._updateMetadataFromFileInfo(fileInfo);
+ 
+@@ -145,8 +177,12 @@ var FileItem = class {
+                 }
+             });
+         }
++
++        this._renameArea.setText(this.fileName, this.fileNameLength);
+         this.actor.show_all();
+-        this._updateName();
++        this._renameScrollView.set_visible(false);
++
++        // this._updateName();
+         if (this._dropCoordinates)
+             this.setSelected();
+ 
+@@ -163,6 +199,9 @@ var FileItem = class {
+             text = text.split(character).join(`${character}\u200B`);
+ 
+         this._label.label = text;
++        log('set filename');
++        this._renameArea.setText(text, this.fileNameLength);
++        this._renameArea.queue_resize();
+     }
+ 
+     _readCoordinatesFromAttribute(fileInfo, attribute) {
+@@ -399,8 +438,8 @@ var FileItem = class {
+             this._isValidDesktopFile = false;
+         }
+ 
+-        if (this.displayName !== oldLabelText)
+-            this._setFileName(this.displayName);
++        if (this._displayName !== oldLabelText)
++            this._setFileName(this._displayName);
+ 
+ 
+         this._fileType = fileInfo.get_file_type();
+@@ -421,6 +460,7 @@ var FileItem = class {
+     onFileRenamed(file) {
+         this._file = file;
+         this._refreshMetadataAsync(false);
++        log('onFileRenamed');
+     }
+ 
+     _updateIcon() {
+@@ -642,13 +682,13 @@ var FileItem = class {
+         return itemIcon;
+     }
+ 
+-    doRename() {
++    askRename() {
+         if (!this.canRename()) {
+             log(`Error: ${this.file.get_uri()} cannot be renamed`);
+             return;
+         }
+ 
+-        this._desktopManager.doRename(this);
++        this._desktopManager.askRename(this);
+     }
+ 
+     doOpen(fileList) {
+@@ -719,11 +759,11 @@ var FileItem = class {
+     }
+ 
+     _updateName() {
++        log('set file name');
+         if (this._isValidDesktopFile && !this._desktopManager.writableByOthers && !this._writableByOthers && this.trustedDesktopFile)
+             this._setFileName(this._desktopFile.get_locale_string('Name'));
+         else
+             this._setFileName(this._fileInfo.get_display_name());
+-
+     }
+ 
+     canRename() {
+@@ -805,7 +845,7 @@ var FileItem = class {
+             this._menu.add(this._actionCopy);
+             if (this.canRename() && this._selectedItemsNum === 1) {
+                 let rename = new Gtk.MenuItem({ label: _('Rename…') });
+-                rename.connect('activate', () => this.doRename());
++                rename.connect('activate', () => this.askRename());
+                 this._menu.add(rename);
+             }
+             this._actionTrash = new Gtk.MenuItem({ label: _('Move to Trash') });
+@@ -894,6 +934,8 @@ var FileItem = class {
+     }
+ 
+     _onPressButton(actor, event) {
++        this.actor.grab_focus();
++
+         let button = event.get_button()[1];
+         if (button === 3) {
+             if (!this._isSelected)
+@@ -1037,6 +1079,58 @@ var FileItem = class {
+         }
+     }
+ 
++    startRename() {
++        this._label.set_visible(false);
++
++        log('start rename filename length');
++        this._renameScrollView.set_visible(true);
++        this._renameArea.selectText();
++        this._renameArea.grab_focus();
++        log(`wtf height = ${this._renameArea.get_allocated_height()}`);
++    }
++
++    clear() {
++        this._label.set_visible(true);
++        this._renameScrollView.set_visible(false);
++    }
++
++    doRename() {
++        if (!this.beingRenamed())
++            return;
++
++        // if entry is focuesd
++        let text = this._renameArea.text;
++        let fullPath = `${this._desktopPath}/${text}`;
++        let file = Gio.File.new_for_commandline_arg(fullPath);
++
++        // FIXME : Error Widget is shown on the middle of display
++        // Same name doesnt care
++        if (text === '') {
++            this.showError('empty string');
++        } else if (file.query_exists(null)) {
++            this.showError('already exist');
++        } else if (this.fileName.localeCompare(text)) {
++            log(`doRename = ${text}`);
++            DBusUtils.FileOperationsProxy.RenameFileRemote(this.uri,
++                text,
++                (result, error) => {
++                    if (error)
++                        throw new Error(`Error renaming file: ${error.message}`);
++                }
++            );
++        }
++
++        this._renameScrollView.set_visible(false);
++        this._label.set_visible(true);
++
++        // need to be called after updateicon
++        this.setSelected();
++    }
++
++    beingRenamed() {
++        return this._renameScrollView.is_visible();
++    }
++
+     get savedCoordinates() {
+         return this._savedCoordinates;
+     }
+@@ -1050,6 +1144,16 @@ var FileItem = class {
+         }
+     }
+ 
++    showError(text) {
++        this._errorLabel.set_text(text);
++        this._bubbleError.show_all();
++        this.bubbleID = GLib.timeout_add(0, 5000, () => {
++            this._bubbleError.hide();
++            this.bubbleID = null;
++            return GLib.SOURCE_REMOVE;
++        });
++    }
++
+     set savedCoordinates(pos) {
+         try {
+             let info = new Gio.FileInfo();
+@@ -1116,7 +1220,11 @@ var FileItem = class {
+     }
+ 
+     get fileName() {
+-        return this._fileInfo.get_name();
++        return this._displayName;
++    }
++
++    get fileNameLength() {
++        return RenameArea.GetByteLengthOfUtf8String(this._displayName);
+     }
+ 
+     get uri() {
+@@ -1141,5 +1249,7 @@ var FileItem = class {
+     get modifiedTime() {
+         return this._modifiedTime;
+     }
++
+ };
++
+ Signals.addSignalMethods(FileItem.prototype);
+diff --git a/extensions/desktop-icons-ng/meson.build b/extensions/desktop-icons-ng/meson.build
+index 7227ed9..47c2df7 100644
+--- a/extensions/desktop-icons-ng/meson.build
++++ b/extensions/desktop-icons-ng/meson.build
+@@ -7,7 +7,6 @@ extension_data += configure_file(
+ extension_sources += files(
+     'askConfirmPopup.js',
+     'askNamePopup.js',
+-    'askRenamePopup.js',
+     'constants.js',
+     'createThumbnail.js',
+     'dbusUtils.js',
+@@ -21,6 +20,7 @@ extension_sources += files(
+     'fileItem.js',
+     'prefs.js',
+     'preferences.js',
++    'renameArea.js',
+     'selectionCalculator.js',
+     'showErrorPopup.js',
+     'templateManager.js',
+diff --git a/extensions/desktop-icons-ng/preferences.js b/extensions/desktop-icons-ng/preferences.js
+index 6087f20..761f712 100644
+--- a/extensions/desktop-icons-ng/preferences.js
++++ b/extensions/desktop-icons-ng/preferences.js
+@@ -16,7 +16,7 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-/* exported init showPreferences getIconSize getDesiredWidth getDesiredHeight getLabelStyle getIconStyle getStartCorner CLICK_POLICY_SINGLE mutterSettings */
++/* exported init showPreferences getIconSize getDesiredWidth getDesiredHeight getLabelStyle getIconStyle getStartCorner getEditableAreaStyle CLICK_POLICY_SINGLE mutterSettings */
+ 
+ imports.gi.versions.Gtk = '3.0';
+ 
+@@ -204,3 +204,7 @@ function getLabelStyle() {
+ function getIconStyle() {
+     return Enums.ICON_STYLE[desktopSettings.get_string('icon-size')];
+ }
++
++function getEditableAreaStyle() {
++    return Enums.EDIT_STYLE[desktopSettings.get_string('icon-size')];
++}
+diff --git a/extensions/desktop-icons-ng/renameArea.js b/extensions/desktop-icons-ng/renameArea.js
+new file mode 100644
+index 0000000..4d856b0
+--- /dev/null
++++ b/extensions/desktop-icons-ng/renameArea.js
+@@ -0,0 +1,138 @@
++/* exported GetByteLengthOfUtf8String, RenameArea, RenameBuffer */
++const { GObject, Gdk, Gtk } = imports.gi;
++
++const Prefs = imports.preferences;
++
++var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
++    _init(fileItem) {
++        super._init();
++        let editableAreaStyleContext = this.get_style_context();
++        editableAreaStyleContext.add_class('edit-area-style');
++        this.get_style_context().add_class(Prefs.getEditableAreaStyle());
++        this.set_border_width(2);
++        this.set_size_request(Prefs.getDesiredWidth(), -1);
++        this.set_wrap_mode(Gtk.WrapMode.WORD_CHAR);
++        this.set_can_focus(true);
++        this._editableBuffer = new RenameBuffer(fileItem);
++        this.set_buffer(this._editableBuffer);
++        this._fileItem = fileItem;
++
++        this._editableBuffer.connect('changed', () => {
++            log('changed');
++        });
++    }
++
++    get text() {
++        let start = this._editableBuffer.get_start_iter();
++        let end = this._editableBuffer.get_end_iter();
++        let text = this._editableBuffer.get_text(start, end, false);
++        return text;
++    }
++
++    setText(name, length) {
++        this._editableBuffer.set_text(name, length);
++    }
++
++    selectText() {
++        let start = this._editableBuffer.get_start_iter();
++        let end = this._editableBuffer.get_end_iter();
++
++        this._editableBuffer.select_range(start, end);
++    }
++
++    vfunc_focus_out_event(event) {
++        this._fileItem.doRename();
++        super.vfunc_focus_out_event(event);
++        this._fileItem._eventBox.grab_focus();
++        this._fileItem.setSelected();
++        return false;
++    }
++
++    vfunc_button_press_event(event) {
++        super.vfunc_button_press_event(event);
++        return true;
++    }
++
++    vfunc_key_press_event(event) {
++        log('container key press');
++        if (!this.has_focus)
++            return false;
++
++
++        let symbol = event.keyval;
++        log(`key-press-event = ${symbol}`);
++        if (symbol === Gdk.KEY_Return) {
++            this._fileItem.doRename();
++            this._fileItem._eventBox.grab_focus();
++            return true;
++        } else if (symbol === Gdk.KEY_Escape) {
++            this._editableBuffer.set_text(this._fileItem.fileName, this._fileItem.fileNameLength);
++            this._fileItem.clear();
++            return true;
++        }
++        super.vfunc_key_press_event(event);
++        return true;
++    }
++
++    vfunc_size_allocate(alloc) {
++        log(`size allocation alloc = ${alloc.width} ${alloc.height}`);
++        return super.vfunc_size_allocate(alloc);
++    }
++});
++
++var RenameBuffer = GObject.registerClass(class RenameBuffer extends Gtk.TextBuffer {
++    _init(fileItem) {
++        super._init();
++        this._fileItem = fileItem;
++    }
++
++    vfunc_insert_text(pos, text, length) {
++        let start = this.get_start_iter();
++        let end = this.get_end_iter();
++        let currentText = this.get_text(start, end, false);
++        let newText = currentText.slice(0, pos) + text + currentText.slice(pos);
++
++        if (!this._validate(newText))
++            return true;
++
++        return super.vfunc_insert_text(pos, text, length);
++    }
++
++    _validate(text) {
++        // FIXME : add bubble after inspecting regex. It must be done with nemo at the same time
++
++        if (text.indexOf('/') !== -1) {
++            this._fileItem.showError('cannot contain /');
++            return false;
++        }
++
++        if (text.length >= 255) {
++            this._fileItem.showError('too long');
++            return false;
++        }
++        return true;
++    }
++
++
++});
++
++function GetByteLengthOfUtf8String(s) {
++    if (s !== undefined && s !== '') {
++        let c = null;
++        let b = 0, i = 0;
++        c = s.charCodeAt(i);
++        for (i = 0; c; i) {
++            if (c >> 11)
++                b += 3;
++            else if (c >> 7)
++                b += 2;
++            else
++                b += 1;
++
++            c = s.charCodeAt(++i);
++        }
++        return b;
++    } else {
++        return 0;
++    }
++}
+diff --git a/extensions/desktop-icons-ng/stylesheet.css b/extensions/desktop-icons-ng/stylesheet.css
+index b63e370..b6ffd9b 100644
+--- a/extensions/desktop-icons-ng/stylesheet.css
++++ b/extensions/desktop-icons-ng/stylesheet.css
+@@ -24,7 +24,7 @@
+ 
+ .file-icon-small {
+     margin-top:12px;
+-    margin-bottom:0;
++    margin-bottom:8px;
+ }
+ 
+ .file-icon-standard {
+@@ -34,9 +34,22 @@
+ 
+ .file-icon-large {
+     margin-top:18px;
+-    margin-bottom:0;
++    margin-bottom:14px;
++}
++
++.edit-area-small {
++    font-size:13px;
++}
++
++.edit-area-standard {
++    font-size:13px;
+ }
+ 
++.edit-area-large {
++    font-size:13px;
++}
++
++
+ label.file-label:backdrop {
+     text-shadow:-1px 1px 3px #000, 1px 1px 3px #000, 1px -1px 3px #000;
+     color: white;
+@@ -49,3 +62,9 @@ label.file-label:backdrop {
+ .container-style {
+   border-radius: 4px;
+ }
++
++.edit-area-style {
++  border-radius: 4px;
++  border: 2px;
++  border-color: blue;
++}

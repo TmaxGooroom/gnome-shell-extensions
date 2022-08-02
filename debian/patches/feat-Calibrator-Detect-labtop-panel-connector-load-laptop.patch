@@ -1,0 +1,184 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Wed, 11 May 2022 14:25:22 +0900
+Subject: [feat] Calibrator : Detect labtop panel connector & load laptop
+ panel's geometry information
+
+- Detect whether system has laptop panels , if there are ,detect whether that panel is active
+- Pass over LU point's xy parameter to xinput_calibrator
+
+[IMS] 274852
+---
+ extensions/calibrator/extension.js  | 35 ++++++++++++++++++-----------
+ extensions/calibrator/meson.build   |  2 +-
+ extensions/calibrator/xrandrUtil.js | 45 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 68 insertions(+), 14 deletions(-)
+ create mode 100644 extensions/calibrator/xrandrUtil.js
+
+diff --git a/extensions/calibrator/extension.js b/extensions/calibrator/extension.js
+index 7244630..55e9771 100644
+--- a/extensions/calibrator/extension.js
++++ b/extensions/calibrator/extension.js
+@@ -1,6 +1,6 @@
+ const ByteArray = imports.byteArray;
+ 
+-const { Clutter, Gio, GLib, GObject } = imports.gi;
++const { Clutter, Gio, GLib, GObject, Meta } = imports.gi;
+ 
+ const WindowManager = imports.ui.windowManager;
+ const Main = imports.ui.main;
+@@ -9,13 +9,14 @@ const ExtensionUtils = imports.misc.extensionUtils;
+ const Me = ExtensionUtils.getCurrentExtension();
+ 
+ const Calibrator = Me.imports.calibrator;
++const XrandrUtil = Me.imports.xrandrUtil;
+ 
+ const IdentityMatrix = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+ 
+ var HEIGHT = -1;
+-
+ var WIDTH = -1;
+-
++var connector;
++var monitorManager;
+ /* After Display changed at gnome-control-center, Gnome-shell pop up DisplayChangeDialog to confirm
+  * user's decison.
+  * After user's confirm decision, Calibrator should be called to calibrate touch setting.
+@@ -43,10 +44,14 @@ var TmaxDisplayChangeDialog = GObject.registerClass(
+         onSuccess() {
+             this._wm.complete_display_change(true);
+             this.close();
+-            if (WIDTH !== Main.layoutManager.primaryMonitor.width || HEIGHT !== Main.layoutManager.primaryMonitor.height) {
+-                WIDTH = Main.layoutManager.primaryMonitor.width;
+-                HEIGHT = Main.layoutManager.primaryMonitor.height;
+-                _asyncCalibrate();
++            let manager = Meta.MonitorManager.get();
++            if (manager.get_is_builtin_display_on()) {
++                let panelIndex = monitorManager.get_monitor_for_connector(connector[0]);
++                if (WIDTH !== Main.layoutManager.monitors[panelIndex].width || HEIGHT !== Main.layoutManager.monitors[panelIndex].height) {
++                    WIDTH = Main.layoutManager.monitors[panelIndex].width;
++                    HEIGHT = Main.layoutManager.monitors[panelIndex].height;
++                    _asyncCalibrate();
++                }
+             }
+         }
+     });
+@@ -54,14 +59,19 @@ var TmaxDisplayChangeDialog = GObject.registerClass(
+ var OldDisplayChangeDialog = null;
+ 
+ function init(metadata) { // eslint-disable-line no-unused-vars
++    connector = XrandrUtil.findPanelConnectorArray();
++    monitorManager = Meta.MonitorManager.get();
+ }
+ 
+ function enable() { // eslint-disable-line no-unused-vars
+     // Of course, when 'monitors-changed' signal is emitted, DeviceId array will be refreshed. but maybe need it later.
+     OldDisplayChangeDialog = WindowManager.DisplayChangeDialog;
+     WindowManager.DisplayChangeDialog = TmaxDisplayChangeDialog;
+-    WIDTH = Main.layoutManager.primaryMonitor.width;
+-    HEIGHT = Main.layoutManager.primaryMonitor.height;
++    if (connector.length > 0) {
++        let panelIndex = monitorManager.get_monitor_for_connector(connector[0]);
++        WIDTH = Main.layoutManager.monitors[panelIndex].width;
++        HEIGHT = Main.layoutManager.monitors[panelIndex].height;
++    }
+     let logFile = Gio.File.new_for_path(`${global.userdatadir}/calibration`);
+     if (!logFile.query_exists(null)) {
+         global.log('There are no log files, stop loading calibration');
+@@ -162,17 +172,18 @@ function _extractCalibrationElement(stdoutLines, calibratableDeviceList) {
+ 
+ function _calibrate(calibratableDeviceList) {
+ 
++    let panelIndex = monitorManager.get_monitor_for_connector(connector[0]);
++    let area = global.display.get_monitor_geometry(panelIndex);
+     // HandleMe : During calibrating, resolution can be changed. then we close old one, and start new one. it can be happen.
+ 
+     // Before calibrating, We need to unset previous Calibration Matrix. Because, It causes that wrong Calibration Matrix.
+     calibratableDeviceList.forEach(deviceId => {
+         deviceId.calibrate();
+     });
+-
+     // we must run xinput-calibrator asynchronously.
+     // If it runs synchronously, it cause Blackscreen.
+     let [, calibratorPid, stdin, stdout] = GLib.spawn_async_with_pipes(global.userdatadir,
+-        ['xinput_calibrator'],
++        ['xinput_calibrator', '--xy', `${area.x}x${area.y}`, '--geometry', `${area.width}x${area.height}`],
+         null,
+         GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+         null
+@@ -197,7 +208,6 @@ function _calibrate(calibratableDeviceList) {
+             stdoutLines.push(ByteArray.toString(outputByteArray));
+             [outputByteArray, length] = stdoutStream.read_line(null);
+         }
+-
+         stdoutStream.close(null);
+         GLib.spawn_close_pid(pid);
+ 
+@@ -245,7 +255,6 @@ function _getCalibratableDeviceList() {
+         }
+         return list;
+     }, []);
+-
+     return calibratableDeviceList;
+ }
+ 
+diff --git a/extensions/calibrator/meson.build b/extensions/calibrator/meson.build
+index 0f957c5..0b91b0a 100644
+--- a/extensions/calibrator/meson.build
++++ b/extensions/calibrator/meson.build
+@@ -4,4 +4,4 @@ extension_data += configure_file(
+   configuration: metadata_conf
+ )
+ 
+-extension_sources += files('calibrator.js')
++extension_sources += files('calibrator.js','xrandrUtil.js')
+diff --git a/extensions/calibrator/xrandrUtil.js b/extensions/calibrator/xrandrUtil.js
+new file mode 100644
+index 0000000..eb37729
+--- /dev/null
++++ b/extensions/calibrator/xrandrUtil.js
+@@ -0,0 +1,45 @@
++/* exported XrandrFinder, findPanelConnectorArray */
++const ByteArray = imports.byteArray;
++
++const GLib = imports.gi.GLib;
++
++class XrandrFinder {
++    constructor() {
++        let [ret, output] = GLib.spawn_command_line_sync('xrandr');
++        if (ret === false) {
++            global.log('something error happend');
++        } else {
++            let outString = ByteArray.toString(output);
++            let outStringArray = outString.split('\n');
++            this.result = outStringArray.filter(line => {
++                return line.includes('connected') && !line.includes('disconnected');
++            });
++            this.panelConnector = this.result.filter(line => {
++                let connector = line.split(' ')[0];
++                return connector.includes('eDP') || connector.includes('DSI') || connector.includes('LVDS');
++            }).map(line => {
++                return line.split(' ')[0];
++            });
++        }
++    }
++}
++
++function findPanelConnectorArray() {
++    let [ret, output] = GLib.spawn_command_line_sync('xrandr');
++    if (ret === false) {
++        global.log('something error happend');
++        return null;
++    } else {
++        let outString = ByteArray.toString(output);
++        let outStringArray = outString.split('\n');
++        this.result = outStringArray.filter(line => {
++            return line.includes('connected') && !line.includes('disconnected');
++        });
++        return this.result.filter(line => {
++            let connector = line.split(' ')[0];
++            return connector.includes('eDP') || connector.includes('DSI') || connector.includes('LVDS');
++        }).map(line => {
++            return line.split(' ')[0];
++        });
++    }
++}

@@ -1,0 +1,6 @@
+.enter-key {
+    /* To avoid enter-key's icon is re-colored when its style changing, override its style.
+     * re-coloring Icon may cause touch problem because gicon is asynchronously loaded always when it is repainted,
+     * and while that moment, touch events cannot be received. */
+    color: white;
+}

@@ -1,0 +1,5 @@
+{
+    "channel":"ALL",
+    "level":"INFO",
+    "output":"/root/.tos_shell_log.out"
+}

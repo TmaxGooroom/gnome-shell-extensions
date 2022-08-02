@@ -1,0 +1,455 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 23 Feb 2022 18:43:47 +0900
+Subject: [chore] notification center: notice button rearrange
+
+- move notice button down to notifications
+- code refactor
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js    |  10 +-
+ extensions/notification-center/noticeAlarm.js  |  13 +-
+ extensions/notification-center/noticeApplet.js | 197 ++++++++-----------------
+ extensions/notification-center/noticeView.js   |  10 +-
+ 4 files changed, 84 insertions(+), 146 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 92d3ca4..f2ad191 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -272,9 +272,6 @@ const NotificationCenter = new LangClass({
+         this.titleBox          = new St.BoxLayout({ style_class: 'notification-center-title-box', vertical: false, y_align: Clutter.ActorAlign.START, x_expand: true });
+ 
+         this.clearButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Clear'), can_focus: true, visible: false, x_expand: true });
+-        this.noticeButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Notice'), can_focus: true, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.END, x_expand: true });
+-        this.noticeButton.set_toggle_mode(true);
+-
+ 
+         /* easySupport section is consist of supportControl (Row)  & supportIconRow (Row) ,
+            supportControl is used to control easySupport's mode
+@@ -346,6 +343,9 @@ const NotificationCenter = new LangClass({
+         this.menu.actor.style_class = 'notification-center-actor';
+ 
+         if (UseNoticeApplet) {
++            this.noticeButton       = new St.Button({ style_class: 'notification-center-clear-button button', label: _('Notice'), can_focus: true, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.END, x_expand: true });
++            this.noticeButton.set_toggle_mode(true);
++
+             this.noticeApplet = new NoticeApplet.noticeApplet();
+             this.noticeApplet.init(this);
+         }
+@@ -818,7 +818,9 @@ const NotificationCenter = new LangClass({
+         this.titleBox.add_actor(this.titleLabel);
+         this.titleBox.add_actor(this.clearButton);
+ 
+-        this.menu.box.add_actor(this.noticeButton);
++        if (UseNoticeApplet)
++            this.menu.box.add_actor(this.noticeButton);
++
+         this.menu.box.add_actor(this.easySupport);
+         this.menu.box.style = 'padding-bottom:0px;';
+ 
+diff --git a/extensions/notification-center/noticeAlarm.js b/extensions/notification-center/noticeAlarm.js
+index 7afb655..f4f7825 100755
+--- a/extensions/notification-center/noticeAlarm.js
++++ b/extensions/notification-center/noticeAlarm.js
+@@ -3,15 +3,22 @@ const { Notify, Gio } = imports.gi;
+ /*
+ ARGV[0] - title
+ ARGV[1] - url
++ARGV[2] - signing
++ARGV[3] - sessionId
++ARGV[4] - clientId
+ */
+ 
++var NOTIFICATION_TIMEOUT = 5000;
++
+ function onNotificationPopupOpened(data) {
+-    let window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', data, 'empty', 'empty', 'empty'] });
++    log(data);
++    if (!ARGV[1] || !ARGV[2] || !ARGV[3] || !ARGV[4])
++        return;
++
++    let window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', ARGV[1], ARGV[2], ARGV[3], ARGV[4]] });
+     window.init(null);
+ }
+ 
+-var NOTIFICATION_TIMEOUT = 5000;
+-
+ Notify.init('notice');
+ let notification = new Notify.Notification({ summary: ARGV[0], body: '' });
+ notification.add_action('default', 'detail view', data => onNotificationPopupOpened(data));
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index 7b28664..f043d6d 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -42,7 +42,6 @@ var noticeApplet = class applet {
+ 
+         this.total      = 0;
+         this.queue      = [];
+-        // this.dataList = GLib.HashTable.new_full(GLib.direct_hash, GLib.direct_equal, this.onHashKeyDestroy, this.onHashValueDestroy);
+ 
+         this.signing    = null;
+         this.sessionId = null;
+@@ -50,21 +49,21 @@ var noticeApplet = class applet {
+         this.defaultDomain = null;
+         this.disabledCnt = 0;
+         this.agentId = 0;
+-        this.offsetX = 0;
+-        this.offsetY = 0;
+ 
+         this.isJob = false;
+         this.isAgent = false;
+         this.isConnected = false;
+         // this.imgStatus = false;
+         this.agentProxy = null;
+-        this.subProc = null;
+ 
+         this.button = this.notificationCenter.noticeButton;
+         this.button.connect('clicked', () => this.onButtonToggled());
+ 
+         let monitor = Gio.NetworkMonitor.get_default();
+-        this.networkSig = monitor.connect('network-changed', available => this.onNetworkChanged(available));
++        this.networkSig = monitor.connect(
++            'network-changed',
++            available => this.onNetworkChanged(available)
++        );
+         this.isConnected = monitor.get_network_available();
+ 
+         if (this.isConnected && this.isAgent)
+@@ -75,24 +74,6 @@ var noticeApplet = class applet {
+ 
+     }
+ 
+-    onHashKeyDestroy(data) {
+-        if (!data)
+-            return;
+-        data.close();
+-    }
+-
+-    onHashValueDestroy(data) {
+-        if (!data)
+-            return;
+-
+-        if (data.title)
+-            delete data.title;
+-        if (data.url)
+-            delete data.url;
+-        if (data.icon)
+-            delete data.icon;
+-    }
+-
+     onButtonToggled() {
+         if (!this.button.get_checked())
+             return;
+@@ -106,7 +87,7 @@ var noticeApplet = class applet {
+                 return;
+             }
+         }
+-        this.noticePopup(null);
++        this.noticePopup();
+     }
+ 
+     onNetworkChanged(available) {
+@@ -133,8 +114,12 @@ var noticeApplet = class applet {
+         if (!this.agentProxy)
+             return;
+ 
+-        if (!this.agentId)
+-            this.agentId = this.agentProxy.connect('g-signal', (proxy, sender, signal, parameters) => this.agentSignalCallback(signal, parameters));
++        if (!this.agentId) {
++            this.agentId = this.agentProxy.connect(
++                'g-signal',
++                (proxy, sender, signal, parameters) => this.agentSignalCallback(signal, parameters)
++            );
++        }
+     }
+ 
+     async noticeUpdate() {
+@@ -144,14 +129,29 @@ var noticeApplet = class applet {
+         let json = `{"module":{"module_name":"noti","task":{"task_name":"get_noti","in":{"login_id":"${GLib.get_user_name()}"}}}}`;
+         let arg = GLib.Variant.new('(s)', [json]);
+ 
+-        this.agentProxy.call('do_task', arg, Gio.DBusCallFlags.NONE, -1, null, (source, res) => this.noticeDoneCallback(source, res));
++        this.agentProxy.call(
++            'do_task',
++            arg,
++            Gio.DBusCallFlags.NONE,
++            -1,
++            null,
++            (source, res) => this.noticeDoneCallback(source, res)
++        );
+     }
+ 
+     async agentProxyGet() {
+         if (this.agentProxy)
+             return;
+ 
+-        this.agentProxy = await Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, null, 'kr.gooroom.agent', '/kr/gooroom/agent', 'kr.gooroom.agent', null);
++        this.agentProxy = await Gio.DBusProxy.new_for_bus_sync(
++            Gio.BusType.SYSTEM,
++            Gio.DBusProxyFlags.NONE,
++            null,
++            'kr.gooroom.agent',
++            '/kr/gooroom/agent',
++            'kr.gooroom.agent',
++            null
++        );
+     }
+ 
+     agentSignalCallback(signal, parameters) {
+@@ -182,15 +182,11 @@ var noticeApplet = class applet {
+         if (!ret)
+             return;
+ 
+-        let v = ret.get_child_value(0);
++        let v = ret.get_child_value(0).get_variant();
+         if (!v)
+             return;
+ 
+-        let data = v.get_variant();
+-        if (!data)
+-            return;
+-
+-        this.getNoticeFromJson(data.get_string()[0], false);
++        this.getNoticeFromJson(v.get_string()[0], false);
+         let total = this.queue.length;
+ 
+         if (total > 0 || this.disabledCnt > 0) {
+@@ -209,21 +205,19 @@ var noticeApplet = class applet {
+     }
+ 
+     getNoticeFromJson(data, urgency) {
+-        let json;
++        let json, notiObj;
+         try {
+             json = JSON.parse(data);
+         } catch (e) {
+             log('failed json parsing');
+             return;
+         }
+-        let notiObj = json;
+-        this.temp = notiObj;
+ 
+-        if (!urgency) {
++        if (urgency) {
++            notiObj = json;
++        } else {
+             let obj4 = json['module']['task']['out']['status'];
+ 
+-            if (!obj4)
+-                return;
+             if (obj4 !== '200')
+                 return;
+ 
+@@ -237,21 +231,16 @@ var noticeApplet = class applet {
+         this.clientId = notiObj['client_id'];
+         this.sessionId = notiObj['session_id'];
+         this.defaultDomain = notiObj['default_noti_domain'];
+-        if (!this.signing)
+-            this.signing = 'empty';
+-        if (!this.clientId)
+-            this.clientId = 'empty';
+-        if (!this.sessionId)
+-            this.sessionId = 'empty';
+-        if (!this.defaultDomain)
+-            this.defaultDomain = 'empty';
+ 
+         if (notiObj['enabled_title_view_notis']) {
+             for (let i = 0; i < notiObj['enabled_title_view_notis'].length; i++) {
+                 if (!notiObj['enabled_title_view_notis'][i])
+                     continue;
+ 
+-                let n = [notiObj['enabled_title_view_notis'][i]['title'], notiObj['enabled_title_view_notis'][i]['url']];
++                let n = [
++                    notiObj['enabled_title_view_notis'][i]['title'],
++                    notiObj['enabled_title_view_notis'][i]['url'],
++                ];
+                 this.queue.push(n);
+             }
+         }
+@@ -272,7 +261,6 @@ var noticeApplet = class applet {
+             this.total++;
+             let title = this.noticeLimitText(n[0], NOTIFICATION_TEXT_LIMIT);
+             this.notificationOpened(title, n[1]);
+-            // GLib.HashTable.insert(this.dataList, notification, n);
+             this.total--;
+             return this.isJob;
+         }
+@@ -282,12 +270,10 @@ var noticeApplet = class applet {
+     }
+ 
+     noticeClickToJob() {
+-        log('noticeclicktojob');
+         this.isJob = true;
+ 
+         let title = this.noticeOtherText(_('Notice'), this.disabledCnt);
+         let url = this.defaultDomain;
+-        // n.icon = NOTIFICATION_MSG_ICON;
+ 
+         if (NOTIFICATION_LIMIT <= this.total) {
+             this.queue.push([title, url]);
+@@ -299,7 +285,6 @@ var noticeApplet = class applet {
+ 
+         this.total++;
+         this.notificationOpened(title, url);
+-        // GLib.HashTable.insert(this.dataList, notification, n);
+         this.total--;
+         this.isJob = false;
+         return this.isJob;
+@@ -320,30 +305,21 @@ var noticeApplet = class applet {
+     }
+ 
+     notificationOpened(title, url) {
+-        let Alarm = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js', title, url] });
++        let Alarm = new Gio.Subprocess({
++            argv: [
++                'gjs',
++                '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js',
++                title,
++                url,
++                this.signing,
++                this.sessionId,
++                this.clientId,
++            ],
++        });
+         Alarm.init(null);
+     }
+ 
+-    onNotificationClosed() {
+-        this.total--;
+-
+-        // if (this.window)
+-        // return;
+-
+-    // GLib.HashTable.remove(this.dataList, notification);
+-    }
+-
+-    onNotificationPopupOpened(data) {
+-        /* let res;
+-        let key;
+-
+-        if (!GLib.HashTable.lookup_extended(this.dataList, data, key, res))
+-        return;*/
+-
+-        this.noticePopup(data.url);
+-    }
+-
+-    noticePopup(url) {
++    noticePopup() {
+         if (this.window) {
+             if (!this.window.get_if_exited()) {
+                 this.window.force_exit();
+@@ -351,81 +327,32 @@ var noticeApplet = class applet {
+             }
+         }
+ 
+-        if (!url && this.defaultDomain)
+-            url = this.defaultDomain;
+-
+-        if (url === 'empty') {
+-            log('no url');
++        if (!this.defaultDomain || !this.signing || !this.sessionId || !this.clientId) {
++            log('Wrong access information');
+             return;
+         }
+ 
+         // this.imgStatus = false;
+         // this.trayIconChange();
+ 
+-        this.window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', url, this.signing, this.sessionId, this.clientId] });
++        this.window = new Gio.Subprocess({
++            argv: [
++                'gjs',
++                '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js',
++                this.defaultDomain,
++                this.signing,
++                this.sessionId,
++                this.clientId,
++            ],
++        });
+         this.window.init(null);
+ 
+         this.queue = [];
+-    // GLib.HashTable.remove_all(this.dataList);
+     }
+ 
+     onDestroy() {
+         if (this.agentId)
+             this.agentProxy.disconnect(this.agentId);
+-    /* if (this.data_list)
+-        this.dataList.destroy();*/
+     }
+ 
+ };
+-
+-
+-/*
+-struct _GooroomNoticeAppletPrivate
+-{
+-    GtkWidget    *tray;
+-    GtkWidget    *window;
+-    GtkWidget    *button;
+-    GQueue       *queue;
+-    GHashTable   *data_list;
+-
+-    gint         total;
+-    gint         panel_size;
+-    gint         minus_size;
+-    gint         disabled_cnt;
+-    gint         offset_x;
+-    gint         offset_y;
+-    gulong       agent_id;
+-
+-    gchar        *signing;
+-    gchar        *session_id;
+-    gchar        *client_id;
+-    gchar        *default_domain;
+-
+-    gboolean     img_status;
+-    gboolean     is_agent;
+-    gboolean     is_connected;
+-    gboolean     is_job;
+-};
+-
+-typedef struct
+-{
+-    gchar    *url;
+-    gchar    *title;
+-    gchar    *icon;
+-}NoticeData;
+-
+-    trayIconChange() {
+-        let icon = this.img_status ? DEFAULT_NOTICE_TRAY_ICON : DEFAULT_TRAY_ICON;
+-
+-        this.tray.set_from_icon_name(icon, Gtk.Iconsize.BUTTON);
+-        this.tray.set_pixel_size(PANEL_TRAY_ICON_SIZE);
+-
+-        if (this.is_connected && this.is_agent) {
+-            this.button.show_all();
+-            this.button.set_sensitive(true);
+-        } else {
+-            this.button.hide();
+-        }
+-    }
+-
+-*/
+diff --git a/extensions/notification-center/noticeView.js b/extensions/notification-center/noticeView.js
+index a7b3f9e..5fd2fd9 100755
+--- a/extensions/notification-center/noticeView.js
++++ b/extensions/notification-center/noticeView.js
+@@ -1,9 +1,11 @@
+ const { Gtk, Gdk, Soup, WebKit2 } = imports.gi;
+ 
+-/* ARGV[0] - url
+-  ARGV[1] - signing
+-  ARGV[2] - sessionId
+-  ARGV[3] - this.clientId */
++/*
++ARGV[0] - url
++ARGV[1] - signing
++ARGV[2] - sessionId
++ARGV[3] - this.clientId
++*/
+ 
+ function onNotificationWindowClosed() {
+     [offsetX, offsetY] = window.get_position();

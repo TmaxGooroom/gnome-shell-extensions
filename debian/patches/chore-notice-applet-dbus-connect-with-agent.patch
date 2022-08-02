@@ -1,0 +1,187 @@
+From: Gangmo Seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 10 Dec 2021 10:59:50 +0900
+Subject: [chore] notice-applet: dbus connect with agent
+
+- WIP
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js    |  2 +-
+ extensions/notification-center/noticeApplet.js | 69 ++++++++++++++++----------
+ 2 files changed, 44 insertions(+), 27 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index 4cba12c..92d3ca4 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -234,7 +234,7 @@ const NotificationCenter = new LangClass({
+                     log(error.message);
+                     return;
+                 }
+-                this.sync();
++                this._sync();
+             });
+         this._client = new GnomeBluetooth.Client();
+         this._model = this._client.get_model();
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index 8aa23d5..c777c3a 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -75,7 +75,7 @@ var noticeApplet = class applet {
+         this.button.show_all();*/
+ 
+         if (this.isConnected)
+-            GLib.timeout_add(0, 500, this.noticeUpdateDelay);
++            GLib.timeout_add(0, 500, () => this.noticeUpdateDelay());
+ 
+     }
+ 
+@@ -134,7 +134,7 @@ var noticeApplet = class applet {
+ 
+         if (this.isConnected) {
+             if (!this.agentProxy && !this.isAgent)
+-                GLib.timeout_add(0, 500, this.noticeUpdateDelay);
++                GLib.timeout_add(0, 500, () => this.noticeUpdateDelay());
+         }
+ 
+     }
+@@ -144,37 +144,36 @@ var noticeApplet = class applet {
+         this.noticeUpdate();
+     }
+ 
+-    bindAgentSignal() {
+-        if (this.agentProxy && this.agentId === 0)
++    async bindAgentSignal() {
++        await this.agentProxyGet();
++        if (this.agentProxy && !this.agentId)
+             this.agentId = this.agentProxy.connect('g-signal', (sender, signal, parameters) => this.agentSignalCallback(signal, parameters));
+     }
+ 
+-    noticeUpdate() {
++    async noticeUpdate() {
++        await this.agentProxyGet();
+         if (!this.agentProxy)
+             return;
+ 
+         let json = `{"module":{"module_name":"noti","task":{"task_name":"get_noti","in":{"login_id":"${GLib.get_user_name()}"}}}}`;
+-        this.agentProxy.call('do_task', GLib.Variant.new_string(json), Gio.DBusCallFlags.NONE, -1, null, this.noticeDoneCallback);
++        let arg = new GLib.Variant('(s)', json);
++        this.agentProxy.call('do_task', arg, Gio.DBusCallFlags.NONE, -1, null, (source, res) => this.noticeDoneCallback(source, res));
+     }
+ 
+-    agentProxyGet() {
++    async agentProxyGet() {
+         if (this.agentProxy)
+             return;
+ 
+-        this.agentProxy = new Gio.DBusProxy({ g_bus_type: Gio.BusType.SYSTEM,
+-            g_flags: Gio.DBusProxyFlags.NONE,
+-            g_interface_info: null,
+-            g_name: 'kr.gooroom.agent',
+-            g_object_path: '/kr/gooroom/agent',
+-            g_interface_name: 'kr.gooroom.agent' });
++        this.agentProxy = await Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, null, 'kr.gooroom.agent', '/kr/gooroom/agent', 'kr.gooroom.agent', null);
+     }
+ 
+     agentSignalCallback(signal, parameters) {
+         if (signal !== 'set_noti')
+             return;
+ 
+-        this.getNoticeFromJson(parameters.get_string()[0], true);
+-        let total = this.queue.length();
++        let res = parameters.get_child_value(0).get_variant();
++        this.getNoticeFromJson(res.get_string()[0], true);
++        let total = Object.keys(this.queue).length;
+ 
+         if (total <= 0 && this.disabledCnt <= 0)
+             return;
+@@ -186,17 +185,27 @@ var noticeApplet = class applet {
+             return;
+ 
+         if (total > 0)
+-            GLib.timeout_add(0, 500, this.noticeImmediatelyJob());
++            GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
+         if (this.disabledCnt > 0)
+-            GLib.timeout_add(0, 500, this.noticeClickToJob());
++            GLib.timeout_add(0, 500, () => this.noticeClickToJob());
+     }
+ 
+     noticeDoneCallback(sourceObject, res) {
+-        let data = sourceObject.call_finish(res);
++        let variant = sourceObject.call_finish(res);
++        let data;
++
++        if (variant) {
++            let v = variant.get_child_value(0);
++            if (v) {
++                data = v.get_variant();
++                log(data.get_string());
++                log(data.get_string()[0]);
++            }
++        }
+ 
+         if (data) {
+-            this.getNoticeFromJson(data.get_string()[0], false);
+-            let total = this.queue.length();
++            this.getNoticeFromJson(data.get_string(), false);
++            let total = Object.keys(this.queue).length;
+ 
+             if (total > 0 || this.disabledCnt > 0) {
+                 this.imgStatus = true;
+@@ -205,9 +214,9 @@ var noticeApplet = class applet {
+                     return;
+ 
+                 if (total > 0)
+-                    GLib.timeout_add(0, 500, this.noticeImmediatelyJob());
++                    GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
+                 if (this.disabledCnt > 0)
+-                    GLib.timeout_add(500, this.noticeClickToJob());
++                    GLib.timeout_add(500, () => this.noticeClickToJob());
+             }
+             this.isAgent = true;
+         }
+@@ -215,7 +224,13 @@ var noticeApplet = class applet {
+     }
+ 
+     getNoticeFromJson(data, urgency) {
+-        let json = JSON.parse(data);
++        let json;
++        try {
++            json = JSON.parse(data);
++        } catch (e) {
++            log('failed json parsing');
++            return;
++        }
+         let notiObj = json;
+ 
+         if (!urgency) {
+@@ -260,7 +275,7 @@ var noticeApplet = class applet {
+         this.isJob = true;
+         let n;
+ 
+-        while (this.queue.length()) {
++        while (Object.keys(this.queue).length) {
+             n = this.queue.shift();
+ 
+             if (NOTIFICATION_LIMIT <= this.total) {
+@@ -290,7 +305,7 @@ var noticeApplet = class applet {
+ 
+         if (NOTIFICATION_LIMIT <= this.total) {
+             this.queue.push(n);
+-            GLib.timeout_add(0, 500, this.noticeImmediatelyJob());
++            GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
+ 
+             this.isJob = false;
+             return this.isJob;
+@@ -356,8 +371,10 @@ var noticeApplet = class applet {
+         if (!url && this.defaultDomain)
+             url = this.defaultDomain;
+ 
+-        if (!url)
++        if (!url) {
++            log('no url');
+             return;
++        }
+ 
+         this.imgStatus = false;
+         // this.trayIconChange();

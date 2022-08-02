@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="25px" height="24px" viewBox="0 0 25 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>tos_desktop_ic_alarm_arrow_up</title>
+    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="0.8">
+        <g id="04_02_03_TOS5_alarm" transform="translate(-550.000000, -616.000000)">
+            <g id="Group-5" transform="translate(426.000000, 539.000000)">
+                <g id="Group-10" transform="translate(92.000000, 77.000000)">
+                    <g id="chevron_left-24px" transform="translate(32.000000, 0.000000)">
+                        <polygon id="Path" points="0 0 24 0 24 24 0 24"></polygon>
+                        <path d="M14.9975,6.6975 C14.6075,6.3075 13.9775,6.3075 13.5875,6.6975 L8.9975,11.2875 C8.6075,11.6775 8.6075,12.3075 8.9975,12.6975 L13.5875,17.2875 C13.9775,17.6775 14.6075,17.6775 14.9975,17.2875 C15.3875,16.8975 15.3875,16.2675 14.9975,15.8775 L11.1175,11.9875 L14.9975,8.1075 C15.3875,7.7175 15.3775,7.0775 14.9975,6.6975 Z" id="Path" fill="#FFFFFF" transform="translate(11.997500, 11.992500) rotate(-270.000000) translate(-11.997500, -11.992500) "></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,10 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"gettext-domain": "greeter",
+"name": "Greeter",
+"description": "login screen for GNOME Shell",
+"original-authors": [  "tmax" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

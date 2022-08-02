@@ -1,0 +1,9 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"name": "Tmax Screenshot",
+"description": "Improved Screenshot for TmaxOS",
+"original-authors": [  "tmax" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

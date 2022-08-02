@@ -1,0 +1,26 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Fri, 6 May 2022 18:19:35 +0900
+Subject: [bugfix] desktop-icons-ng: Correct build errors
+
+- Change special characters in po file accordingly.
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/po/ko.po | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index 37d0a65..f3e4f15 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -272,8 +272,8 @@ msgid "The name “{0}” is too long. Please use a different name."
+ msgstr "“{0}”는 너무 긴 이름입니다. 다른 이름을 사용하세요."
+ 
+ #: fileItem.js:1085
+-msgid "Sorry, could not rename to “{0}”. Special characters(\\\*\?\"\'\<\>\|) cannot be contained"
+-msgstr "“안타깝게도, 이름을 “{0}”로 바꿀 수 없습니다. 파일 이름에 특수 기호(\\\*\?\"\'\<\>\|)를 넣을 수 없습니다."
++msgid "Sorry, could not rename to “{0}”. Special characters(\\*?\"'<>|) cannot be contained."
++msgstr "“안타깝게도, 이름을 “{0}”로 바꿀 수 없습니다. 파일 이름에 특수 기호(\\*?\"'<>|)를 넣을 수 없습니다."
+ 
+ #: fileItem.js:1126
+ msgid "The Item could not be renamed."

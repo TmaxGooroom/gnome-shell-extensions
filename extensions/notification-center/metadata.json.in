@@ -1,0 +1,11 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"settings-schema": "@gschemaname@",
+"gettext-domain": "@gettext_domain@",
+"name": "Notification Center",
+"description": "Detach notification center to panel and customizations.",
+"original-authors": [  "Selenium-H" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

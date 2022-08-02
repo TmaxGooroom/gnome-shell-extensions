@@ -1,0 +1,23 @@
+From: jingi_jeong =?utf-8?b?POKAnGppbmdpX2plb25nQHRtYXguY28ua3LigJ0+?=
+Date: Mon, 25 Apr 2022 17:59:34 +0900
+Subject: [feat] desktop-icons-ng : Set justification for TextView
+
+- Set justification to adjust to center the text
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/renameView.js | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/desktop-icons-ng/renameView.js b/extensions/desktop-icons-ng/renameView.js
+index 8646bfa..385c1b2 100644
+--- a/extensions/desktop-icons-ng/renameView.js
++++ b/extensions/desktop-icons-ng/renameView.js
+@@ -54,6 +54,7 @@ var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
+         this.set_size_request(Prefs.getDesiredWidth(), -1);
+         this.set_wrap_mode(Gtk.WrapMode.CHAR);
+         this.set_can_focus(true);
++        this.set_justification(Gtk.Justification.CENTER);
+ 
+         this._fileItem = fileItem;
+         this._isRenaming = false;

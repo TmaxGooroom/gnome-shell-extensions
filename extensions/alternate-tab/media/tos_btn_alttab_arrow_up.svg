@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="40px" height="34px" viewBox="0 0 40 34" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>tos_btn_alttab_arrow_up</title>
+    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="06_01_05_TOS5_alttab" transform="translate(-820.000000, -130.000000)">
+            <g id="Group-5-Copy" transform="translate(100.000000, 107.000000)">
+                <g id="Group" transform="translate(720.000000, 20.000000)">
+                    <rect id="Rectangle" x="0" y="0" width="40" height="39"></rect>
+                    <path d="M32.173913,12.7777778 C33.0907494,12.7777778 33.8418827,13.4727848 33.9082733,14.3543321 L33.9130435,14.4814815 L33.9130435,38.3333333 C33.9130435,39.2314934 33.2035845,39.9673258 32.3037064,40.032364 L32.173913,40.037037 L7.82608696,40.037037 C6.86559174,40.037037 6.08695652,39.2742629 6.08695652,38.3333333 C6.08695652,37.4351733 6.79641547,36.6993408 7.69629361,36.6343027 L7.82608696,36.6296296 L30.4347826,36.6289265 L30.4347826,14.4814815 C30.4347826,13.5833214 31.1442416,12.847489 32.0441197,12.7824508 L32.173913,12.7777778 Z" id="Rectangle" fill="#FFFFFF" fill-rule="nonzero" transform="translate(20.000000, 26.407407) rotate(-135.000000) translate(-20.000000, -26.407407) "></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

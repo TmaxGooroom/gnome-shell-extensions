@@ -1,0 +1,9 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"name": "monitor-settings-saver",
+"description": "saves monitor settings",
+"original-authors": [  "tmax" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

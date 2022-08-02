@@ -1,0 +1,20 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 17 Mar 2022 16:09:23 +0900
+Subject: [chore] osk-hangul : add stylesheet.css to .gitignore
+
+ - Same as above
+
+[IMS] N/A
+---
+ .gitignore | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/.gitignore b/.gitignore
+index 26e1fcd..9565961 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -8,3 +8,4 @@ debian/debhelper-build-stamp
+ debian/gnome-shell-extensions/
+ debian/gnome-shell-extensions.debhelper.log
+ debian/gnome-shell-extensions.substvars
++extensions/osk-hangul/stylesheet.css

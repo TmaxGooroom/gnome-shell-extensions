@@ -1,0 +1,78 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Mon, 16 May 2022 17:47:43 +0900
+Subject: [bugfix] appindicator : enble tray icon which is using xembed
+ protocol
+
+- Enable showing app icon that is using xembed protocol
+- Resize Icon for panel size
+
+[IMS] 282045
+---
+ extensions/appindicator/extension.js           |  2 +-
+ extensions/appindicator/indicatorStatusIcon.js | 10 ++++++++++
+ extensions/appindicator/topicons.js            |  7 +++++--
+ 3 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/appindicator/extension.js b/extensions/appindicator/extension.js
+index f8af164..5a73398 100644
+--- a/extensions/appindicator/extension.js
++++ b/extensions/appindicator/extension.js
+@@ -57,7 +57,7 @@ function maybeEnableAfterNameAvailable() {
+ function enable() {
+     isEnabled = true;
+     maybeEnableAfterNameAvailable();
+-//    TopIcons.createTray();
++    TopIcons.createTray();
+ }
+ 
+ function disable() {
+diff --git a/extensions/appindicator/indicatorStatusIcon.js b/extensions/appindicator/indicatorStatusIcon.js
+index ef5b142..2a1ad35 100644
+--- a/extensions/appindicator/indicatorStatusIcon.js
++++ b/extensions/appindicator/indicatorStatusIcon.js
+@@ -159,6 +159,7 @@ var IndicatorStatusTopIcon = GObject.registerClass(
+ 
+             super._init(0.5, this._uniqueId);
+             this._iconBox = icon;
++            this._updateIconSize();
+             this._box = new St.BoxLayout({ style_class: 'panel-status-indicators-box' });
+             this._box.add_style_class_name('appindicator-box');
+             this.add_child(this._box);
+@@ -168,10 +169,19 @@ var IndicatorStatusTopIcon = GObject.registerClass(
+                 icon.destroy();
+             });
+ 
++
+             Main.panel.addToStatusArea(`appindicator-${this._uniqueId}`, this, 1, 'right');
+         }
+ 
+         getIcon() {
+             return this._iconBox;
+         }
++
++        _updateIconSize() {
++            const { scale_factor: scaleFactor } = St.ThemeContext.get_for_stage(global.stage);
++            let iconSize = Panel.PANEL_ICON_SIZE;
++            this.height = -1;
++            this._iconBox.set_height(iconSize * scaleFactor);
++            this._iconBox.set_y_align(Clutter.ActorAlign.CENTER);
++        }
+     });
+diff --git a/extensions/appindicator/topicons.js b/extensions/appindicator/topicons.js
+index ff93e1e..387dc0d 100644
+--- a/extensions/appindicator/topicons.js
++++ b/extensions/appindicator/topicons.js
+@@ -69,8 +69,11 @@ function destroyTray() {
+     for (let i = 0; i < icons.length; i++)
+         icons[i].destroy();
+ 
+-    tray.disconnect(trayAddedId);
+-    tray.disconnect(trayRemovedId);
++    if (trayAddedId)
++        tray.disconnect(trayAddedId);
++
++    if (trayRemovedId)
++        tray.disconnect(trayRemovedId);
+ 
+     icons = [];
+ 

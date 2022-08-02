@@ -1,7 +1,7 @@
 option('extension_set',
   type: 'combo',
-  choices: ['classic', 'default', 'all'],
-  value: 'default',
+  choices: ['classic', 'tos', 'default', 'all'],
+  value: 'tos',
   description: 'Predefined sets of extensions'
 )
 

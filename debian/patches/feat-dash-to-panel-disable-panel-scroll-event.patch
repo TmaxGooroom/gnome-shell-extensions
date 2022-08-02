@@ -1,0 +1,23 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 21 Apr 2022 16:35:00 +0900
+Subject: [feat] dash-to-panel : disable panel scroll event
+
+ - Same as above
+
+[IMS] N/A
+---
+ extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+index dd5781c..bbbd4ae 100644
+--- a/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
++++ b/extensions/dash-to-panel/schemas/10_dash-to-panel.gschema.override
+@@ -20,6 +20,7 @@ click-action = 'TOGGLE-SHOWPREVIEW'
+ isolate-workspaces = true
+ overview-click-to-exit = true
+ stockgs-panelbtn-click-only = true
++scroll-panel-action='NOTHING'
+ scroll-panel-show-ws-popup = false
+ scroll-icon-action = 'NOTHING'
+ panel-element-positions = '{"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"NotificationCenter","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"NotificationCenter","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'

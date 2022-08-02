@@ -1,0 +1,288 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Mon, 29 Nov 2021 14:59:45 +0900
+Subject: [bugfix] desktop-icon-ng : desktop area drag drop logic changed
+
+- Change drag-drop when dropped location (fileItem) is the dragged soruce
+- Calculate drop location taking the spacing margin into account
+
+[IMS] 274679
+---
+ extensions/desktop-icons-ng/desktopGrid.js    |  46 ++++++----
+ extensions/desktop-icons-ng/desktopManager.js |   3 +-
+ extensions/desktop-icons-ng/fileItem.js       | 126 ++++++++++++++------------
+ 3 files changed, 95 insertions(+), 80 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopGrid.js b/extensions/desktop-icons-ng/desktopGrid.js
+index b0bd035..d317976 100644
+--- a/extensions/desktop-icons-ng/desktopGrid.js
++++ b/extensions/desktop-icons-ng/desktopGrid.js
+@@ -54,8 +54,10 @@ var DesktopGrid = class {
+         this._height = Math.floor(desktopDescription.height / sizeDivisor);
+         this._elementWidth = Prefs.getDesiredWidth();
+         this._elementHeight = Prefs.getDesiredHeight();
+-        this._maxColumns = Math.floor(this._width / (this._elementWidth + elementSpacing));
+-        this._maxRows =  Math.floor(this._height / (this._elementHeight + elementSpacing));
++        this._elementWidthWithSpacing = this._elementWidth + elementSpacing;
++        this._elementHeightWithSpacing = this._elementHeight + elementSpacing;
++        this._maxColumns = Math.floor(this._width / this._elementWidthWithSpacing);
++        this._maxRows =  Math.floor(this._height / this._elementHeightWithSpacing);
+ 
+ 
+         this._window = new Gtk.Window({ 'title': desktopName });
+@@ -160,8 +162,8 @@ var DesktopGrid = class {
+         targets.add(Gdk.atom_intern('text/plain', false), 0, 3);
+         dropDestination.drag_dest_set_target_list(targets);
+         dropDestination.connect('drag-motion', (widget, context, x, y, unused) => {
+-            x = this._elementWidth * Math.floor(x / this._elementWidth);
+-            y = this._elementHeight * Math.floor(y / this._elementHeight);
++            x = this._elementWidthWithSpacing * Math.floor(x / this._elementWidthWithSpacing);
++            y = this._elementHeightWithSpacing * Math.floor(y / this._elementHeightWithSpacing);
+             [x, y] = this._coordinatesLocalToGlobal(x, y);
+             this._desktopManager.onDragMotion(x, y);
+         });
+@@ -169,14 +171,18 @@ var DesktopGrid = class {
+             this._desktopManager.onDragLeave();
+         });
+         dropDestination.connect('drag-data-received', (widget, context, x, y, selection, info, unused) => {
+-            x = this._elementWidth * Math.floor(x / this._elementWidth);
+-            y = this._elementHeight * Math.floor(y / this._elementHeight);
+-            [x, y] = this._coordinatesLocalToGlobal(x, y);
+-            this._desktopManager.onDragDataReceived(x, y, selection, info);
+-            this._window.queue_draw();
++            this.handleDropEvent(x, y, selection, info);
+         });
+     }
+ 
++    handleDropEvent(x, y, selection, info) {
++        x = this._elementWidthWithSpacing * Math.floor(x / this._elementWidthWithSpacing);
++        y = this._elementHeightWithSpacing * Math.floor(y / this._elementHeightWithSpacing);
++        [x, y] = this._coordinatesLocalToGlobal(x, y);
++        this._desktopManager.onDragDataReceived(x, y, selection, info);
++        this._window.queue_draw();
++    }
++
+     refreshDrag(selectedList, ox, oy) {
+         if (selectedList === null) {
+             this._selectedList = null;
+@@ -299,9 +305,8 @@ var DesktopGrid = class {
+     }
+ 
+     _addFileItemTo(fileItem, column, row, coordinatesAction) {
+-
+-        let localX = column * (this._elementWidth + elementSpacing);
+-        let localY = row * (this._elementHeight + elementSpacing);
++        let localX = column * this._elementWidthWithSpacing;
++        let localY = row * this._elementHeightWithSpacing;
+         this._container.put(fileItem.actor, localX + elementSpacing, localY + elementSpacing);
+         this._setGridUse(column, row, true);
+         this._fileItems[fileItem.uri] = [column, row, fileItem];
+@@ -335,8 +340,8 @@ var DesktopGrid = class {
+ 
+     reorderItemBack(fileItem) {
+         let [column, row, unused] = this._fileItems[fileItem.uri];
+-        let localX = column * (this._elementWidth + elementSpacing);
+-        let localY = row * (this._elementHeight + elementSpacing);
++        let localX = column * this._elementWidthWithSpacing;
++        let localY = row * this._elementHeightWithSpacing;
+ 
+         this._container.remove(fileItem.actor);
+         this._container.put(fileItem.actor, localX + elementSpacing, localY + elementSpacing);
+@@ -362,8 +367,8 @@ var DesktopGrid = class {
+     getGridAt(x, y, globalCoordinates) {
+         if (this._coordinatesBelongToThisGrid(x, y)) {
+             [x, y] = this._coordinatesGlobalToLocal(x, y);
+-            x = this._elementWidth * Math.floor(x / this._elementWidth + 0.5);
+-            y = this._elementHeight * Math.floor(y / this._elementHeight + 0.5);
++            x = this._elementWidthWithSpacing * Math.floor(x / this._elementWidthWithSpacing + 0.5);
++            y = this._elementHeightWithSpacing * Math.floor(y / this._elementHeightWithSpacing + 0.5);
+             if (globalCoordinates)
+                 [x, y] = this._coordinatesLocalToGlobal(x, y);
+ 
+@@ -380,8 +385,8 @@ var DesktopGrid = class {
+     _getEmptyPlaceClosestTo(x, y, coordinatesAction, reverseHorizontal) {
+ 
+         [x, y] = this._coordinatesGlobalToLocal(x, y);
+-        let placeX = Math.floor(x / this._elementWidth);
+-        let placeY = Math.floor(y / this._elementHeight);
++        let placeX = Math.floor(x / this._elementWidthWithSpacing);
++        let placeY = Math.floor(y / this._elementHeightWithSpacing);
+ 
+         let cornerInversion = Prefs.getStartCorner();
+         if (reverseHorizontal)
+@@ -393,6 +398,7 @@ var DesktopGrid = class {
+         if (this._isEmptyAt(placeX, placeY) && coordinatesAction !== Enums.StoredCoordinates.ASSIGN)
+             return [placeX, placeY];
+ 
++
+         let found = false;
+         let resColumn = null;
+         let resRow = null;
+@@ -414,8 +420,8 @@ var DesktopGrid = class {
+                     continue;
+ 
+ 
+-                let proposedX = column * this._elementWidth;
+-                let proposedY = row * this._elementHeight;
++                let proposedX = elementSpacing + column * this._elementWidthWithSpacing;
++                let proposedY = elementSpacing + row * this._elementHeightWithSpacing;
+                 if (coordinatesAction === Enums.StoredCoordinates.ASSIGN)
+                     return [column, row];
+                 let distance = DesktopIconsUtil.distanceBetweenPoints(proposedX, proposedY, x, y);
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 54bcf2a..2a0f52e 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -312,7 +312,8 @@ var DesktopManager = class {
+         switch (info) {
+         case 0:
+             if (fileList.length !== 0) {
+-                let [xOrigin, yOrigin, a_, b_, c_] = this.dragItem.getCoordinates();
++                let [xOrigin, yOrigin] = this.dragItem.savedCoordinates;
++
+                 this.doMoveWithDragAndDrop(xOrigin, yOrigin, xDestination, yDestination);
+             }
+             break;
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 21594d6..2e1e81c 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -221,72 +221,80 @@ var FileItem = class {
+ 
+     _setDropDestination(dropDestination) {
+         dropDestination.drag_dest_set(Gtk.DestDefaults.DROP | Gtk.DestDefaults.MOTION, null, Gdk.DragAction.MOVE);
+-        if (this._fileExtra === Enums.FileType.USER_DIRECTORY_TRASH ||
+-            this._fileExtra === Enums.FileType.USER_DIRECTORY_HOME ||
+-            this._fileExtra !== Enums.FileType.EXTERNAL_DRIVE ||
+-            this._isDirectory) {
+-            let targets = new Gtk.TargetList(null);
+-            targets.add(Gdk.atom_intern('x-special/gnome-icon-list', false), 0, 1);
+-            targets.add(Gdk.atom_intern('text/uri-list', false), 0, 2);
+-            dropDestination.drag_dest_set_target_list(targets);
+-            dropDestination.connect('drag-data-received', (widget, context, x, y, selection, info, unusedTime) => {
+-                if (info === 1 || info === 2) {
+-                    let fileList = DesktopIconsUtil.getFilesFromFileManagerDnD(selection, info);
+-                    if (fileList.length !== 0) {
+-                        if (this._desktopManager.dragItem && (this._desktopManager.dragItem.uri === this._file.get_uri() || !(this._isValidDesktopFile || this.isDirectory))) {
+-                            // Dragging a file/folder over itself or over another file will do nothing, allow drag to directory or validdesktop file
+-                            return;
+-                        }
+-                        if (this._isValidDesktopFile) {
+-                            // open the desktopfile with these dropped files as the arguments
+-                            this.doOpen(fileList);
+-                            return;
++        if (!(this._fileExtra === Enums.FileType.USER_DIRECTORY_TRASH ||
++              this._fileExtra === Enums.FileType.USER_DIRECTORY_HOME ||
++              this._fileExtra !== Enums.FileType.EXTERNAL_DRIVE ||
++              this._isDirectory))
++            return;
++
++
++        let targets = new Gtk.TargetList(null);
++        targets.add(Gdk.atom_intern('x-special/gnome-icon-list', false), 0, 1);
++        targets.add(Gdk.atom_intern('text/uri-list', false), 0, 2);
++        dropDestination.drag_dest_set_target_list(targets);
++        dropDestination.connect('drag-data-received', (widget, context, x, y, selection, info, unusedTime) => {
++            if (!(info === 1 || info === 2))
++                return;
++
++            let fileList = DesktopIconsUtil.getFilesFromFileManagerDnD(selection, info);
++
++            if (fileList.length === 0)
++                return;
++
++
++            let isInList = fileList.find(item => item === this._file.get_uri());
++            if (this._desktopManager.dragItem && isInList)
++                return this._grid.handleDropEvent(this.savedCoordinates[0], this.savedCoordinates[1], selection, 0);
++
++
++            if (this._isValidDesktopFile) {
++            // open the desktopfile with these dropped files as the arguments
++                this.doOpen(fileList);
++                return;
++            }
++
++            if (this._fileExtra !== Enums.FileType.USER_DIRECTORY_TRASH) {
++                let data = Gio.File.new_for_uri(fileList[0]).query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null);
++                let idFs = data.get_attribute_string('id::filesystem');
++                if (this._desktopManager.desktopFsId === idFs) {
++                    DBusUtils.FileOperationsProxy.MoveURIsRemote(fileList, this._file.get_uri(),
++                        (result, error) => {
++                            if (error)
++                                throw new Error(`Error moving files: ${error.message}`);
++
+                         }
+-                        if (this._fileExtra !== Enums.FileType.USER_DIRECTORY_TRASH) {
+-                            let data = Gio.File.new_for_uri(fileList[0]).query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null);
+-                            let idFs = data.get_attribute_string('id::filesystem');
+-                            if (this._desktopManager.desktopFsId === idFs) {
+-                                DBusUtils.FileOperationsProxy.MoveURIsRemote(fileList, this._file.get_uri(),
+-                                    (result, error) => {
+-                                        if (error)
+-                                            throw new Error(`Error moving files: ${error.message}`);
+-
+-                                    }
+-                                );
+-                            } else {
+-                                DBusUtils.FileOperationsProxy.CopyURIsRemote(fileList, this._file.get_uri(),
+-                                    (result, error) => {
+-                                        if (error)
+-                                            throw new Error(`Error moving files: ${error.message}`);
+-
+-                                    }
+-                                );
+-                            }
+-                        } else {
+-                            DBusUtils.FileOperationsProxy.TrashFilesRemote(fileList,
+-                                (result, error) => {
+-                                    if (error)
+-                                        throw new Error(`Error moving files: ${error.message}`);
+-
+-                                }
+-                            );
++                    );
++                } else {
++                    DBusUtils.FileOperationsProxy.CopyURIsRemote(fileList, this._file.get_uri(),
++                        (result, error) => {
++                            if (error)
++                                throw new Error(`Error moving files: ${error.message}`);
++
+                         }
+-                    }
++                    );
+                 }
+-            });
++            } else {
++                DBusUtils.FileOperationsProxy.TrashFilesRemote(fileList,
++                    (result, error) => {
++                        if (error)
++                            throw new Error(`Error moving files: ${error.message}`);
+ 
++                    }
++                );
++            }
++        });
+ 
+-            dropDestination.connect('drag-motion', (unusedWidget, unusedContext, unusedX, unusedY, unusedTime) => {
+-                if (!this._styleContext.has_class('file-item-hover'))
+-                    this._styleContext.add_class('file-item-hover');
+ 
+-            });
+-            dropDestination.connect('drag-leave', (unusedWidget, unusedContext, unusedTime) => {
+-                if (this._styleContext.has_class('file-item-hover'))
+-                    this._styleContext.remove_class('file-item-hover');
++        dropDestination.connect('drag-motion', (unusedWidget, unusedContext, unusedX, unusedY, unusedTime) => {
++            if (!this._styleContext.has_class('file-item-hover'))
++                this._styleContext.add_class('file-item-hover');
+ 
+-            });
+-        }
++        });
++        dropDestination.connect('drag-leave', (unusedWidget, unusedContext, unusedTime) => {
++            if (this._styleContext.has_class('file-item-hover'))
++                this._styleContext.remove_class('file-item-hover');
++
++        });
+     }
+ 
+     onAttributeChanged() {

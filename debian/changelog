@@ -1,3 +1,59 @@
+gnome-shell-extensions (3.38.2-1tos11) tmax-unstable; urgency=medium
+
+  [ gangmo seong ]
+  * [chore] Arcmenu: change default pinned app for common
+  * [chore] ding: show network drive for default
+
+ -- Seunggil Lee <seunggil_lee@tmax.co.kr>  Thu, 14 Jul 2022 12:34:07 +0900
+
+gnome-shell-extensions (3.38.2-1tos10) tmax-unstable; urgency=medium
+
+  [ Seunggil Lee ]
+  * Update .gitlab-ci.yml
+
+  [ jiyun_ha ]
+  * [feat] arc-menu : replace Tmax arc menu icon with new one
+  * [feat] dash-to-panel : change tray volume menu icon
+  * [feat] dash-to-panel : mute the stream by clicking the volume icon of tray menu
+  * [feat] dash-to-panel : disable panel dragging operation
+
+ -- Seunggil Lee <seunggil_lee@tmax.co.kr>  Tue, 05 Jul 2022 12:48:51 +0900
+
+gnome-shell-extensions (3.38.2-1tos9) tmax-unstable; urgency=medium
+
+  * Fix some error log
+  * Enlarge the search area
+  * Make button of recently install app list on arc menu expand
+  * Fix the error of notificatio center in case of lock mode
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Thu, 02 Jun 2022 13:41:25 +0900
+
+gnome-shell-extensions (3.38.2-1tos8) tmax-unstable; urgency=medium
+
+  * Fix the calibrator error when using laptop with touch screen
+  * Change the action lock screen mode works
+  * Resize the tray icon size using xembed protocol
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Tue, 17 May 2022 16:42:14 +0900
+
+gnome-shell-extensions (3.38.2-1tos7) tmax-unstable; urgency=medium
+
+  * [bugfix] desktop-icons-ng: Correct build errors
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Mon, 09 May 2022 11:19:22 +0900
+
+gnome-shell-extensions (3.38.2-1tos6) tmax-unstable; urgency=medium
+
+  * Add the notice applet function of Gooroom 3.0
+  * Fix the Ding extension errors corresponding to folder name change
+  * Add the security applet function of Gooroom 3.0
+  * Change the icon of search result
+  * Fix the multi monitor settting error
+  * Disable scroll event of dash to panel
+  * Fix the greeter error with ESC key
+
+ -- jiyong_kim2 <jiyong_kim2@tmax.co.kr>  Fri, 06 May 2022 15:32:43 +0900
+
 gnome-shell-extensions (3.38.2-1tos5) tmax-unstable; urgency=medium
 
   * Rediff patches

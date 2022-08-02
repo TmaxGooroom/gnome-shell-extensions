@@ -1,0 +1,65 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Fri, 5 Nov 2021 14:34:13 +0900
+Subject: [bugfix] osk-hangul : disconnect 'set-content-type' signal when
+ Gnome-Shell OSK is disabled
+
+ - same as above
+
+[IMS] N/A
+---
+ extensions/osk-hangul/extension.js | 23 ++++++++++++-----------
+ 1 file changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/extensions/osk-hangul/extension.js b/extensions/osk-hangul/extension.js
+index c5c3ca2..837d9af 100644
+--- a/extensions/osk-hangul/extension.js
++++ b/extensions/osk-hangul/extension.js
+@@ -71,6 +71,15 @@ function _getSyncKeyboardFunc() {
+                 _resetKeyboard();
+                 _isOSKEnabled = false;
+             });
++
++            _ibusSetContentTypeId = ibusManager.connect('set-content-type', (im, purpose, _hints) => {
++                if (purpose !== Main.inputMethod._purpose) {
++                    Main.inputMethod._purpose = changeIBusPurposeToClutterPurpose(purpose);
++
++                    // To show the keyboard according to the purpose on the screen, call the method.
++                    KeyboardManager._keyboard._setActiveLayer(BASIC_KEYBOARD_LAYOUT);
++                }
++            });
+         }
+     }
+ 
+@@ -89,6 +98,9 @@ function _resetKeyboard() {
+         keyboard._onKeyboardGroupsChanged();
+         if (_keyboardDestroyId)
+             keyboard.disconnect(_keyboardDestroyId);
++
++        if (_ibusSetContentTypeId)
++            IBusManager.getIBusManager().disconnect(_ibusSetContentTypeId);
+     }
+ 
+     let ibusManager = IBusManager.getIBusManager();
+@@ -111,16 +123,6 @@ function enable() { // eslint-disable-line no-unused-vars
+     _lastDeviceChangedId = global.backend.connect_after('last-device-changed', syncKeyboard);
+ 
+     syncKeyboard();
+-
+-    let ibusManager = IBusManager.getIBusManager();
+-    _ibusSetContentTypeId = ibusManager.connect('set-content-type', (im, purpose, _hints) => {
+-        if (purpose !== Main.inputMethod._purpose) {
+-            Main.inputMethod._purpose = changeIBusPurposeToClutterPurpose(purpose);
+-
+-            // To show the keyboard according to the purpose on the screen, call the method.
+-            KeyboardManager._keyboard._setActiveLayer(BASIC_KEYBOARD_LAYOUT);
+-        }
+-    });
+ }
+ 
+ function disable() { // eslint-disable-line no-unused-vars
+@@ -129,5 +131,4 @@ function disable() { // eslint-disable-line no-unused-vars
+     KeyboardManager._a11yApplicationsSettings.disconnect(_a11ySignalId);
+     KeyboardManager._seat.disconnect(_touchModeNotifyId);
+     global.backend.disconnect(_lastDeviceChangedId);
+-    IBusManager.getIBusManager().disconnect(_ibusSetContentTypeId);
+ }

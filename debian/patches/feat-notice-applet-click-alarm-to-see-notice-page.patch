@@ -1,0 +1,109 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 30 Mar 2022 19:19:49 +0900
+Subject: [feat] notice-applet: click alarm to see notice page
+
+- set default action to alarm
+- default action is opening notice page
+
+[IMS] N/A
+---
+ extensions/notification-center/noticeAlarm.js  | 28 ++++++++++++++------------
+ extensions/notification-center/noticeApplet.js | 13 +-----------
+ extensions/notification-center/noticeView.js   |  8 ++++----
+ 3 files changed, 20 insertions(+), 29 deletions(-)
+
+diff --git a/extensions/notification-center/noticeAlarm.js b/extensions/notification-center/noticeAlarm.js
+index f4f7825..c6a015b 100755
+--- a/extensions/notification-center/noticeAlarm.js
++++ b/extensions/notification-center/noticeAlarm.js
+@@ -1,4 +1,5 @@
+-const { Notify, Gio } = imports.gi;
++const { Notify, GLib } = imports.gi;
++// const Mainloop = imports.mainloop;
+ 
+ /*
+ ARGV[0] - title
+@@ -10,18 +11,19 @@ ARGV[4] - clientId
+ 
+ var NOTIFICATION_TIMEOUT = 5000;
+ 
+-function onNotificationPopupOpened(data) {
+-    log(data);
+-    if (!ARGV[1] || !ARGV[2] || !ARGV[3] || !ARGV[4])
+-        return;
+-
+-    let window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', ARGV[1], ARGV[2], ARGV[3], ARGV[4]] });
+-    window.init(null);
+-}
+-
+-Notify.init('notice');
+-let notification = new Notify.Notification({ summary: ARGV[0], body: '' });
+-notification.add_action('default', 'detail view', data => onNotificationPopupOpened(data));
++Notify.init(ARGV[0]);
++let loop = GLib.MainLoop.new(null, false);
++let notification = new Notify.Notification({ summary: 'Notice', body: ARGV[0] });
++notification.add_action('default', ' ', () => {
++    GLib.spawn_command_line_async(`gjs /usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js ${ARGV[1]} ${ARGV[2]} ${ARGV[3]} ${ARGV[4]}`);
++});
++let closeId = notification.connect('closed', () => {
++    notification.clear_actions();
++    notification.disconnect(closeId);
++    // Notify.uninit();
++    loop.quit();
++});
+ notification.set_urgency(Notify.Urgency.NORMAL);
+ notification.set_timeout(NOTIFICATION_TIMEOUT);
+ notification.show();
++loop.run();
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index f043d6d..c12a9bf 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -305,18 +305,7 @@ var noticeApplet = class applet {
+     }
+ 
+     notificationOpened(title, url) {
+-        let Alarm = new Gio.Subprocess({
+-            argv: [
+-                'gjs',
+-                '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js',
+-                title,
+-                url,
+-                this.signing,
+-                this.sessionId,
+-                this.clientId,
+-            ],
+-        });
+-        Alarm.init(null);
++        GLib.spawn_command_line_async(`gjs /usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js ${title} ${url} ${this.signing} ${this.sessionId} ${this.clientId}`);
+     }
+ 
+     noticePopup() {
+diff --git a/extensions/notification-center/noticeView.js b/extensions/notification-center/noticeView.js
+index 5fd2fd9..fb5834b 100755
+--- a/extensions/notification-center/noticeView.js
++++ b/extensions/notification-center/noticeView.js
+@@ -4,7 +4,7 @@ const { Gtk, Gdk, Soup, WebKit2 } = imports.gi;
+ ARGV[0] - url
+ ARGV[1] - signing
+ ARGV[2] - sessionId
+-ARGV[3] - this.clientId
++ARGV[3] - clientId
+ */
+ 
+ function onNotificationWindowClosed() {
+@@ -70,11 +70,11 @@ let manager = context.get_cookie_manager();
+ let lang = getLanguage();
+ let domain = getDomain(ARGV[0]);
+ 
+-if (ARGV[1] !== 'emtpy')
++if (ARGV[1])
+     addCookie(manager, 'SIGNING', ARGV[1], domain);
+-if (ARGV[2] !== 'emtpy')
++if (ARGV[2])
+     addCookie(manager, 'SESSION_ID', ARGV[2], domain);
+-if (ARGV[3] !== 'emtpy')
++if (ARGV[3])
+     addCookie(manager, 'CLIENT_ID', ARGV[3], domain);
+ addCookie(manager, 'LANG_CODE', lang, domain);
+ 

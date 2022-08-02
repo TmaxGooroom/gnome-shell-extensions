@@ -1,0 +1,38 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Thu, 4 Nov 2021 17:05:49 +0900
+Subject: [chore] greeter : change keyword of exported variables
+
+- change keyword const to var
+
+[IMS] N/A
+---
+ extensions/greeter/constants.js | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/extensions/greeter/constants.js b/extensions/greeter/constants.js
+index 4bfdafb..a603ad9 100644
+--- a/extensions/greeter/constants.js
++++ b/extensions/greeter/constants.js
+@@ -1,13 +1,13 @@
+ /* exported AVATAR_ICON_SIZE PASSWD_EYE_ICON_SIZE CANCEL_BTN_ICON_SIZE USER_ITEM_ICON_SIZE USER_DEFAULT_ICON MENU_ARROW_DOWN PASSWD_HIDE_ICON PASSWD_SHOW_ICON CANCEL_BTN_ICON */
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ 
+-const AVATAR_ICON_SIZE = 160;
+-const PASSWD_EYE_ICON_SIZE = 30;
+-const CANCEL_BTN_ICON_SIZE = 25;
+-const USER_ITEM_ICON_SIZE = 42;
++var AVATAR_ICON_SIZE = 160;
++var PASSWD_EYE_ICON_SIZE = 30;
++var CANCEL_BTN_ICON_SIZE = 25;
++var USER_ITEM_ICON_SIZE = 42;
+ 
+-const USER_DEFAULT_ICON = `${Me.path}/media/tos_login_ic_user_01.svg`;
+-const MENU_ARROW_DOWN = `${Me.path}/media/tos_login_ic_line_arrow_down.svg`;
+-const PASSWD_HIDE_ICON = `${Me.path}/media/tos_login_ic_hide.svg`;
+-const PASSWD_SHOW_ICON = `${Me.path}/media/tos_login_ic_show.svg`;
+-const CANCEL_BTN_ICON = `${Me.path}/media/tos_login_ic_line_arrow_backward.svg`;
++var USER_DEFAULT_ICON = `${Me.path}/media/tos_login_ic_user_01.svg`;
++var MENU_ARROW_DOWN = `${Me.path}/media/tos_login_ic_line_arrow_down.svg`;
++var PASSWD_HIDE_ICON = `${Me.path}/media/tos_login_ic_hide.svg`;
++var PASSWD_SHOW_ICON = `${Me.path}/media/tos_login_ic_show.svg`;
++var CANCEL_BTN_ICON = `${Me.path}/media/tos_login_ic_line_arrow_backward.svg`;

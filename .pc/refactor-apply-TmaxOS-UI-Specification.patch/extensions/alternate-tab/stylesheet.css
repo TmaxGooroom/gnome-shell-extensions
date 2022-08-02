@@ -1,0 +1,25 @@
+/* This extensions requires no special styling */
+.tos-item-box{
+	padding: 8px;
+	border-radius: 2px;
+}
+
+.tos-item-box:selected{
+	padding: 6px;
+	border : 2px solid rgba(70, 137, 255, 1);
+}
+
+.tos-item-box:hover{
+	padding: 6px;
+	border : 2px solid rgba(70, 137, 255, 0.5);
+}
+
+.tos-item-box:active{
+	padding : 6px;
+	background-color : rgba(70, 137, 255, 0.3);
+	border: 2px solid rgba(70, 137, 255, 1);
+}
+
+.tos-text-label{
+	padding: 0 0 2px 4px;
+}

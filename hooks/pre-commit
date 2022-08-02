@@ -1,0 +1,52 @@
+#!/bin/bash
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+  against=HEAD
+else
+  # Initial commit: diff against an empty tree object
+  against=9dc9ff403850282bbbbeb93d16b34837932d01a1
+fi
+
+# conflict인 경우 clang-format 적용하지 않음
+if grep "Conflicts" .git/MERGE_MSG > /dev/null 2>&1
+then
+    echo conflict occurred... skip hook
+    exit 0
+fi
+
+# 색 정의
+RED="\e[0;31m"
+END="\e[0m"
+
+# JS Auto formation by eslint package
+# First check ESLINT Pacakge was installed
+ESLINT=`which eslint`
+if [ ! -x "$ESLINT" ]; then
+  printf "\t\033[41mPlease install ESlint\033[0m (apt install eslint)\n"
+  exit 1
+fi
+
+# Find stage files and apply ESLint
+STAGED_FILES=($(git diff --cached --name-only --diff-filter=ACM | grep ".jsx\{0,1\}$"))
+
+echo "ESLint'ing ${#STAGED_FILES[@]} files"
+
+if [ "$STAGED_FILES" != "" ]; then
+ $ESLINT "${STAGED_FILES[@]}" --fix
+
+ ESLINT_EXIT="$?"
+
+ # Re-add files since they may have been fixed
+ git add "${STAGED_FILES[@]}"
+
+ if [[ "${ESLINT_EXIT}" == 0 ]]; then
+   printf "\n\033[42mCOMMIT SUCCEEDED\033[0m\n"
+ else
+   printf "\n\033[41mCOMMIT FAILED:\033[0m Fix eslint errors and try again\n"
+   exit 1
+ fi
+fi
+
+# Do default checking (trailing whitespace, etc.)
+git diff-index --check --cached $against . ':(exclude)*.patch'

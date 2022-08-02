@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-05-27 14:00+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: menuWidgets.js:111
+msgid "Open Folder Location"
+msgstr ""
+
+#: menuWidgets.js:126
+msgid "Current Windows:"
+msgstr ""
+
+#: menuWidgets.js:144
+msgid "New Window"
+msgstr ""
+
+#: menuWidgets.js:154
+msgid "Launch using Dedicated Graphics Card"
+msgstr ""
+
+#: menuWidgets.js:197
+msgid "Delete Desktop Shortcut"
+msgstr ""
+
+#: menuWidgets.js:204
+msgid "Create Desktop Shortcut"
+msgstr ""
+
+#: menuWidgets.js:215
+msgid "Show Details"
+msgstr ""
+
+#: menuWidgets.js:824
+msgid "Please enter a search term."
+msgstr ""
+
+#: menuWidgets.js:1046 search.js:383
+msgid "Apps"
+msgstr ""
+
+#: menuWidgets.js:1059
+msgid "location"
+msgstr ""
+
+#: menuWidgets.js:1080
+msgid "last edit"
+msgstr ""
+
+#: menuWidgets.js:1193
+msgid "Open"
+msgstr ""
+
+#: menuWidgets.js:1196
+msgid "Run as Administrator"
+msgstr ""
+
+#: menuWidgets.js:1199
+msgid "Pin to Favorites"
+msgstr ""
+
+#: menuWidgets.js:1202
+msgid "Add to Dock"
+msgstr ""
+
+#: menuWidgets.js:1205
+msgid "Remove from Dock"
+msgstr ""
+
+#: menuWidgets.js:1208
+msgid "Remove"
+msgstr ""
+
+#: menuWidgets.js:1211
+msgid "Open File Location"
+msgstr ""
+
+#: menuWidgets.js:1214
+msgid "Copy Full Path"
+msgstr ""
+
+#: search.js:733
+msgid "Searching..."
+msgstr ""
+
+#: search.js:735
+msgid "No results."
+msgstr ""
+
+#: search.js:825
+#, javascript-format
+msgid "%d more"
+msgid_plural "%d more"
+msgstr[0] ""
+msgstr[1] ""
+
+#: searchMenuLayout.js:115
+msgid "Frequently Used Apps"
+msgstr ""
+
+#: searchMenuLayout.js:150
+msgid "Recent Records"
+msgstr ""

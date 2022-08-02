@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-05-27 14:00+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: menuWidgets.js:111
+msgid "Open Folder Location"
+msgstr "폴더 위치 열기"
+
+#: menuWidgets.js:126
+msgid "Current Windows:"
+msgstr "현재 창"
+
+#: menuWidgets.js:144
+msgid "New Window"
+msgstr "새 창"
+
+#: menuWidgets.js:154
+msgid "Launch using Dedicated Graphics Card"
+msgstr "그래픽 카드를 사용하여 실행"
+
+#: menuWidgets.js:197
+msgid "Delete Desktop Shortcut"
+msgstr "바탕화면에 바로가기 제거"
+
+#: menuWidgets.js:204
+msgid "Create Desktop Shortcut"
+msgstr "바탕화면에 바로가기 생성"
+
+#: menuWidgets.js:215
+msgid "Show Details"
+msgstr "자세히 보기"
+
+#: menuWidgets.js:824
+msgid "Please enter a search term."
+msgstr "검색어를 입력하세요."
+
+#: menuWidgets.js:1046 search.js:383
+msgid "Apps"
+msgstr "앱"
+
+#: menuWidgets.js:1059
+msgid "location"
+msgstr "위치"
+
+#: menuWidgets.js:1080
+msgid "last edit"
+msgstr "마지막 수정"
+
+#: menuWidgets.js:1193
+msgid "Open"
+msgstr "열기"
+
+#: menuWidgets.js:1196
+msgid "Run as Administrator"
+msgstr "관리자 권한으로 실행"
+
+#: menuWidgets.js:1199
+msgid "Pin to Favorites"
+msgstr "즐겨찾기에 등록"
+
+#: menuWidgets.js:1202
+msgid "Add to Dock"
+msgstr "Dock에 고정"
+
+#: menuWidgets.js:1205
+msgid "Remove from Dock"
+msgstr "Dock에서 해제"
+
+#: menuWidgets.js:1208
+msgid "Remove"
+msgstr "제거"
+
+#: menuWidgets.js:1211
+msgid "Open File Location"
+msgstr "파일 위치 열기"
+
+#: menuWidgets.js:1214
+msgid "Copy Full Path"
+msgstr "전체 경로 복사"
+
+#: search.js:733
+msgid "Searching..."
+msgstr "검색 중..."
+
+#: search.js:735
+msgid "No results."
+msgstr "검색 결과 없음"
+
+#: search.js:825
+#, javascript-format
+msgid "%d more"
+msgid_plural "%d more"
+msgstr[0] ""
+msgstr[1] ""
+
+#: searchMenuLayout.js:115
+msgid "Frequently Used Apps"
+msgstr "자주 사용하는 앱"
+
+#: searchMenuLayout.js:150
+msgid "Recent Records"
+msgstr "최근 기록"

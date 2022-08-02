@@ -1,0 +1,22 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 22 Mar 2022 10:54:07 +0900
+Subject: [bugfix] Greeter: Disable esc key on the login screen
+
+- Same as above
+
+[IMS] 279444
+---
+ extensions/greeter/authPrompt.js | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/extensions/greeter/authPrompt.js b/extensions/greeter/authPrompt.js
+index 78ec2f3..9e035cc 100644
+--- a/extensions/greeter/authPrompt.js
++++ b/extensions/greeter/authPrompt.js
+@@ -164,4 +164,6 @@ var AuthPrompt = GObject.registerClass(class AuthPrompt extends GnomeAuthPrompt.
+         if (this._userProfile._userListMenu.isOpen)
+             this._userProfile._userListMenu.toggle();
+     }
++
++    vfunc_key_press_event() {}
+ });

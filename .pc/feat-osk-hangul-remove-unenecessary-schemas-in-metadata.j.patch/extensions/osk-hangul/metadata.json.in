@@ -1,0 +1,12 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"settings-schema": "@gschemaname@",
+"gettext-domain": "osk-hangul",
+"name": "osk-hangul",
+"description": "Gnome-shell on screen keyboard extension for Korean users",
+"original-authors": [  "Jiyun_ha" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@",
+"version": 9999
+}

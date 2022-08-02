@@ -1,0 +1,95 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 23 Nov 2021 16:15:49 +0900
+Subject: [bugfix] desktop-icons-ng : Handle clipboard error
+
+- The problem of not being able to copy or move. Remove side effects
+- Double-check nemo clipboard, and text clipboard
+
+[IMS] 270530
+---
+ extensions/desktop-icons-ng/desktopManager.js | 44 ++++++++++++++++-----------
+ 1 file changed, 27 insertions(+), 17 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index eaad6ca..54bcf2a 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -479,17 +479,29 @@ var DesktopManager = class {
+ 
+         if (Constants.isFileManagerNemo) {
+             let nemoCustomAtom = Gdk.Atom.intern('x-special/gnome-copied-files', false);
+-            clipboard.request_contents(nemoCustomAtom, (clipboardIn, selectionData) => {
++            clipboard.request_contents(nemoCustomAtom, (clipboardIn_, selectionData) => {
+                 let data = selectionData.get_data();
+                 let [valid, action_, files_] = this._parseClipboardCustomData(data);
+                 this._pasteMenuItem.set_sensitive(valid);
++
++                if (!valid)
++                    this._setMenuSensitivityForText();
++
+             });
+-        } else {
+-            clipboard.request_text((clipboardIn, text) => {
+-                let [valid, action_, files_] = this._parseClipboardText(text);
+-                this._pasteMenuItem.set_sensitive(valid);
+-            });
++            return;
+         }
++
++        this._setMenuSensitivityForText();
++
++    }
++
++    _setMenuSensitivityForText() {
++        let atom = Gdk.Atom.intern('CLIPBOARD', false);
++        let clipboard = Gtk.Clipboard.get(atom);
++        clipboard.request_text((clipboardIn_, text) => {
++            let [valid, action_, files_] = this._parseClipboardText(text);
++            this._pasteMenuItem.set_sensitive(valid);
++        });
+     }
+ 
+     _syncUndoRedo() {
+@@ -820,25 +832,23 @@ var DesktopManager = class {
+ 
+         if (Constants.isFileManagerNemo) {
+             let nemoCustomAtom = Gdk.Atom.intern('x-special/gnome-copied-files', false);
+-            clipboard.request_contents(nemoCustomAtom, (clipboardIn, selectionData) => {
++            clipboard.request_contents(nemoCustomAtom, (clipboardIn_, selectionData) => {
+                 let data = selectionData.get_data();
+                 let [valid, action, files] = this._parseClipboardCustomData(data);
+                 if (!valid)
+                     return;
+ 
+-
+                 this._requestFileOperation(action, files);
+             });
+-        } else {
+-            clipboard.request_text((clipboardIn, text) => {
+-                let [valid, action, files] = this._parseClipboardText(text);
+-                if (!valid)
+-                    return;
++        }
+ 
++        clipboard.request_text((clipboardIn_, text) => {
++            let [valid, action, files] = this._parseClipboardText(text);
++            if (!valid)
++                return;
+ 
+-                this._requestFileOperation(action, files);
+-            });
+-        }
++            this._requestFileOperation(action, files);
++        });
+ 
+     }
+ 
+@@ -870,7 +880,7 @@ var DesktopManager = class {
+         let lines = text.split('\n');
+         let [mime, action, ...files] = lines;
+ 
+-        if (mime !== 'x-special/nautilus-clipboard')
++        if (mime !== Constants.CLIPBOARD_TEXT)
+             return [false, false, null];
+ 
+         if (!['copy', 'cut'].includes(action))

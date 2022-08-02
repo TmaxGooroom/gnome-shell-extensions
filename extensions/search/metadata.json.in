@@ -1,0 +1,11 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"settings-schema": "@gschemaname@",
+"gettext-domain": "search",
+"name": "Search",
+"description": "Add search button in panel and show search window",
+"original-authors": [  "tmax" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

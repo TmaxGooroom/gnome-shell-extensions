@@ -1,0 +1,20 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 6 Jul 2022 18:02:02 +0900
+Subject: [chore] Arcmenu: change default pinned app for common
+
+- togate browser -> gooroom browser
+
+[IMS] 283631
+---
+ extensions/arc-menu/schemas/10_arcmenu.gschema.override | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/arc-menu/schemas/10_arcmenu.gschema.override b/extensions/arc-menu/schemas/10_arcmenu.gschema.override
+index 3183751..aa2be7b 100644
+--- a/extensions/arc-menu/schemas/10_arcmenu.gschema.override
++++ b/extensions/arc-menu/schemas/10_arcmenu.gschema.override
+@@ -1,3 +1,3 @@
+ [org.gnome.shell.extensions.arcmenu]
+ menu-hotkey='Super_L'
+-pinned-app-list=['ToGate', '', 'togate-browser.desktop','Terminal', '', 'org.gnome.Terminal.desktop', 'Settings', '', 'gnome-control-center.desktop', 'Calculator', '', 'org.gnome.Calculator.desktop', 'Software', '', 'org.gnome.Software.desktop']
++pinned-app-list=['구름 브라우저', '', 'gooroom-browser.desktop','Terminal', '', 'org.gnome.Terminal.desktop', 'Settings', '', 'gnome-control-center.desktop', 'Calculator', '', 'org.gnome.Calculator.desktop']

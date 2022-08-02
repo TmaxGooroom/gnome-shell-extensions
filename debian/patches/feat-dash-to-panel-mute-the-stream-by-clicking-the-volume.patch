@@ -1,0 +1,46 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Thu, 30 Jun 2022 14:05:43 +0900
+Subject: [feat] dash-to-panel : mute the stream by clicking the volume icon
+ of tray menu
+
+ - Same as above.
+
+[IMS] 283172
+---
+ extensions/dash-to-panel/tray.js | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/extensions/dash-to-panel/tray.js b/extensions/dash-to-panel/tray.js
+index d270b9f..80486c3 100644
+--- a/extensions/dash-to-panel/tray.js
++++ b/extensions/dash-to-panel/tray.js
+@@ -1,5 +1,5 @@
+ /* exported Tray */
+-const { Clutter, Gio, St } = imports.gi;
++const { Clutter, GObject, Gio, St } = imports.gi;
+ 
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Utils = Me.imports.utils;
+@@ -182,10 +182,22 @@ class Tray {
+                 icon.icon_name = output.getIcon();
+ 
+         });
++
++        // block volume menu item event
++        let handlerId = GObject.signal_handler_find(output.item, { signalId: 'button-press-event' });
++        GObject.signal_handler_block(output.item, handlerId);
++        icon.reactive = true;
++        icon.connect('button-press-event', () => {
++            let isMuted = output.stream.is_muted;
++            output.stream.change_is_muted(!isMuted);
++        });
++
+         icon.connect('destroy', () => {
+             output.disconnect(id);
++            GObject.signal_handler_unblock(output.item, handlerId);
+         });
+ 
++
+         this._volumeMenuIcon = icon;
+     }
+ 

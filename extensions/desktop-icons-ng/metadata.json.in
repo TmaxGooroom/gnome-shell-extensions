@@ -1,0 +1,11 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"settings-schema": "ding",
+"gettext-domain": "@gettext_domain@",
+"name": "Desktop Icons NG (DING)",
+"description": "Add icons to the desktop.",
+"original-authors": [  "rastersoft@gmail.com" ],
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

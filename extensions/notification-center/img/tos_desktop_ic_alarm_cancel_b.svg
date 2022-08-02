@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="21px" height="20px" viewBox="0 0 21 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>tos_desktop_ic_alarm_cancel_b</title>
+    <g id="Guide" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="04_02_03_TOS5_alarm" transform="translate(-860.000000, -942.000000)">
+            <g id="Group" transform="translate(819.000000, 539.000000)">
+                <g id="Group-11" transform="translate(28.000000, 403.000000)">
+                    <g id="Group-7-Copy-3" transform="translate(13.000000, 0.000000)">
+                        <g id="close-24px" transform="translate(1.000000, 1.000000)">
+                            <polygon id="Path" points="0 0 18 0 18 18 0 18"></polygon>
+                            <path d="M13.725,4.2825 C13.4325,3.99 12.96,3.99 12.6675,4.2825 L9,7.9425 L5.3325,4.275 C5.04,3.9825 4.5675,3.9825 4.275,4.275 C3.9825,4.5675 3.9825,5.04 4.275,5.3325 L7.9425,9 L4.275,12.6675 C3.9825,12.96 3.9825,13.4325 4.275,13.725 C4.5675,14.0175 5.04,14.0175 5.3325,13.725 L9,10.0575 L12.6675,13.725 C12.96,14.0175 13.4325,14.0175 13.725,13.725 C14.0175,13.4325 14.0175,12.96 13.725,12.6675 L10.0575,9 L13.725,5.3325 C14.01,5.0475 14.01,4.5675 13.725,4.2825 Z" id="Path" fill="#000000"></path>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

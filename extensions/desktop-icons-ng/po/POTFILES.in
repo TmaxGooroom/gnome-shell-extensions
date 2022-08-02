@@ -1,0 +1,15 @@
+askConfirmPopup.js
+createThumbnail.js
+dbusUtils.js
+desktopGrid.js
+desktopIconsUtil.js
+desktopManager.js
+ding.js
+enums.js
+extension.js
+fileItem.js
+preferences.js
+prefs.js
+renameView.js
+templateManager.js
+schemas/org.gnome.shell.extensions.ding.gschema.xml

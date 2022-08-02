@@ -14,10 +14,12 @@ foreach e : enabled_extensions
   metadata_conf.set('shell_current', shell_version)
   metadata_conf.set('url', 'https://gitlab.gnome.org/GNOME/gnome-shell-extensions')
 
+
   extension_sources = files(e + '/extension.js')
-  extension_data = files(e + '/stylesheet.css')
+  extension_data = []
 
   subdir(e)
+  extension_data += files(e + '/stylesheet.css')
 
   install_data (extension_sources + extension_data,
     install_dir: join_paths(extensiondir, uuid)

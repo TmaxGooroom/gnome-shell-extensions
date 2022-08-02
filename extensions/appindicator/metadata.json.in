@@ -1,0 +1,8 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"name": "AppIndicator",
+"description": "Adds KStatusNotifierItem support to the Shell",
+"shell-version": [ "@shell_current@" ],
+"url": "@url@"
+}

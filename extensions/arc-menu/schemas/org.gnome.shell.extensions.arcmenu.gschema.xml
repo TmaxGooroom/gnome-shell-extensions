@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="arcmenu">
+    <enum id='org.gnome.shell.extensions.arcmenu.menu-hotkey'>
+        <value value='0' nick='Undefined'/>
+        <value value='1' nick='Super_L'/>
+        <value value='2' nick='Super_R'/>
+        <value value='3' nick='Custom'/>
+    </enum>
+    <enum id='org.gnome.shell.extensions.arcmenu.hot-corners'>
+        <value value="0" nick="Default"/>
+        <value value="1" nick="Disabled"/>
+        <value value="2" nick="ToggleArcMenu"/>
+        <value value="3" nick="Custom"/>
+    </enum>
+  <schema path="/org/gnome/shell/extensions/arcmenu/" id="org.gnome.shell.extensions.arcmenu">
+    <key name="hot-corners" enum="org.gnome.shell.extensions.arcmenu.hot-corners">
+      <default>'Default'</default>
+      <summary>Activities hotcorner action</summary>
+      <description>Activities hotcorner action.</description>
+    </key>
+    <key type="s" name="custom-hot-corner-cmd">
+      <default>"sh -c 'notify-send \"$(date)\"'"</default>
+      <summary>Custom hot corner terminal command</summary>
+      <description>Custom hot corner terminal command.</description>
+    </key>
+    <key name="menu-hotkey" enum="org.gnome.shell.extensions.arcmenu.menu-hotkey">
+      <default>'Undefined'</default>
+      <summary>The menu hotkey to open the ArcMenu.</summary>
+      <description>The menu hotkey to open the ArcMenu.</description>
+    </key>
+    <key name="pinned-app-list" type="as">
+      <default>["ArcMenu_WebBrowser","WebBrowser", "WebBrowser","Terminal", "", "org.gnome.Terminal.desktop"]</default>
+      <summary>List of Apps Pinned to Menu</summary>
+      <description>List of Apps Pinned to Menu</description>
+    </key>
+    <key name="position-in-panel" type="(si)">
+      <default>('left', 0)</default>
+      <summary>Menu position in Dash To Panel</summary>
+      <description>Menu position in Dash To Panel</description>
+    </key>
+    <key name="min-recent-app-size" type="i">
+      <default>4</default>
+      <summary>Number of apps initially visible in recently installed apps area.</summary>
+      <description>If the total number of recently installed apps exceeds this number, an extension button is added.</description>
+    </key>
+    <key name="max-recent-app-size" type="i">
+      <default>10</default>
+      <summary>Maximum number of apps to be seen in recenly installed apps area</summary>
+      <description>Maximum number of apps to be seen in recently installed apps area</description>
+    </key>
+  </schema>
+</schemalist>

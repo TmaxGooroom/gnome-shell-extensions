@@ -1,0 +1,65 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Thu, 4 Nov 2021 13:13:17 +0900
+Subject: [feat] Search : Implement recentFile item NotFound error
+ notification popup.
+
+- Use Gtk.MessageDialog
+
+[IMS] N/A
+---
+ extensions/search/menuWidgets.js          |  3 +++
+ extensions/search/meson.build             |  3 ++-
+ extensions/search/notificationNotFound.js | 16 ++++++++++++++++
+ 3 files changed, 21 insertions(+), 1 deletion(-)
+ create mode 100644 extensions/search/notificationNotFound.js
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index 16b8ab3..5a9e102 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -1507,6 +1507,9 @@ var PlaceMenuItem = GObject.registerClass(class SearchMenuPlaceMenuItem extends
+                 this._menuLayout.clearActorsFromBox(this._menuLayout.recentFileItemsBox);
+                 this._menuLayout._loadRecentFiles();
+                 this._menuLayout.displayRecentFiles();
++                let path = GLib.build_filenamev([Me.path, 'notificationNotFound.js']);
++                GLib.spawn_command_line_async(`gjs ${path}`);
++                this._menuLayout.searchMenu.toggle();
+             }
+         }
+     }
+diff --git a/extensions/search/meson.build b/extensions/search/meson.build
+index 72fa8a6..694a932 100644
+--- a/extensions/search/meson.build
++++ b/extensions/search/meson.build
+@@ -15,7 +15,8 @@ extension_sources += files(
+     'dbusUtils.js',
+     'search.js',
+     'searchMenuLayout.js',
+-    'animator.js'
++    'animator.js',
++    'notificationNotFound.js'
+ )
+ 
+ extension_dir = join_paths(extensiondir, uuid)
+diff --git a/extensions/search/notificationNotFound.js b/extensions/search/notificationNotFound.js
+new file mode 100644
+index 0000000..39e8b40
+--- /dev/null
++++ b/extensions/search/notificationNotFound.js
+@@ -0,0 +1,16 @@
++// MessageDialog for notify that File or Folder cannot not found
++
++const Gtk = imports.gi.Gtk;
++
++Gtk.init(null);
++
++let messageDialog = new Gtk.MessageDialog({ window_position: Gtk.WindowPosition.CENTER_ALWAYS,
++    transient_for: null,
++    message_type: Gtk.MessageType.WARNING,
++    buttons: Gtk.ButtonsType.NONE,
++    text: '파일을 찾을수 없습니다.',
++    secondary_text: '최근 기록에서 삭제합니다.' });
++
++messageDialog.add_button('확인', Gtk.ResponseType.OK);
++messageDialog.show_all();
++messageDialog.run();

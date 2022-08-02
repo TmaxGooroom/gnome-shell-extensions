@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="search">
+  <schema path="/org/gnome/shell/extensions/search/" id="org.gnome.shell.extensions.search">
+    <key type="b" name="disable-tooltips">
+      <default>false</default>
+      <summary>disable tooltips</summary>
+      <description>disable tooltips.</description>
+    </key>
+    <key type="b" name="multi-monitor">
+      <default>true</default>
+      <summary>Display on all monitors</summary>
+      <description>Display the menu on all monitors when using Dash to Panel.</description>
+    </key>
+    <key name="position-in-panel" type="(si)">
+      <default>('left', 1)</default>
+      <summary>Menu position in Dash To Panel</summary>
+      <description>Menu position in Dash To Panel</description>
+    </key>
+    <key name="unused-search-providers" type="as">
+      <default>['org.gnome.clocks.desktop', 'org.gnome.Characters.desktop']</default>
+      <summary>List to store id of unused search providers</summary>
+      <description>List to store id of unused search providers</description>
+    </key>
+  </schema>
+</schemalist>

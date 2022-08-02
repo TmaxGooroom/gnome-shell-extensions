@@ -1,0 +1,182 @@
+.notification-center-message-list {
+  padding: 8px 8px 0 20px;
+}
+
+.notification-center-message {
+  background-color: rgb(237, 237, 242);
+  border-radius: 16px;
+  border-width: 0px;
+  color: rgb(27, 27, 27);
+  font-size: 14px;
+  font-weight: bold
+}
+
+.notification-center-message:hover {
+  background-color: rgba(0, 79, 255, 0.12);
+}
+
+.notification-center-message:active {
+  background-color: rgba(0, 79, 255, 0.2);
+}
+
+.notification-center-clear-button {
+  margin: 14px 19px 0 125px;
+  padding: 0 10px 0 10px;
+  color: rgba(0,0,0,0.6);
+  background-color: rgb(255,255,255);
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.notification-center-clear-button:hover {
+  background-color: rgba(203, 206, 216, 0.5);
+}
+
+.notification-center-clear-button:active {
+  background-color: rgb(203, 206, 216);
+}
+
+.notification-center-message-list-section {
+  padding-bottom: 6px;
+}
+
+.notification-center-actor {
+  -arrow-base:0px; -arrow-rise:0px; -boxpointer-gap:0px; -arrow-border-radius: 16px; -arrow-border-color: black; -arrow-border-width: 2px;
+  background-color: rgba(255,255,255,255);
+  width: 328px;
+  border-radius: 18px;
+}
+
+.notification-center-title-box {
+  background-color: rgb(255,255,255);
+  width: 328px;
+  height: 38px;
+  border-radius: 16px;
+}
+
+.notification-center-easy-support {
+  background-color: rgba(41, 41, 41, 255);
+  border-radius: 14px;
+  padding: 4px 20px;
+  spacing: 3px
+}
+
+.notification-center-support-control-row {
+    background-color: rgba(0,255,0,0);
+    spacing: 5px;
+}
+
+.notification-center-support-icon-row {
+    spacing: 11px;
+}
+
+.notification-center-support-control-done {
+    padding : 5px 15px;
+    border-radius: 12px;
+    background-color: #3961CA;
+    font-size: 14px;
+}
+
+.notification-center-support-icon {
+    spacing: 2px;
+}
+
+.notification-center-support-icon-label {
+    width: 48px;
+    font-size: 13px;
+    text-align: center;
+}
+.notification-center-support-icon-button {
+    background-color : #EAEBF1;
+    border-radius: 18px
+}
+.notification-center-support-icon-button:hover {
+    background-color : #FFFFFF;
+    border-radius: 18px
+}
+.notification-center-support-icon-button:active {
+    background-color : rgba(234,235,241,0.8);
+    border-radius: 18px
+}
+.notification-center-support-icon-toggle-button-on {
+    background-color : #3961CA;
+    border-radius: 18px;
+}
+
+.notification-center-support-icon-toggle-button-on:hover {
+    background-color : #004FFF;
+    border-radius: 18px;
+}
+
+.notification-center-support-icon-toggle-button-on:active {
+    background-color : #284DB1;
+    border-radius: 18px;
+}
+
+.notification-center-support-icon-toggle-button-off {
+    background-color : rgba(234,235,241,0.2);
+    border-radius: 18px;
+}
+
+.notification-center-support-icon-toggle-button-off:hover {
+    background-color : rgba(234,235,241,0.7);
+    border-radius: 18px;
+}
+
+.notification-center-support-icon-toggle-button-off:active {
+    background-color : rgba(234,235,241,0.5);
+    border-radius: 18px;
+}
+
+.notification-center-empty-icon {
+  margin-top: 200px;
+}
+
+.notification-center-title-label {
+  margin: 14px 0 0 20px;
+  color: rgb(0,0,0);
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.notification-center-empty-label {
+  color: rgb(128, 128, 128);
+  margin-top: 16px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.notification-center-dnd-label {
+  color: rgb(255,255,255);
+  font-weight: bold;
+}
+
+.message-close-button {
+  color: rgb(0,0,0);
+  width: 20px;
+  height: 20px;
+  size: 11px;
+}
+
+.message-close-button:hover {
+  background-color: rgba(203, 206, 216, 0.5);
+  border-radius: 10px;
+}
+
+.message-close-button:active {
+  background-color: rgb(203, 206, 216);
+  border-radius: 10px;
+}
+
+.notification-center-bodystack {
+  color: rgba(0,0,0,0.6);
+  font-size: 13px;
+  font-weight: lighter;
+}
+
+.event-time {
+  margin-top: 4px;
+  color: rgba(0,0,0,0.4);
+  font-size: 13px;
+  font-weight: lighter;
+}

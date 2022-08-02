@@ -1,0 +1,37 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Mon, 4 Jul 2022 10:50:53 +0900
+Subject: [feat] dash-to-panel : disable panel dragging operation
+
+ - Remove the dragging operation that occurs when user drag panel area.
+
+[IMS] 283867
+---
+ extensions/dash-to-panel/panel.js | 15 ---------------
+ 1 file changed, 15 deletions(-)
+
+diff --git a/extensions/dash-to-panel/panel.js b/extensions/dash-to-panel/panel.js
+index a98ab80..bbfd8b1 100644
+--- a/extensions/dash-to-panel/panel.js
++++ b/extensions/dash-to-panel/panel.js
+@@ -1144,21 +1144,6 @@ var dtpPanel = Utils.defineClass({ // eslint-disable-line no-unused-vars
+             return Clutter.EVENT_PROPAGATE;
+         }
+ 
+-        let params = this.checkIfVertical() ? [stageY, 'y', 'height'] : [stageX, 'x', 'width'];
+-        let dragWindow = this._getDraggableWindowForPosition(params.concat([`maximized_${this.getOrientation()}ly`]));
+-
+-        if (!dragWindow)
+-            return Clutter.EVENT_PROPAGATE;
+-
+-        global.display.begin_grab_op(dragWindow,
+-            Meta.GrabOp.MOVING,
+-            false, /* pointer grab */
+-            true, /* frame action */
+-            button,
+-            event.get_state(),
+-            event.get_time(),
+-            stageX, stageY);
+-
+         return Clutter.EVENT_STOP;
+     },
+ 

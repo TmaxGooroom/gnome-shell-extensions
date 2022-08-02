@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gooroom-security">
+  <schema path="/org/gnome/shell/extensions/gooroom-security/" id="org.gnome.shell.extensions.gooroom-security">
+    <key name="allow-duplicate-notifications" type="b">
+      <default>false</default>
+      <summary>Whether to allow duplicate notification</summary>
+      <description>Whether to allow duplicate notifications</description>
+    </key>
+    <key name="cycle-time" type="u">
+      <default>5</default>
+      <summary>Cycle to check security status</summary>
+      <description></description>
+    </key>
+  </schema>
+</schemalist>

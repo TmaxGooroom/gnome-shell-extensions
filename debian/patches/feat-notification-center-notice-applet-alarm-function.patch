@@ -1,0 +1,399 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Fri, 18 Feb 2022 18:13:19 +0900
+Subject: [feat] notification center: notice applet alarm function
+
+- WIP
+
+[IMS] N/A
+---
+ extensions/notification-center/noticeAlarm.js  |  14 +++
+ extensions/notification-center/noticeApplet.js |  97 +++++++++-------
+ extensions/osk-hangul/stylesheet.css           | 153 +++++++++++++++++++++++++
+ 3 files changed, 220 insertions(+), 44 deletions(-)
+ create mode 100755 extensions/notification-center/noticeAlarm.js
+ create mode 100644 extensions/osk-hangul/stylesheet.css
+
+diff --git a/extensions/notification-center/noticeAlarm.js b/extensions/notification-center/noticeAlarm.js
+new file mode 100755
+index 0000000..2dd2ec9
+--- /dev/null
++++ b/extensions/notification-center/noticeAlarm.js
+@@ -0,0 +1,14 @@
++const { Notify, Gio } = imports.gi;
++
++function onNotificationPopupOpened(data) {
++    let window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', data, 'empty', 'empty', 'empty'] });
++    window.init(null);
++}
++
++Notify.init('notice');
++let notification = new Notify.Notification({ summary: ARGV[1], body: '' });
++notification.add_action('default', 'detail view', data => onNotificationPopupOpened(data));
++notification.set_urgency(Notify.Urgency.NORMAL);
++notification.set_timeout(5);
++if (ARGV[0] === 'show')
++    notification.show();
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index 48da9eb..22a3726 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -23,12 +23,12 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const _ = Gettext.gettext;
+ 
++// var PANEL_TRAY_ICON_SIZE = 22;
+ var NOTIFICATION_LIMIT = 5;
+ var NOTIFICATION_TEXT_LIMIT = 17;
+-var NOTIFICATION_TIMEOUT = 5000;
+-var NOTIFICATION_MSG_ICON = 'notice-applet-msg';
++// var NOTIFICATION_TIMEOUT = 5000;
++// var NOTIFICATION_MSG_ICON = 'notice-applet-msg';
+ // var NOTIFICATION_MSG_URGENCY_ICON = 'notice-applet-msg-urgency';
+-// var PANEL_TRAY_ICON_SIZE = 22;
+ // var DEFAULT_TRAY_ICON = 'notice-applet-panel';
+ // var DEFAULT_NOTICE_TRAY_ICON = 'notice-applet-event-panel';
+ 
+@@ -65,16 +65,13 @@ var noticeApplet = class applet {
+         this.button = this.notificationCenter.noticeButton;
+         this.button.connect('clicked', () => this.onButtonToggled());
+ 
+-        // this.tray = new Gtk.image_from_icon_name (DEFAULT_TRAY_ICON, Gtk.Iconsize.BUTTON);
+-        // this.tray.set_pixel_size(PANEL_TRAY_ICON_SIZE);
+-        // this.button.add(this.tray);
+-
+         let monitor = Gio.NetworkMonitor.get_default();
+         this.networkSig = monitor.connect('network-changed', available => this.onNetworkChanged(available));
+         this.isConnected = monitor.get_network_available();
++        Notify.init('notice');
+ 
+-        /* if (this.isConnected && this.isAgent)
+-        this.button.show_all();*/
++        if (this.isConnected && this.isAgent)
++            this.button.show();
+ 
+         if (this.isConnected)
+             GLib.timeout_add(0, 500, () => this.noticeUpdateDelay());
+@@ -136,18 +133,19 @@ var noticeApplet = class applet {
+ 
+     async bindAgentSignal() {
+         await this.agentProxyGet();
+-        if (this.agentProxy && !this.agentId)
+-            this.agentId = this.agentProxy.connect('g-signal', (sender, signal, parameters) => this.agentSignalCallback(signal, parameters));
++        if (!this.agentProxy)
++            return;
++
++        if (!this.agentId)
++            this.agentId = this.agentProxy.connect('g-signal', (proxy, sender, signal, parameters) => this.agentSignalCallback(signal, parameters));
+     }
+ 
+     async noticeUpdate() {
+         await this.agentProxyGet();
+         if (!this.agentProxy)
+             return;
+-
+         let json = `{"module":{"module_name":"noti","task":{"task_name":"get_noti","in":{"login_id":"${GLib.get_user_name()}"}}}}`;
+         let arg = GLib.Variant.new('(s)', [json]);
+-        // let ret = this.agentProxy.call_sync('do_task', arg, Gio.DBusCallFlags.NONE, -1, null);
+ 
+         this.agentProxy.call('do_task', arg, Gio.DBusCallFlags.NONE, -1, null, (source, res) => this.noticeDoneCallback(source, res));
+     }
+@@ -183,32 +181,34 @@ var noticeApplet = class applet {
+     }
+ 
+     noticeDoneCallback(sourceObject, res) {
+-        let variant = sourceObject.call_finish(res);
+-        let data;
++        log('noticeDonecallback');
++        let ret = sourceObject.call_finish(res);
++        if (!ret)
++            return;
+ 
+-        if (variant) {
+-            let v = variant.get_child_value(0);
+-            if (v)
+-                data = v.get_variant();
+-        }
++        let v = ret.get_child_value(0);
++        if (!v)
++            return;
+ 
+-        if (data) {
+-            this.getNoticeFromJson(data.get_string()[0], false);
+-            let total = this.queue.length;
++        let data = v.get_variant();
++        if (!data)
++            return;
+ 
+-            if (total > 0 || this.disabledCnt > 0) {
+-                // this.imgStatus = true;
++        this.getNoticeFromJson(data.get_string()[0], false);
++        let total = this.queue.length;
+ 
+-                if (this.isJob)
+-                    return;
++        if (total > 0 || this.disabledCnt > 0) {
++        // this.imgStatus = true;
+ 
+-                if (total > 0)
+-                    GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
+-                if (this.disabledCnt > 0)
+-                    GLib.timeout_add(500, () => this.noticeClickToJob());
+-            }
+-            this.isAgent = true;
++            if (this.isJob)
++                return;
++
++            if (total > 0)
++                GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
++            if (this.disabledCnt > 0)
++                GLib.timeout_add(500, () => this.noticeClickToJob());
+         }
++        this.isAgent = true;
+     // this.trayIconChange ();
+     }
+ 
+@@ -254,16 +254,18 @@ var noticeApplet = class applet {
+                 if (!notiObj['enabled_title_view_notis'][i])
+                     continue;
+ 
++                let n = [notiObj['enabled_title_view_notis'][i]['title'], notiObj['enabled_title_view_notis'][i]['url']];
+                 // let n = new Notify.Notification();
+                 // n.title = notiObj['enabled_title_view_notis'][i]['title'];
+                 // n.url = notiObj['enabled_title_view_notis'][i]['url'];
+                 // n.icon = urgency ? NOTIFICATION_MSG_URGENCY_ICON : NOTIFICATION_MSG_ICON;
+-                // this.queue.push(n);
++                this.queue.push(n);
+             }
+         }
+     }
+ 
+     noticeImmediatelyJob() {
++        log('noticeimmediatelyjob');
+         this.isJob = true;
+         let n;
+ 
+@@ -276,10 +278,11 @@ var noticeApplet = class applet {
+             }
+ 
+             this.total++;
+-            let title = this.noticeLimitText(n.title, NOTIFICATION_TEXT_LIMIT);
+-            let notification = this.notificationOpened(title, n.icon);
++            let title = this.noticeLimitText(n[0], NOTIFICATION_TEXT_LIMIT);
++            this.notificationOpened(title, n[1]);
+             // GLib.HashTable.insert(this.dataList, notification, n);
+-            notification.connect('closed', () => this.onNotificationClosed);
++            // notification.connect('closed', () => this.onNotificationClosed);
++            this.total--;
+             return this.isJob;
+         }
+ 
+@@ -288,12 +291,13 @@ var noticeApplet = class applet {
+     }
+ 
+     noticeClickToJob() {
++        log('noticeclicktojob');
+         this.isJob = true;
+ 
+         let n;
+         n.title = this.noticeOtherText(_('Notice'), this.disabledCnt);
+         n.url = this.defaultDomain;
+-        n.icon = NOTIFICATION_MSG_ICON;
++        // n.icon = NOTIFICATION_MSG_ICON;
+ 
+         if (NOTIFICATION_LIMIT <= this.total) {
+             this.queue.push(n);
+@@ -304,9 +308,10 @@ var noticeApplet = class applet {
+         }
+ 
+         this.total++;
+-        let notification = this.notificationOpened(n.title, n.icon);
++        this.notificationOpened(n.title, n.url);
+         // GLib.HashTable.insert(this.dataList, notification, n);
+-        notification.connect('closed', () => this.onNotificationClosed());
++        // notification.connect('closed', () => this.onNotificationClosed());
++        this.total--;
+         this.isJob = false;
+         return this.isJob;
+     }
+@@ -325,14 +330,18 @@ var noticeApplet = class applet {
+         return title;
+     }
+ 
+-    notificationOpened(title, icon) {
+-        let notification = new Notify.Notification({ summary: title, body: '', 'icon_name': icon });
++    notificationOpened(title, url) {
++        let Alarm = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js', 'show', title, url] });
++        Alarm.init(null);
++        return true;
++
++        /* let notification = new Notify.Notification({ summary: title, body: '' });
+         notification.add_action('default', _('detail view'), data => this.onNotificationPopupOpened(data));
+         notification.set_urgency(Notify.Urgency.NORMAL);
+         notification.set_timeout(NOTIFICATION_TIMEOUT);
+-        // notification.show(null);
++        notification.show();
+ 
+-        return notification;
++        return notification;*/
+     }
+ 
+     onNotificationClosed() {
+diff --git a/extensions/osk-hangul/stylesheet.css b/extensions/osk-hangul/stylesheet.css
+new file mode 100644
+index 0000000..659f92b
+--- /dev/null
++++ b/extensions/osk-hangul/stylesheet.css
+@@ -0,0 +1,153 @@
++#keyboard {
++  padding: 10px 0px; }
++
++.key-container {
++  padding: 4px 5px; }
++
++.keyboard-key {
++  width: 84px;
++  height: 68px;
++  border-radius: 6px;
++  border-style: solid;
++  border-width: 1px;
++  border-color: rgba(0, 0, 0, 0.2);
++  font-family: NotoSansCJKkr;
++  font-size: 18px;
++  font-weight: normal;
++  font-stretch: normal;
++  font-style: normal;
++  line-height: normal;
++  text-align: center;
++  color: white;
++  background-color: #3c3c3c;
++  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.25); }
++  .keyboard-key:hover {
++    color: #eeeeec;
++    background-color: #424242;
++    border-color: #2b2b2b; }
++  .keyboard-key:active {
++    color: #eeeeec;
++    background-color: #343434;
++    border-color: #2a2a2a; }
++  .keyboard-key.default-key {
++    background-color: #2d2d2d; }
++    .keyboard-key.default-key:hover {
++      color: #eeeeec;
++      background-color: rgba(50, 50, 50, 0.96);
++      border-color: rgba(27, 27, 27, 0.96);
++      box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.2);
++      text-shadow: 0 1px rgba(0, 0, 0, 0.2);
++      icon-shadow: 0 1px rgba(0, 0, 0, 0.2); }
++    .keyboard-key.default-key:active {
++      color: #eeeeec;
++      background-color: rgba(30, 30, 30, 0.96);
++      border-color: rgba(9, 9, 9, 0.96);
++      text-shadow: none;
++      icon-shadow: none;
++      box-shadow: none; }
++  .keyboard-key.enter-key {
++    background-color: #3961ca;
++    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.2);
++    text-shadow: 0 1px rgba(0, 0, 0, 0.2);
++    icon-shadow: 0 1px rgba(0, 0, 0, 0.2); }
++    .keyboard-key.enter-key:hover {
++      background-color: #456bcd;
++      box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.2);
++      text-shadow: 0 1px rgba(0, 0, 0, 0.2);
++      icon-shadow: 0 1px rgba(0, 0, 0, 0.2); }
++    .keyboard-key.enter-key:active {
++      background-color: #355cc4;
++      border-color: #233e84; }
++  .keyboard-key.shift-key-uppercase {
++    color: #3961ca; }
++  .keyboard-key .key-button {
++    color: rgba(255, 255, 255, 0.35); }
++    .keyboard-key .key-button .highlight {
++      color: white; }
++    .keyboard-key .key-button StLabel.upper {
++      padding-top: 7px;
++      padding-right: 15px;
++      padding-bottom: 0px;
++      padding-left: 15px; }
++    .keyboard-key .key-button StLabel.lower {
++      padding-top: 0px;
++      padding-right: 15px;
++      padding-bottom: 0px;
++      padding-left: 15px; }
++
++#keyboard.scaled {
++  padding: 5px 0px; }
++
++.scaled .key-container {
++  padding: 2px 2.5px; }
++
++.scaled .keyboard-key {
++  width: 42px;
++  height: 34px;
++  border-radius: 3px;
++  border-style: solid;
++  border-width: 1px;
++  border-color: rgba(0, 0, 0, 0.2);
++  font-family: NotoSansCJKkr;
++  font-size: 9px;
++  font-weight: normal;
++  font-stretch: normal;
++  font-style: normal;
++  line-height: normal;
++  text-align: center;
++  color: white;
++  background-color: #3c3c3c;
++  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.25); }
++  .scaled .keyboard-key:hover {
++    color: #eeeeec;
++    background-color: #424242;
++    border-color: #2b2b2b; }
++  .scaled .keyboard-key:active {
++    color: #eeeeec;
++    background-color: #343434;
++    border-color: #2a2a2a; }
++  .scaled .keyboard-key.default-key {
++    background-color: #2d2d2d; }
++    .scaled .keyboard-key.default-key:hover {
++      color: #eeeeec;
++      background-color: rgba(50, 50, 50, 0.96);
++      border-color: rgba(27, 27, 27, 0.96);
++      box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.2);
++      text-shadow: 0 1px rgba(0, 0, 0, 0.2);
++      icon-shadow: 0 1px rgba(0, 0, 0, 0.2); }
++    .scaled .keyboard-key.default-key:active {
++      color: #eeeeec;
++      background-color: rgba(30, 30, 30, 0.96);
++      border-color: rgba(9, 9, 9, 0.96);
++      text-shadow: none;
++      icon-shadow: none;
++      box-shadow: none; }
++  .scaled .keyboard-key.enter-key {
++    background-color: #3961ca;
++    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.2);
++    text-shadow: 0 1px rgba(0, 0, 0, 0.2);
++    icon-shadow: 0 1px rgba(0, 0, 0, 0.2); }
++    .scaled .keyboard-key.enter-key:hover {
++      background-color: #456bcd;
++      box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.2);
++      text-shadow: 0 1px rgba(0, 0, 0, 0.2);
++      icon-shadow: 0 1px rgba(0, 0, 0, 0.2); }
++    .scaled .keyboard-key.enter-key:active {
++      background-color: #355cc4;
++      border-color: #233e84; }
++  .scaled .keyboard-key.shift-key-uppercase {
++    color: #3961ca; }
++  .scaled .keyboard-key .key-button {
++    color: rgba(255, 255, 255, 0.35); }
++    .scaled .keyboard-key .key-button .highlight {
++      color: white; }
++    .scaled .keyboard-key .key-button StLabel.upper {
++      padding-top: 3.5px;
++      padding-right: 7.5px;
++      padding-bottom: 0px;
++      padding-left: 7.5px; }
++    .scaled .keyboard-key .key-button StLabel.lower {
++      padding-top: 0px;
++      padding-right: 7.5px;
++      padding-bottom: 0px;
++      padding-left: 7.5px; }

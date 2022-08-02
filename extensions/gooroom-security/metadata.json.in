@@ -1,0 +1,9 @@
+{
+"extension-id": "@extension_id@",
+"uuid": "@uuid@",
+"settings-schema":"@gschemaname@",
+"name": "gooroom-security",
+"description" : "Gooroom Security status indicator & notification tool",
+"original-authors": ["tmax"],
+"shell-version": ["@shell_current"]
+}

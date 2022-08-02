@@ -1,0 +1,11 @@
+[org.gnome.shell.extensions.notification-center]
+beside-calendar = 'hide'
+hide-events-section-if-empty = true
+max-height = 90
+indicator-index = 20
+autohide = 0
+new-notification = 'count'
+show-label = true
+show-media = 0
+show-events = 0
+sections-order = ['notification']

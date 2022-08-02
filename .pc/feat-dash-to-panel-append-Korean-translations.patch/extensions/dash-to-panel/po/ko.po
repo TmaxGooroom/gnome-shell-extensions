@@ -1,0 +1,281 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-03-11 03:13-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Jiyun Ha <jiyun_ha@tmax.co.kr>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: appIcons.js:1422 appIcons.js:1443
+msgid "Show Details"
+msgstr "자세히 보기"
+
+#: appIcons.js:1424
+msgid "Add to Favorites"
+msgstr "즐겨찾기에 추가"
+
+#: appIcons.js:1426
+msgid "Remove from Favorites"
+msgstr "즐겨찾기에서 제거"
+
+#: appIcons.js:1462
+msgid "New Window"
+msgstr "새 창"
+
+#: appIcons.js:1462 appIcons.js:1550 appIcons.js:1552
+msgid "Quit"
+msgstr "끝내기"
+
+#: appIcons.js:1552
+msgid "Windows"
+msgstr "창"
+
+#: appIcons.js:1903
+msgid "Unlock taskbar"
+msgstr ""
+
+#: appIcons.js:1903
+msgid "Lock taskbar"
+msgstr ""
+
+#: appIcons.js:1908
+msgid "Dash to Panel Settings"
+msgstr ""
+
+#: appIcons.js:1921
+msgid "Restore Windows"
+msgstr ""
+
+#: appIcons.js:1921
+msgid "Show Desktop"
+msgstr ""
+
+#: panel.js:201
+msgid "Top Bar"
+msgstr ""
+
+#: prefs.js:206
+msgid "Show Desktop button height (px)"
+msgstr ""
+
+#: prefs.js:206
+msgid "Show Desktop button width (px)"
+msgstr ""
+
+#: prefs.js:218
+msgid "Unavailable when gnome-shell top panel is present"
+msgstr ""
+
+#: prefs.js:293
+msgid "Show Applications button"
+msgstr ""
+
+#: prefs.js:294
+msgid "Activities button"
+msgstr ""
+
+#: prefs.js:295
+msgid "Taskbar"
+msgstr ""
+
+#: prefs.js:296
+msgid "Date menu"
+msgstr ""
+
+#: prefs.js:297
+msgid "System menu"
+msgstr ""
+
+#: prefs.js:298
+msgid "Left box"
+msgstr ""
+
+#: prefs.js:299
+msgid "Center box"
+msgstr ""
+
+#: prefs.js:300
+msgid "Right box"
+msgstr ""
+
+#: prefs.js:301
+msgid "Desktop button"
+msgstr ""
+
+#: prefs.js:307
+msgid "Move up"
+msgstr ""
+
+#: prefs.js:309
+msgid "Move down"
+msgstr ""
+
+#: prefs.js:311
+msgid "Visible"
+msgstr ""
+
+#: prefs.js:312
+msgid "Select element position"
+msgstr ""
+
+#: prefs.js:323
+msgid "Stacked to top"
+msgstr ""
+
+#: prefs.js:323
+msgid "Stacked to left"
+msgstr ""
+
+#: prefs.js:324
+msgid "Stacked to bottom"
+msgstr ""
+
+#: prefs.js:324
+msgid "Stacked to right"
+msgstr ""
+
+#: prefs.js:325
+msgid "Centered"
+msgstr ""
+
+#: prefs.js:326
+msgid "Monitor Center"
+msgstr ""
+
+#: prefs.js:345
+msgid "More options"
+msgstr ""
+
+#: prefs.js:369
+msgid "Show Applications options"
+msgstr ""
+
+#: prefs.js:376 prefs.js:433 prefs.js:576 prefs.js:894 prefs.js:1037
+#: prefs.js:1164 prefs.js:1450 prefs.js:1545 prefs.js:1610 prefs.js:1653
+#: prefs.js:1750 prefs.js:1784 prefs.js:1826
+msgid "Reset to defaults"
+msgstr ""
+
+#: prefs.js:426
+msgid "Show Desktop options"
+msgstr ""
+
+#: prefs.js:569
+msgid "Running Indicator Options"
+msgstr ""
+
+#: prefs.js:732
+msgid "Primary monitor"
+msgstr ""
+
+#: prefs.js:732
+msgid "Monitor "
+msgstr ""
+
+#: prefs.js:887
+msgid "Dynamic opacity options"
+msgstr ""
+
+#: prefs.js:1030
+msgid "Intellihide options"
+msgstr ""
+
+#: prefs.js:1157
+msgid "Window preview options"
+msgstr ""
+
+#: prefs.js:1443
+msgid "Ungrouped application options"
+msgstr ""
+
+#: prefs.js:1538
+msgid "Customize middle-click behavior"
+msgstr ""
+
+#: prefs.js:1603
+msgid "Customize panel scroll behavior"
+msgstr ""
+
+#: prefs.js:1646
+msgid "Customize icon scroll behavior"
+msgstr ""
+
+#: prefs.js:1743
+msgid "Advanced hotkeys options"
+msgstr ""
+
+#: prefs.js:1777
+msgid "Secondary Menu Options"
+msgstr ""
+
+#: prefs.js:1819
+msgid "Advanced Options"
+msgstr ""
+
+#: prefs.js:1922
+msgid "Export settings"
+msgstr ""
+
+#: prefs.js:1939
+msgid "Import settings"
+msgstr ""
+
+#: update.js:48
+msgid "Unavailable when installed from extensions.gnome.org"
+msgstr ""
+
+#: update.js:62
+#, javascript-format
+msgid "Version %s (%s) is available"
+msgstr ""
+
+#: update.js:63
+msgid "Details"
+msgstr ""
+
+#: update.js:64
+msgid "Update"
+msgstr ""
+
+#: update.js:67
+msgid "Already up to date"
+msgstr ""
+
+#: update.js:75
+msgid "Error: "
+msgstr ""
+
+#: update.js:168
+msgid "Update successful, please log out/in"
+msgstr ""
+
+#: update.js:169
+msgid "Log out"
+msgstr ""
+
+#: update.js:173
+msgid "Update successful, please restart GNOME Shell"
+msgstr ""
+
+#: update.js:174
+msgid "Restart GNOME Shell"
+msgstr ""
+
+#: update.js:174
+msgid "Restarting GNOME Shell..."
+msgstr ""
+
+#: windowPreview.js:934
+msgid "Move to current Workspace"
+msgstr ""

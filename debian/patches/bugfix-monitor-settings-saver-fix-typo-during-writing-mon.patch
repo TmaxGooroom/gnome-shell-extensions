@@ -1,0 +1,38 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 19 Apr 2022 17:56:07 +0900
+Subject: [bugfix] monitor-settings-saver: fix typo during writing
+ monitors.xml
+
+- every blanks removed when writing product name by trim()
+- moved trim() location
+
+[IMS] 269964
+---
+ extensions/monitor-settings-saver/xrandrParser.js | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/monitor-settings-saver/xrandrParser.js b/extensions/monitor-settings-saver/xrandrParser.js
+index 865134c..4b3c4e2 100644
+--- a/extensions/monitor-settings-saver/xrandrParser.js
++++ b/extensions/monitor-settings-saver/xrandrParser.js
+@@ -69,16 +69,16 @@ function xrandrParse() {
+                         if (descriptor.substr(0, 10) === '000000ff00') {
+                             let dscSerial = '';
+                             for (let l = 10; l < descriptor.length; l += 2)
+-                                dscSerial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '').trim();
++                                dscSerial += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+                             if (dscSerial !== '')
+-                                monitor.serial = dscSerial;
++                                monitor.serial = dscSerial.trim();
+                         }
+                         if (descriptor.substr(0, 10) === '000000fc00') {
+                             let dscProduct = '';
+                             for (let l = 10; l < descriptor.length; l += 2)
+-                                dscProduct += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '').trim();
++                                dscProduct += String.fromCharCode(parseInt(descriptor.substr(l, 2), 16)).replace('\n', '');
+                             if (dscProduct !== '')
+-                                monitor.product = dscProduct;
++                                monitor.product = dscProduct.trim();
+                         }
+                     }
+                 } else if (lines[j].includes('*current')) {

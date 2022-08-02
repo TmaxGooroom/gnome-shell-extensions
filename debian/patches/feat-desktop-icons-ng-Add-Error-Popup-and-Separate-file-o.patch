@@ -1,0 +1,813 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 16 Nov 2021 14:19:20 +0900
+Subject: [feat] desktop-icons-ng : Add Error Popup and Separate file
+ operations event for handling differently when renaming files
+
+- Add error popup
+- Handle file operations differently
+- Separate and Add functions for readability
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 366 ++++++++++++++++----------
+ extensions/desktop-icons-ng/fileItem.js       | 101 ++++---
+ extensions/desktop-icons-ng/renameArea.js     |  53 ++--
+ 3 files changed, 312 insertions(+), 208 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index a0be05c..3b6f23f 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -30,7 +30,6 @@ const Prefs = imports.preferences;
+ const Enums = imports.enums;
+ const SortUtil = imports.sortUtil;
+ const DBusUtils = imports.dbusUtils;
+-const AskNamePopup = imports.askNamePopup;
+ const AskConfirmPopup = imports.askConfirmPopup;
+ const ShowErrorPopup = imports.showErrorPopup;
+ const TemplateManager = imports.templateManager;
+@@ -71,6 +70,7 @@ var DesktopManager = class {
+         this._toDelete = [];
+         this._deletingFilesRecursively = false;
+         this._fileList = [];
++        this._createdFileName = null;
+         this._initDesktop();
+         this._scriptsDir = DesktopIconsUtil.getScriptsDir();
+         this._monitorScriptDir = this._scriptsDir.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
+@@ -529,10 +529,9 @@ var DesktopManager = class {
+     }
+ 
+     onKeyPress(event, unusedGrid) {
+-        if (this.beingRenamed()) {
+-            log('desktop key press is voer');
++        if (this.beingRenamed())
+             return false;
+-        }
++
+         // FIXME : while renaming, doesnt accept key press
+         log('desktopManager key press');
+         let symbol = event.get_keyval()[1];
+@@ -570,8 +569,7 @@ var DesktopManager = class {
+             let selection = this.getCurrentSelection(false);
+             if (selection && selection.length === 1) {
+                 // Support renaming other grids file items.
+-                log('askRename');
+-                this.askRename(selection[0]);
++                this.startRename(selection[0]);
+                 return true;
+             }
+         } else if (symbol === Gdk.KEY_space) {
+@@ -1144,81 +1142,99 @@ var DesktopManager = class {
+     _addFilesToDesktop(fileList, storeMode) {
+         let outOfDesktops = [];
+         let notAssignedYet = [];
+-        // First, add those icons that fit in the current desktops
++
++        // First, add those icon that fit in the current desktops
+         for (let fileItem of fileList) {
+             if (fileItem.savedCoordinates === null) {
+                 notAssignedYet.push(fileItem);
+                 continue;
+             }
+-            if (fileItem.dropCoordinates !== null)
+-                fileItem.dropCoordinates = null;
+-
+-            let [itemX, itemY] = fileItem.savedCoordinates;
+-            let addedToDesktop = false;
+-            for (let desktop of this._desktops) {
+-                if (desktop.getDistance(itemX, itemY) === 0) {
+-                    addedToDesktop = true;
+-                    desktop.addFileItemCloseTo(fileItem, itemX, itemY, storeMode);
+-                    break;
+-                }
+-            }
+-            if (!addedToDesktop)
++
++            if (!this._addFileToDesktop(fileItem, storeMode))
+                 outOfDesktops.push(fileItem);
+ 
+         }
++
+         // Now, assign those icons that are outside the current desktops,
+         // but have assigned coordinates
+-        for (let fileItem of outOfDesktops) {
+-            let minDistance = -1;
+-            let [itemX, itemY] = fileItem.savedCoordinates;
+-            let newDesktop = null;
+-            for (let desktop of this._desktops) {
+-                let distance = desktop.getDistance(itemX, itemY);
+-                if (distance === -1)
+-                    continue;
+-
+-                if (minDistance === -1 || distance < minDistance) {
+-                    minDistance = distance;
+-                    newDesktop = desktop;
+-                }
+-            }
+-            if (newDesktop === null) {
+-                print('Not enough space to add icons');
+-                break;
+-            } else {
+-                newDesktop.addFileItemCloseTo(fileItem, itemX, itemY, storeMode);
++        for (let fileItem of outOfDesktops)
++            this._addOutOfDesktopFile(fileItem, storeMode);
++
++
++        // Finally, assign those icons that still don't have coordinates
++        for (let fileItem of notAssignedYet)
++            this._addNotAssignedFileToDestkop(fileItem, storeMode);
++
++    }
++
++    _addFileToDesktop(fileItem, storeMode) {
++        if (fileItem.dropCoordinates !== null)
++            fileItem.dropCoordinates = null;
++
++        let [itemX, itemY] = fileItem.savedCoordinates;
++        for (let desktop of this._desktops) {
++            if (desktop.getDistance(itemX, itemY) === 0) {
++                desktop.addFileItemCloseTo(fileItem, itemX, itemY, storeMode);
++                return true;
+             }
+         }
+-        // Finally, assign those icons that still don't have coordinates
+-        for (let fileItem of notAssignedYet) {
+-            let x, y;
+-            if (fileItem.dropCoordinates === null) {
+-                x = this._primaryScreen.x;
+-                y = this._primaryScreen.y;
+-                storeMode = Enums.StoredCoordinates.ASSIGN;
+-            } else {
+-                [x, y] = fileItem.dropCoordinates;
+-                fileItem.dropCoordinates = null;
+-                storeMode = Enums.StoredCoordinates.OVERWRITE;
++
++        return false;
++    }
++
++    _addOutOfDesktopFile(fileItem, storeMode) {
++        let minDistance = -1;
++        let [itemX, itemY] = fileItem.savedCoordinates;
++        let newDesktop = null;
++        for (let desktop of this._desktops) {
++            let distance = desktop.getDistance(itemX, itemY);
++            if (distance === -1)
++                continue;
++
++            if (minDistance === -1 || distance < minDistance) {
++                minDistance = distance;
++                newDesktop = desktop;
+             }
+-            // try first in the designated desktop
+-            let assigned = false;
+-            for (let desktop of this._desktops) {
+-                if (desktop.getDistance(x, y) === 0) {
+-                    desktop.addFileItemCloseTo(fileItem, x, y, storeMode);
+-                    assigned = true;
+-                    break;
+-                }
++        }
++        if (newDesktop === null)
++            print('Not enough space to add icons');
++        else
++            newDesktop.addFileItemCloseTo(fileItem, itemX, itemY, storeMode);
++
++    }
++
++
++    _addNotAssignedFileToDestkop(fileItem, storeMode) {
++        // no assigned coordinate
++        let x, y;
++        if (fileItem.dropCoordinates === null) {
++            x = this._primaryScreen.x;
++            y = this._primaryScreen.y;
++            storeMode = Enums.StoredCoordinates.ASSIGN;
++        } else {
++            [x, y] = fileItem.dropCoordinates;
++            fileItem.dropCoordinates = null;
++            storeMode = Enums.StoredCoordinates.OVERWRITE;
++        }
++
++        // try first in the designated desktop
++        let assigned = false;
++        for (let desktop of this._desktops) {
++            if (desktop.getDistance(x, y) === 0) {
++                desktop.addFileItemCloseTo(fileItem, x, y, storeMode);
++                assigned = true;
++                break;
+             }
+-            if (assigned)
+-                continue;
++        }
+ 
+-            // if there is no space in the designated desktop, try in another
+-            for (let desktop of this._desktops) {
+-                if (desktop.getDistance(x, y) !== -1) {
+-                    desktop.addFileItemCloseTo(fileItem, x, y, storeMode);
+-                    break;
+-                }
++        if (assigned)
++            return;
++
++        // if there is no space in the designated desktop, try in another
++        for (let desktop of this._desktops) {
++            if (desktop.getDistance(x, y) !== -1) {
++                desktop.addFileItemCloseTo(fileItem, x, y, storeMode);
++                break;
+             }
+         }
+     }
+@@ -1266,38 +1282,128 @@ var DesktopManager = class {
+             this._desktopFilesChanged = true;
+             return;
+         }
++
++        log(`event type = ${eventType}`);
+         switch (eventType) {
++        // TODO : Check Every Type is working well
+         case Gio.FileMonitorEvent.MOVED_IN:
+-        case Gio.FileMonitorEvent.MOVED_CREATED:
+-            /* Remove the coordinates that could exist to avoid conflicts between
+-                   files that are already in the desktop and the new one
+-                 */
+-            try {
+-                let info = new Gio.FileInfo();
+-                info.set_attribute_string(Constants.ICON_POSITION_METADATA, '');
+-                file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+-            } catch (e) {} // can happen if a file is created and deleted very fast
+-            break;
++        case Gio.FileMonitorEvent.MOVED:
++        case Gio.FileMonitorEvent.CREATED:
++            return this.onFileCreated(file);
+         case Gio.FileMonitorEvent.ATTRIBUTE_CHANGED:
+-            /* The desktop is what changed, and not a file inside it */
+-            if (file.get_uri() === this._desktopDir.get_uri()) {
+-                if (this._updateWritableByOthers())
+-                    this._readFileList();
+-
+-                return;
+-            }
+-            break;
++            return this.onFileAttributeChanged(file);
+         case Gio.FileMonitorEvent.RENAMED:
++            return this.renameIcon(file, otherFile);
+         case Gio.FileMonitorEvent.DELETED:
+-            // When the 'Desktop' directory path was changed, we should reload
+-            // whole contents associated with that.
+-            if (file.get_uri() === this._desktopDir.get_uri())
+-                this._initDesktop();
++        case Gio.FileMonitorEvent.MOVED_OUT:
++            return this.onFileDeleted(file);
++        }
++    }
+ 
+-            break;
++    onFileCreated(file) {
++        log('created');
++        /* Remove the coordinates that could exist to avoid conflicts between
++         files that are already in the desktop and the new one
++       */
++        try {
++            let info = new Gio.FileInfo();
++            info.set_attribute_string(Constants.ICON_POSITION_METADATA, '');
++            file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
++        } catch (e) {} // can happen if a file is created and deleted very fast
++        this.createIcon(file);
++        let fileName = file.get_basename();
++        log(`createion file is = ${fileName}`);
++        if (this._createdFileName !== fileName) {
++            log('creation is not performed in desktop');
++            return;
+         }
+ 
+-        this._readFileList();
++        return this.startRename(this.getFileItem(file.get_basename()));
++    }
++
++    onFileAttributeChanged(file) {
++        log('attribute changed');
++        /* The desktop is what changed, and not a file inside it */
++        if (file.get_uri() === this._desktopDir.get_uri()) {
++            if (this._updateWritableByOthers())
++                return this._readFileList();
++        }
++        let fileInfo = file.query_info(Enums.DEFAULT_ATTRIBUTES,
++            Gio.FileQueryInfoFlags.NONE, null);
++
++        let overwriteFile = this.getFileItem(file.get_basename());
++        if (!overwriteFile)
++            return;
++
++        overwriteFile.updateMetadataFromFileInfo(fileInfo);
++        // GOGOGOGOGOGOOGGOGOGO
++    }
++
++    onFileDeleted(file) {
++        // When the 'Desktop' directory path was changed, we should reload
++        // whole contents associated with that.
++        if (file.get_uri() === this._desktopDir.get_uri())
++            this._initDesktop();
++        else
++            this.removeIcon(file);
++    }
++
++    createIcon(file) {
++        let fileItem = new FileItem.FileItem(
++            this,
++            file,
++            file.query_info(Enums.DEFAULT_ATTRIBUTES, Gio.FileQueryInfoFlags.NONE, null),
++            Enums.FileType.NONE,
++            this._codePath,
++            null
++        );
++
++        this._fileList.push(fileItem);
++
++        let storeMode = Enums.StoredCoordinates.OVERWRITE;
++        if (fileItem.savedCoordinates === null)
++            return this._addNotAssignedFileToDestkop(fileItem, storeMode);
++
++
++        if (!this._addFileToDesktop(fileItem, storeMode))
++            this._addOutOfDesktopFile(fileItem, storeMode);
++
++    }
++
++    renameIcon(oldFile, newFile) {
++        log(`old = ${oldFile.get_basename()}`);
++        log(`new = ${newFile.get_basename()}`);
++        this.removeIcon(oldFile);
++
++        // If the file is overwritten, erase the original icon and recreate it
++        let overwriteFile = this.getFileItem(newFile.get_basename());
++        if (overwriteFile)
++            this.removeIcon(newFile);
++
++
++
++        this.createIcon(newFile);
++    }
++
++    removeIcon(file) {
++        let name = file.get_basename();
++        let len = this._fileList.length;
++        let index = -1;
++
++        for (let i = 0; i < len; i++) {
++            if (this._fileList[i].fileName === name) {
++                index = i;
++                break;
++            }
++        }
++
++        if (index === -1)
++            return;
++
++
++        let item = this._fileList[index];
++        item.removeFromGrid();
++        this._fileList.splice(index, 1);
+     }
+ 
+     _getClipboardText(isCopy) {
+@@ -1481,13 +1587,25 @@ var DesktopManager = class {
+         return count;
+     }
+ 
+-    askRename(fileItem) {
+-        for (let fileItem2 of this._fileList)
+-            fileItem2.unsetSelected();
++    startRename(fileItem) {
++        for (let item of this._fileList)
++            item.unsetSelected();
+ 
++        // FIXME : remove bubble if exists
+         fileItem.startRename();
+     }
+ 
++    getFileItem(name) {
++        for (let item of this._fileList) {
++            if (item.fileName === name)
++                return item;
++
++        }
++
++        return null;
++    }
++
++
+     doOpenWith(fileItem) {
+         let parentWindow;
+         let [x, y, a_, b_, c_] = fileItem.getCoordinates();
+@@ -1536,32 +1654,29 @@ var DesktopManager = class {
+         for (let fileItem of this._fileList)
+             fileItem.unsetSelected();
+ 
+-        let parentWindow;
+-        for (let desktop of this._desktops) {
+-            if (desktop._coordinatesBelongToThisGrid(X, Y)) {
+-                parentWindow = desktop._window;
+-                break;
+-            }
+-        }
++        let newName = 'Untitled Folder';
++        let creationFailed = true;
++        let count = 2;
++        while (creationFailed) {
++            if (newName) {
++                let dir = this._desktopDir.get_child(newName);
++                try {
++                    dir.make_directory(null);
++                    let info = new Gio.FileInfo();
++                    info.set_attribute_string(Constants.DND_POSITION_METADATA, `${X},${Y}`);
++                    info.set_attribute_string(Constants.ICON_POSITION_METADATA, '');
++                    dir.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
++                    creationFailed = false;
++                    this._createdFileName = newName;
+ 
+-        // NOTE(20210526 : jgjeong) : Set parent window because WM determines
+-        // whether to skip the dialog to the taskbar with the presence of a parent window
+-        // and  hint value.
+-        let newFolderWindow = new AskNamePopup.AskNamePopup(null, _('New folder'), parentWindow);
+-        let newName = newFolderWindow.run();
+-        if (newName) {
+-            let dir = this._desktopDir.get_child(newName);
+-            try {
+-                dir.make_directory(null);
+-                let info = new Gio.FileInfo();
+-                info.set_attribute_string(Constants.DND_POSITION_METADATA, `${X},${Y}`);
+-                info.set_attribute_string(Constants.ICON_POSITION_METADATA, '');
+-                dir.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+-                if (position)
+-                    return dir.get_uri();
++                    if (position)
++                        return dir.get_uri();
+ 
+-            } catch (e) {
+-                print(`Failed to create folder ${e.message}`);
++                } catch (e) {
++                    let baseName = 'Untitled Folder';
++                    newName = baseName.concat(' ', (count++).toString());
++                    print(`Failed to create folder ${e.message}`);
++                }
+             }
+         }
+     }
+@@ -1641,23 +1756,6 @@ var DesktopManager = class {
+         DesktopIconsUtil.trySpawn(null, xdgEmailCommand);
+     }
+ 
+-    doNewFolderFromSelection(position) {
+-        let newFolderFileItems = this.getCurrentSelection(true);
+-        for (let fileItem of this._fileList)
+-            fileItem.unsetSelected();
+-
+-        let newFolder = this._newFolder(position);
+-        if (newFolder) {
+-            DBusUtils.FileOperationsProxy.MoveURIsRemote(newFolderFileItems, newFolder,
+-                (result, error) => {
+-                    if (error)
+-                        throw new Error(`Error moving files: ${error.message}`);
+-
+-                }
+-            );
+-        }
+-    }
+-
+     doCompressFilesFromSelection() {
+         let compressFileItems = this.getCurrentSelection(true);
+         for (let fileItem of this._fileList)
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index b97d2a8..5b1f31e 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -31,6 +31,7 @@ const Enums = imports.enums;
+ const DBusUtils = imports.dbusUtils;
+ const Constants = imports.constants;
+ const RenameArea = imports.renameArea;
++const ShowErrorPopup = imports.showErrorPopup;
+ 
+ const ByteArray = imports.byteArray;
+ const Mainloop = imports.mainloop; /* eslint-disable-line no-restricted-properties */
+@@ -53,13 +54,7 @@ var FileItem = class {
+         this._queryFileInfoCancellable = null;
+         this._isSpecial = this._fileExtra !== Enums.FileType.NONE;
+         this._grid = null;
+-
+         this._file = file;
+-        this._fileSize = fileInfo.get_size();
+-        this._modificationDateTime = fileInfo.get_modification_date_time();
+-
+-        this._savedCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.ICON_POSITION_METADATA);
+-        this._dropCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.DND_POSITION_METADATA);
+ 
+         this.actor = new Gtk.EventBox({ visible: true });
+         this.actor.connect('destroy', () => this._onDestroy());
+@@ -110,15 +105,8 @@ var FileItem = class {
+ 
+         this._setFileName(fileInfo.get_display_name());
+ 
+-        this._bubbleError = new Gtk.Popover({ relative_to: this.actor,
+-            modal: false });
+-        this._errorLabel = new Gtk.Label({ label: 'too long' });
+-        this._bubbleContents = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+-        this._bubbleContents.pack_start(this._errorLabel, false, false, 0);
+-
+         // FIXME : perhaps, set position to
+-        this._bubbleError.set_position(Gtk.PositionType.BOTTOM);
+-        this._bubbleError.add(this._bubbleContents);
++        this._windowError = null;
+ 
+         /* We need to allow the "button-press" event to pass through the callbacks, to allow the DnD to work
+          * But we must avoid them to reach the main window.
+@@ -141,7 +129,7 @@ var FileItem = class {
+         });
+ 
+         /* Set the metadata and update relevant UI */
+-        this._updateMetadataFromFileInfo(fileInfo);
++        this.updateMetadataFromFileInfo(fileInfo);
+ 
+         this._setDropDestination(this._eventBox);
+         this._dragSource = this._eventBox;
+@@ -199,7 +187,6 @@ var FileItem = class {
+             text = text.split(character).join(`${character}\u200B`);
+ 
+         this._label.label = text;
+-        log('set filename');
+         this._renameArea.setText(text, this.fileNameLength);
+         this._renameArea.queue_resize();
+     }
+@@ -398,7 +385,7 @@ var FileItem = class {
+                 try {
+                     let newFileInfo = source.query_info_finish(result);
+                     this._queryFileInfoCancellable = null;
+-                    this._updateMetadataFromFileInfo(newFileInfo);
++                    this.updateMetadataFromFileInfo(newFileInfo);
+                     if (rebuild)
+                         this._updateIcon();
+ 
+@@ -411,7 +398,13 @@ var FileItem = class {
+         );
+     }
+ 
+-    _updateMetadataFromFileInfo(fileInfo) {
++    updateMetadataFromFileInfo(fileInfo) {
++        this._fileSize = fileInfo.get_size();
++        this._modificationDateTime = fileInfo.get_modification_date_time();
++
++        this._savedCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.ICON_POSITION_METADATA);
++        this._dropCoordinates = this._readCoordinatesFromAttribute(fileInfo, Constants.DND_POSITION_METADATA);
++
+         this._fileInfo = fileInfo;
+ 
+         let oldLabelText = this._currentFileName;
+@@ -457,12 +450,6 @@ var FileItem = class {
+         this._isBrokenSymlink = this._isSymlink && this._fileType === Gio.FileType.SYMBOLIC_LINK;
+     }
+ 
+-    onFileRenamed(file) {
+-        this._file = file;
+-        this._refreshMetadataAsync(false);
+-        log('onFileRenamed');
+-    }
+-
+     _updateIcon() {
+         try {
+             let customIcon = this._fileInfo.get_attribute_as_string('metadata::custom-icon');
+@@ -688,7 +675,7 @@ var FileItem = class {
+             return;
+         }
+ 
+-        this._desktopManager.askRename(this);
++        this._desktopManager.startRename(this);
+     }
+ 
+     doOpen(fileList) {
+@@ -906,11 +893,6 @@ var FileItem = class {
+                 this._desktopManager.doCompressFilesFromSelection();
+             });
+             this._menu.add(compressFilesFromSelection);
+-            let newFolderFromSelection = new Gtk.MenuItem({ label: Gettext.ngettext('New Folder with {0} item', 'New Folder with {0} items', this._selectedItemsNum).replace('{0}', this._selectedItemsNum) });
+-            newFolderFromSelection.connect('activate', () => {
+-                this._desktopManager.doNewFolderFromSelection(this._savedCoordinates);
+-            });
+-            this._menu.add(newFolderFromSelection);
+             this._menu.add(new Gtk.SeparatorMenuItem());
+         }
+         this._menu.add(new Gtk.SeparatorMenuItem());
+@@ -1082,11 +1064,8 @@ var FileItem = class {
+     startRename() {
+         this._label.set_visible(false);
+ 
+-        log('start rename filename length');
+         this._renameScrollView.set_visible(true);
+-        this._renameArea.selectText();
+-        this._renameArea.grab_focus();
+-        log(`wtf height = ${this._renameArea.get_allocated_height()}`);
++        this._renameArea.startRename();
+     }
+ 
+     clear() {
+@@ -1095,36 +1074,52 @@ var FileItem = class {
+     }
+ 
+     doRename() {
++        log('dorename called');
+         if (!this.beingRenamed())
+-            return;
++            return false;
++
++        if (this._windowError) {
++            log('error popoup');
++            return false;
++        }
+ 
+-        // if entry is focuesd
+         let text = this._renameArea.text;
+         let fullPath = `${this._desktopPath}/${text}`;
+         let file = Gio.File.new_for_commandline_arg(fullPath);
+ 
+-        // FIXME : Error Widget is shown on the middle of display
+-        // Same name doesnt care
+         if (text === '') {
+-            this.showError('empty string');
++            this.showRenameError('empty string');
++            this._renameArea.cancelRename();
++        } else if (this.fileName === text) {
++            this._renameArea.cancelRename();
+         } else if (file.query_exists(null)) {
+-            this.showError('already exist');
++            this.showRenameError('already exist');
++            this._renameArea.cancelRename();
++        } else if (text.indexOf('/') !== -1) {
++            this.showRenameError('cnnot contain /');
++            this._renameArea.cancelRename();
++        } else if (text.length >= 255) {
++            this.showRenameError('too long');
++            this._renameArea.cancelRename();
+         } else if (this.fileName.localeCompare(text)) {
+-            log(`doRename = ${text}`);
++            let pos = this.savedCoordinates;
++            this.dropCoordinates = [pos[0], pos[1]];
++
+             DBusUtils.FileOperationsProxy.RenameFileRemote(this.uri,
+                 text,
+                 (result, error) => {
+                     if (error)
+                         throw new Error(`Error renaming file: ${error.message}`);
++                    //                    this.showRenameError(error.message);
++                    //                    this._renameArea.cancelRename();
++
+                 }
+             );
+         }
+ 
+-        this._renameScrollView.set_visible(false);
+-        this._label.set_visible(true);
++        this._renameArea.finishRename();
+ 
+-        // need to be called after updateicon
+-        this.setSelected();
++        return true;
+     }
+ 
+     beingRenamed() {
+@@ -1144,14 +1139,14 @@ var FileItem = class {
+         }
+     }
+ 
+-    showError(text) {
+-        this._errorLabel.set_text(text);
+-        this._bubbleError.show_all();
+-        this.bubbleID = GLib.timeout_add(0, 5000, () => {
+-            this._bubbleError.hide();
+-            this.bubbleID = null;
+-            return GLib.SOURCE_REMOVE;
+-        });
++    showRenameError(text) {
++        this._windowError = new ShowErrorPopup.ShowErrorPopup(
++            _('Error while deleting files'),
++            text,
++            null,
++            false);
++        this._windowError.run();
++        this._windowError = null;
+     }
+ 
+     set savedCoordinates(pos) {
+diff --git a/extensions/desktop-icons-ng/renameArea.js b/extensions/desktop-icons-ng/renameArea.js
+index 4d856b0..cd94c1b 100644
+--- a/extensions/desktop-icons-ng/renameArea.js
++++ b/extensions/desktop-icons-ng/renameArea.js
+@@ -15,10 +15,11 @@ var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
+         this.set_can_focus(true);
+         this._editableBuffer = new RenameBuffer(fileItem);
+         this.set_buffer(this._editableBuffer);
++
+         this._fileItem = fileItem;
++        this._isRenaming = false;
+ 
+         this._editableBuffer.connect('changed', () => {
+-            log('changed');
+         });
+     }
+ 
+@@ -29,6 +30,16 @@ var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
+         return text;
+     }
+ 
++    startRename() {
++        this.selectText();
++        this.grab_focus();
++        this._isRenaming = true;
++    }
++
++    finishRename() {
++        this._isRenaming = false;
++    }
++
+     setText(name, length) {
+         this._editableBuffer.set_text(name, length);
+     }
+@@ -40,9 +51,25 @@ var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
+         this._editableBuffer.select_range(start, end);
+     }
+ 
++    cancelRename() {
++        this._editableBuffer.set_text(this._fileItem.fileName, this._fileItem.fileNameLength);
++        this._fileItem.clear();
++        this._fileItem._eventBox.grab_focus();
++        this._fileItem.setSelected();
++        this.finishRename();
++    }
++
+     vfunc_focus_out_event(event) {
+-        this._fileItem.doRename();
++        log('focus-out');
+         super.vfunc_focus_out_event(event);
++        if (!this._isRenaming)
++            return false;
++
++
++        if (!this._fileItem.doRename())
++            return false;
++
++
+         this._fileItem._eventBox.grab_focus();
+         this._fileItem.setSelected();
+         return false;
+@@ -54,28 +81,23 @@ var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
+     }
+ 
+     vfunc_key_press_event(event) {
+-        log('container key press');
+         if (!this.has_focus)
+             return false;
+ 
+-
+         let symbol = event.keyval;
+-        log(`key-press-event = ${symbol}`);
+         if (symbol === Gdk.KEY_Return) {
+             this._fileItem.doRename();
+-            this._fileItem._eventBox.grab_focus();
+             return true;
+         } else if (symbol === Gdk.KEY_Escape) {
+-            this._editableBuffer.set_text(this._fileItem.fileName, this._fileItem.fileNameLength);
+-            this._fileItem.clear();
++            this.cancelRename();
+             return true;
+         }
++
+         super.vfunc_key_press_event(event);
+         return true;
+     }
+ 
+     vfunc_size_allocate(alloc) {
+-        log(`size allocation alloc = ${alloc.width} ${alloc.height}`);
+         return super.vfunc_size_allocate(alloc);
+     }
+ });
+@@ -98,22 +120,11 @@ var RenameBuffer = GObject.registerClass(class RenameBuffer extends Gtk.TextBuff
+         return super.vfunc_insert_text(pos, text, length);
+     }
+ 
+-    _validate(text) {
++    _validate(unusedText) {
+         // FIXME : add bubble after inspecting regex. It must be done with nemo at the same time
+-
+-        if (text.indexOf('/') !== -1) {
+-            this._fileItem.showError('cannot contain /');
+-            return false;
+-        }
+-
+-        if (text.length >= 255) {
+-            this._fileItem.showError('too long');
+-            return false;
+-        }
+         return true;
+     }
+ 
+-
+ });
+ 
+ function GetByteLengthOfUtf8String(s) {

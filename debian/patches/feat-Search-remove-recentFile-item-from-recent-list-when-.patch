@@ -1,0 +1,38 @@
+From: Saehan Lee <saehan_lee@tmax.co.kr>
+Date: Tue, 26 Oct 2021 18:27:16 +0900
+Subject: [feat] Search : remove recentFile item from recent list when emit
+ NOT_FOUND error
+
+- Handling by Gio.IOErrorEnum.NOT_FOUND
+
+[IMS] N/A
+---
+ extensions/search/menuWidgets.js | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/extensions/search/menuWidgets.js b/extensions/search/menuWidgets.js
+index c64721a..16b8ab3 100644
+--- a/extensions/search/menuWidgets.js
++++ b/extensions/search/menuWidgets.js
+@@ -1497,9 +1497,18 @@ var PlaceMenuItem = GObject.registerClass(class SearchMenuPlaceMenuItem extends
+     }
+ 
+     activate(event) {
+-        this._info.launch(event.get_time());
+-        this._menuLayout.searchMenu.toggle();
+-        super.activate(event);
++        try {
++            this._info.launch(event.get_time());
++            this._menuLayout.searchMenu.toggle();
++            super.activate(event);
++        } catch (e) {
++            if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)) {
++                this._menuLayout.recentManager.remove_item(this._info.file.get_uri());
++                this._menuLayout.clearActorsFromBox(this._menuLayout.recentFileItemsBox);
++                this._menuLayout._loadRecentFiles();
++                this._menuLayout.displayRecentFiles();
++            }
++        }
+     }
+ 
+     _propertiesChanged(info) {

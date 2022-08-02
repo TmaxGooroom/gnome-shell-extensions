@@ -1,0 +1,24 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Mon, 11 Jul 2022 18:24:49 +0900
+Subject: [chore] ding: show network drive for default
+
+- show network drive on desktop
+
+[IMS] 284082
+---
+ .../schemas/org.gnome.shell.extensions.ding.gschema.xml                 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+index 2f53bb4..bae55da 100644
+--- a/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
++++ b/extensions/desktop-icons-ng/schemas/org.gnome.shell.extensions.ding.gschema.xml
+@@ -44,7 +44,7 @@
+         <description>Show the disk drives connected to the computer.</description>
+     </key>
+     <key type="b" name="show-network-volumes">
+-        <default>false</default>
++        <default>true</default>
+         <summary>Show network drives in the desktop</summary>
+         <description>Show mounted network volumes in the desktop.</description>
+     </key>

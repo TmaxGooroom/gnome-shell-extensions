@@ -1,0 +1,72 @@
+From: jingi_jeong =?utf-8?b?POKAnGppbmdpX2plb25nQHRtYXguY28ua3LigJ0+?=
+Date: Mon, 25 Apr 2022 17:22:49 +0900
+Subject: [feat] desktop-icon-ng : Prevent adding special characters to file
+ names
+
+- Prevent adding special characters to file names. If the name change is in progress with special characters added, a prohibition pop-up is displayed.
+
+[IMS] 276744
+---
+ extensions/desktop-icons-ng/fileItem.js | 11 ++++++++---
+ extensions/desktop-icons-ng/po/ko.po    |  6 +++++-
+ 2 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 19ec595..c3536ed 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -92,6 +92,7 @@ var FileItem = class {
+         this._container.pack_start(this._eventBox, false, false, 0);
+         this.actor.add(this._container);
+         this._windowError = null;
++        this._nameRegExp = new RegExp("(\\\\)|([\\/:*'?\"<>|])");
+ 
+         /* We need to allow the "button-press" event to pass through the callbacks, to allow the DnD to work
+          * But we must avoid them to reach the main window.
+@@ -1080,17 +1081,21 @@ var FileItem = class {
+         } else if (this.fileName === text) {
+             this._renameScrollView.cancelRename();
+         } else if (text.indexOf('/') !== -1) {
++            this._renameScrollView.cancelRename();
+             errorMsg = _('Sorry, could not rename to “{0}”. Slashes are not allowed in filenames').replace('{0}', newNameTruncated);
+             this.showRenameError(errorMsg);
++        } else if (this._nameRegExp.test(text)) {
+             this._renameScrollView.cancelRename();
+-        }  else if (text.length >= 255) {
+-            errorMsg = _('The name “{0}” is too long. Please use a different name.').replace('{0}', newNameTruncated);
++            errorMsg = _('Sorry, could not rename to “{0}”. Special characters(\\\*\?\"\'\<\>\|) cannot be contained.').replace('{0}', newNameTruncated); // eslint-disable-line no-useless-escape
+             this.showRenameError(errorMsg);
++        } else if (text.length >= 255) {
+             this._renameScrollView.cancelRename();
++            errorMsg = _('The name “{0}” is too long. Please use a different name.').replace('{0}', newNameTruncated);
++            this.showRenameError(errorMsg);
+         } else if (file.query_exists(null)) {
++            this._renameScrollView.cancelRename();
+             errorMsg = _('The name “{0}” is already used in this folder. Please use a different name.').replace('{0}', newNameTruncated);
+             this.showRenameError(errorMsg);
+-            this._renameScrollView.cancelRename();
+         } else if (this.fileName.localeCompare(text)) {
+             let pos = this.savedCoordinates;
+             this.dropCoordinates = [pos[0], pos[1]];
+diff --git a/extensions/desktop-icons-ng/po/ko.po b/extensions/desktop-icons-ng/po/ko.po
+index db79c03..37d0a65 100644
+--- a/extensions/desktop-icons-ng/po/ko.po
++++ b/extensions/desktop-icons-ng/po/ko.po
+@@ -265,12 +265,16 @@ msgstr "“{0}” 이름은 이미 이 폴더에서 사용하고 있습니다. 
+ 
+ #: fileItem.js:1081
+ msgid "Sorry, could not rename to “{0}”. Slashes are not allowed in filenames"
+-msgstr "안타깝게도, 이름을 “{0}”로 바꿀 수 없습니다: 파일 이름에 슬래시(/) 기호를 넣을 수 없습니다."
++msgstr "안타깝게도, 이름을 “{0}”로 바꿀 수 없습니다. 파일 이름에 슬래시(/) 기호를 넣을 수 없습니다."
+ 
+ #: fileItem.js:1085
+ msgid "The name “{0}” is too long. Please use a different name."
+ msgstr "“{0}”는 너무 긴 이름입니다. 다른 이름을 사용하세요."
+ 
++#: fileItem.js:1085
++msgid "Sorry, could not rename to “{0}”. Special characters(\\\*\?\"\'\<\>\|) cannot be contained"
++msgstr "“안타깝게도, 이름을 “{0}”로 바꿀 수 없습니다. 파일 이름에 특수 기호(\\\*\?\"\'\<\>\|)를 넣을 수 없습니다."
++
+ #: fileItem.js:1126
+ msgid "The Item could not be renamed."
+ msgstr "이름을 바꿀 수 없습니다."

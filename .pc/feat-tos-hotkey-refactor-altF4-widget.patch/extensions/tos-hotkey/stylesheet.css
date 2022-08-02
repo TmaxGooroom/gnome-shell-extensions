@@ -1,0 +1,65 @@
+.system-dialog {
+  border-radius: 16px;
+  background-color: white;
+  width: 461px;
+  height: 200px;
+  box-shadow: 0 0 12px 0 rgba(0,0,0,0.30);
+  border: none;
+  margin: 0px;
+  padding: 0px 20px 20px 20px;
+}
+
+.system-dialog-content-box {
+  margin: 36px 0 0 0;
+  padding: 0px;
+}
+
+.system-dialog-title {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-align: center;
+  line-height: 19px;
+  color: #000000;
+}
+
+.system-dialog-button-container {
+  height: 103px;
+  margin-top: 41px;
+}
+
+.system-dialog-button {
+  border: none;
+  border-radius: 10px;
+  background-color: white;
+  margin: 0px 2px;
+
+  font-size: 13px;
+  color: #000000;
+  letter-spacing: 0;
+  text-align: center;
+  line-height: 19px;
+
+  width: 80px;
+  height: 103px;
+}
+
+.system-dialog-button:hover {
+  background-color: rgba(0, 79, 255, 0.12);
+}
+
+.system-dialog-button:active {
+  background-color: rgba(0, 79, 255, 0.2);
+}
+
+.system-dialog-button-image {
+  icon-size: 38px;
+  margin: 18px 21px 15px 21px;
+}
+
+.system-dialog-button-label {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-align: center;
+  line-height: 19px;
+  color: #000000;
+}

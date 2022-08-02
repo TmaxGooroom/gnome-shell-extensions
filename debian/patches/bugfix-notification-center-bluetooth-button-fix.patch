@@ -1,0 +1,33 @@
+From: gangmo_seong <gangmo_seong@tmax.co.kr>
+Date: Wed, 3 Nov 2021 19:26:49 +0900
+Subject: [bugfix] notification-center: bluetooth button fix
+
+- removed disconnecting callback function which checks bluetooth status and update icon
+- not needed because there is no notification center and bluetooth icon during sessionmode change, so icon update is not required
+
+[IMS] N/A
+---
+ extensions/notification-center/extension.js | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/extensions/notification-center/extension.js b/extensions/notification-center/extension.js
+index b36a6f4..34cf184 100644
+--- a/extensions/notification-center/extension.js
++++ b/extensions/notification-center/extension.js
+@@ -864,7 +864,7 @@ const NotificationCenter = new LangClass({
+         this._model.connect('row-deleted', this._queueSync.bind(this));
+         this._model.connect('row-changed', this._queueSync.bind(this));
+         this._model.connect('row-inserted', this._sync.bind(this));
+-        Main.sessionMode.connect('updated', this._sync.bind(this));
++        // Main.sessionMode.connect('updated', this._sync.bind(this));
+         this._proxy.connect('g-properties-changed', this._queueSync.bind(this));
+ 
+ 
+@@ -1057,7 +1057,6 @@ const NotificationCenter = new LangClass({
+         Main.extensionManager.disconnect(this.subPanelId);
+         Main.layoutManager.disconnect(this._monitorsChangedId);
+         this.revertSubPanelUI();
+-
+         this.blinkIconStopIfBlinking();
+ 
+         if (this.messageListRemoved) {

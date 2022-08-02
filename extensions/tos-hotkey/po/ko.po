@@ -1,0 +1,62 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-05-25 13:47+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: altF4.js:16
+msgid "Log Out"
+msgstr "로그아웃"
+
+#: altF4.js:17
+msgid "Switch User"
+msgstr "사용자 전환"
+
+#: altF4.js:18
+msgid "Sleep"
+msgstr "잠자기"
+
+#: altF4.js:19
+msgid "Restart"
+msgstr "다시 시작"
+
+#: altF4.js:20
+msgid "Shut Down"
+msgstr "시스템 종료"
+
+#: altF4.js:28
+msgid "Please select an action that you want to perform."
+msgstr "원하는 작업을 선택해 주세요."
+
+#: switchMonitor.js:16
+msgid "Screen 1 only"
+msgstr "1번 화면만"
+
+#: switchMonitor.js:17
+msgid "Duplicate"
+msgstr "복제"
+
+#: switchMonitor.js:18
+msgid "Expand"
+msgstr "확장"
+
+#: switchMonitor.js:19
+msgid "Screen 2 only"
+msgstr "2번 화면만"
+
+#: switchMonitor.js:268
+msgid "select a display mode."
+msgstr "디스플레이 방식을 선택해 주세요"

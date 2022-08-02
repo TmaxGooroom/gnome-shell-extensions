@@ -1,0 +1,28 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Mon, 8 Nov 2021 15:39:28 +0900
+Subject: [chore] Search: Remove the stack trace log that occurs when
+ reloading.
+
+- Change to use 'remove_all_children' instead of 'destroy'
+
+[IMS] N/A
+---
+ extensions/search/baseMenuLayout.js | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/extensions/search/baseMenuLayout.js b/extensions/search/baseMenuLayout.js
+index 05cbba0..997af25 100644
+--- a/extensions/search/baseMenuLayout.js
++++ b/extensions/search/baseMenuLayout.js
+@@ -272,10 +272,7 @@ var BaseLayout = class { // eslint-disable-line no-unused-vars
+             this.isRunning = false;
+         }
+ 
+-        this.mainBox.get_children().forEach(child => {
+-            if (child && child !== undefined && child !== null)
+-                child.destroy();
+-        });
++        this.mainBox.remove_all_children();
+     }
+ 
+     _createScrollBox(params) {

@@ -1,0 +1,74 @@
+From: sohee_yoon <sohee_yoon@tmax.co.kr>
+Date: Tue, 10 May 2022 18:29:14 +0900
+Subject: [feat] Greeter: Prevent screen from turning off when entering the
+ lock screen.
+
+- Customize screenshield function
+- _completeLockScreenShown() and _lockScreenShown() function
+
+[IMS] 274548
+---
+ extensions/greeter/extension.js | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/extensions/greeter/extension.js b/extensions/greeter/extension.js
+index c688138..88e87a2 100644
+--- a/extensions/greeter/extension.js
++++ b/extensions/greeter/extension.js
+@@ -22,6 +22,7 @@ const LoginManager = imports.misc.loginManager;
+ const _ = imports.gettext.gettext;
+ 
+ const SessionMode = imports.ui.sessionMode;
++const MessageTray = imports.ui.messageTray;
+ 
+ let _startupCompleteSignalId = 0;
+ let _sessionModeUpdatedSignalId = 0;
+@@ -69,6 +70,39 @@ function _connectSessionUpdatedSignal() {
+     });
+ }
+ 
++// Customize ScreenShield::_completeLockScreenShown()
++function _completeLockScreenShown(/* params*/) {
++    let ss = Main.screenShield;
++    ss._isActive = true;
++
++    /*
++      // Delete the following code.
++      // if (prevIsActive != this._isActive)
++      //    this.emit('active-changed');
++      This is to prevent the screen from turning off when entering the lock screen.
++    */
++
++    if (ss._loginSession)
++        ss._loginSession.SetLockedHintRemote(true);
++
++    ss._syncInhibitor();
++    ss.emit('lock-screen-shown');
++}
++
++// Customize ScreenShield::_lockScreenShown()
++function _lockScreenShown() {
++    let ss = Main.screenShield;
++    ss._hidePointerUntilMotion();
++    ss._lockScreenState = MessageTray.State.SHOWN;
++    /*
++        // Delete the following code.
++        // this._activateFade(this._shortLightbox, MANUAL_FADE_TIME);
++        This is to prevent the screen from turning off when entering the lock screen.
++    */
++
++    _completeLockScreenShown();
++}
++
+ function enable() { // eslint-disable-line no-unused-vars
+     if (!LoginManager.canLock())
+         return;
+@@ -109,6 +143,8 @@ function enable() { // eslint-disable-line no-unused-vars
+ 
+         if (Main.sessionMode.currentMode === 'tos')
+             _connectSessionUpdatedSignal();
++
++        Main.screenShield._lockScreenShown = _lockScreenShown;
+     }
+ }
+ 

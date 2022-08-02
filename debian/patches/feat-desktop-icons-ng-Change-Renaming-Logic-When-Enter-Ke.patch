@@ -1,0 +1,26 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 21 Dec 2021 14:12:08 +0900
+Subject: [feat] desktop-icons-ng : Change Renaming Logic When Enter Key is
+ entered
+
+- When the Enter key is pressed while renaming, it is modified so that it behaves the same as when renamed by clicking elsewhere.
+- Focus out first, rename later.
+
+[IMS] 273875
+---
+ extensions/desktop-icons-ng/renameView.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/desktop-icons-ng/renameView.js b/extensions/desktop-icons-ng/renameView.js
+index c8c5be9..8646bfa 100644
+--- a/extensions/desktop-icons-ng/renameView.js
++++ b/extensions/desktop-icons-ng/renameView.js
+@@ -122,7 +122,7 @@ var RenameArea = GObject.registerClass(class RenameArea extends Gtk.TextView {
+ 
+         let symbol = event.keyval;
+         if (symbol === Gdk.KEY_Return || symbol === Gdk.KEY_KP_Enter) {
+-            this._fileItem.doRename();
++            this._fileItem.finishRename();
+             return true;
+         } else if (symbol === Gdk.KEY_Escape) {
+             this.cancelRename();

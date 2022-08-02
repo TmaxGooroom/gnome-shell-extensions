@@ -1,0 +1,3 @@
+[org.gnome.shell.extensions.arcmenu]
+menu-hotkey='Super_L'
+pinned-app-list=['ToGate', '', 'togate-browser.desktop','Terminal', '', 'org.gnome.Terminal.desktop']

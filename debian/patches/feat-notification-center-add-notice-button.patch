@@ -1,0 +1,193 @@
+From: gangmo seong <gangmo_seong@tmax.co.kr>
+Date: Tue, 22 Feb 2022 18:13:04 +0900
+Subject: [feat] notification-center: add notice button
+
+- added button which leads to notice webpage
+- temporary button design
+
+[IMS] N/A
+---
+ extensions/notification-center/noticeAlarm.js  | 14 +++++++---
+ extensions/notification-center/noticeApplet.js | 38 ++++++--------------------
+ extensions/notification-center/noticeView.js   |  6 +++-
+ 3 files changed, 24 insertions(+), 34 deletions(-)
+
+diff --git a/extensions/notification-center/noticeAlarm.js b/extensions/notification-center/noticeAlarm.js
+index 2dd2ec9..7afb655 100755
+--- a/extensions/notification-center/noticeAlarm.js
++++ b/extensions/notification-center/noticeAlarm.js
+@@ -1,14 +1,20 @@
+ const { Notify, Gio } = imports.gi;
+ 
++/*
++ARGV[0] - title
++ARGV[1] - url
++*/
++
+ function onNotificationPopupOpened(data) {
+     let window = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeView.js', data, 'empty', 'empty', 'empty'] });
+     window.init(null);
+ }
+ 
++var NOTIFICATION_TIMEOUT = 5000;
++
+ Notify.init('notice');
+-let notification = new Notify.Notification({ summary: ARGV[1], body: '' });
++let notification = new Notify.Notification({ summary: ARGV[0], body: '' });
+ notification.add_action('default', 'detail view', data => onNotificationPopupOpened(data));
+ notification.set_urgency(Notify.Urgency.NORMAL);
+-notification.set_timeout(5);
+-if (ARGV[0] === 'show')
+-    notification.show();
++notification.set_timeout(NOTIFICATION_TIMEOUT);
++notification.show();
+diff --git a/extensions/notification-center/noticeApplet.js b/extensions/notification-center/noticeApplet.js
+index 22a3726..7b28664 100644
+--- a/extensions/notification-center/noticeApplet.js
++++ b/extensions/notification-center/noticeApplet.js
+@@ -18,17 +18,15 @@
+  *
+  */
+ 
+-const { Gio, GLib, Notify } = imports.gi;
++const { Gio, GLib } = imports.gi;
+ const Me = imports.misc.extensionUtils.getCurrentExtension();
+ const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+ const _ = Gettext.gettext;
+ 
+-// var PANEL_TRAY_ICON_SIZE = 22;
+ var NOTIFICATION_LIMIT = 5;
+ var NOTIFICATION_TEXT_LIMIT = 17;
+-// var NOTIFICATION_TIMEOUT = 5000;
++// var PANEL_TRAY_ICON_SIZE = 22;
+ // var NOTIFICATION_MSG_ICON = 'notice-applet-msg';
+-// var NOTIFICATION_MSG_URGENCY_ICON = 'notice-applet-msg-urgency';
+ // var DEFAULT_TRAY_ICON = 'notice-applet-panel';
+ // var DEFAULT_NOTICE_TRAY_ICON = 'notice-applet-event-panel';
+ 
+@@ -68,7 +66,6 @@ var noticeApplet = class applet {
+         let monitor = Gio.NetworkMonitor.get_default();
+         this.networkSig = monitor.connect('network-changed', available => this.onNetworkChanged(available));
+         this.isConnected = monitor.get_network_available();
+-        Notify.init('notice');
+ 
+         if (this.isConnected && this.isAgent)
+             this.button.show();
+@@ -181,7 +178,6 @@ var noticeApplet = class applet {
+     }
+ 
+     noticeDoneCallback(sourceObject, res) {
+-        log('noticeDonecallback');
+         let ret = sourceObject.call_finish(res);
+         if (!ret)
+             return;
+@@ -206,7 +202,7 @@ var noticeApplet = class applet {
+             if (total > 0)
+                 GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
+             if (this.disabledCnt > 0)
+-                GLib.timeout_add(500, () => this.noticeClickToJob());
++                GLib.timeout_add(0, 500, () => this.noticeClickToJob());
+         }
+         this.isAgent = true;
+     // this.trayIconChange ();
+@@ -221,6 +217,7 @@ var noticeApplet = class applet {
+             return;
+         }
+         let notiObj = json;
++        this.temp = notiObj;
+ 
+         if (!urgency) {
+             let obj4 = json['module']['task']['out']['status'];
+@@ -255,17 +252,12 @@ var noticeApplet = class applet {
+                     continue;
+ 
+                 let n = [notiObj['enabled_title_view_notis'][i]['title'], notiObj['enabled_title_view_notis'][i]['url']];
+-                // let n = new Notify.Notification();
+-                // n.title = notiObj['enabled_title_view_notis'][i]['title'];
+-                // n.url = notiObj['enabled_title_view_notis'][i]['url'];
+-                // n.icon = urgency ? NOTIFICATION_MSG_URGENCY_ICON : NOTIFICATION_MSG_ICON;
+                 this.queue.push(n);
+             }
+         }
+     }
+ 
+     noticeImmediatelyJob() {
+-        log('noticeimmediatelyjob');
+         this.isJob = true;
+         let n;
+ 
+@@ -281,7 +273,6 @@ var noticeApplet = class applet {
+             let title = this.noticeLimitText(n[0], NOTIFICATION_TEXT_LIMIT);
+             this.notificationOpened(title, n[1]);
+             // GLib.HashTable.insert(this.dataList, notification, n);
+-            // notification.connect('closed', () => this.onNotificationClosed);
+             this.total--;
+             return this.isJob;
+         }
+@@ -294,13 +285,12 @@ var noticeApplet = class applet {
+         log('noticeclicktojob');
+         this.isJob = true;
+ 
+-        let n;
+-        n.title = this.noticeOtherText(_('Notice'), this.disabledCnt);
+-        n.url = this.defaultDomain;
++        let title = this.noticeOtherText(_('Notice'), this.disabledCnt);
++        let url = this.defaultDomain;
+         // n.icon = NOTIFICATION_MSG_ICON;
+ 
+         if (NOTIFICATION_LIMIT <= this.total) {
+-            this.queue.push(n);
++            this.queue.push([title, url]);
+             GLib.timeout_add(0, 500, () => this.noticeImmediatelyJob());
+ 
+             this.isJob = false;
+@@ -308,9 +298,8 @@ var noticeApplet = class applet {
+         }
+ 
+         this.total++;
+-        this.notificationOpened(n.title, n.url);
++        this.notificationOpened(title, url);
+         // GLib.HashTable.insert(this.dataList, notification, n);
+-        // notification.connect('closed', () => this.onNotificationClosed());
+         this.total--;
+         this.isJob = false;
+         return this.isJob;
+@@ -331,17 +320,8 @@ var noticeApplet = class applet {
+     }
+ 
+     notificationOpened(title, url) {
+-        let Alarm = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js', 'show', title, url] });
++        let Alarm = new Gio.Subprocess({ argv: ['gjs', '/usr/share/gnome-shell/extensions/notification-center@tmax-shell-extensions/noticeAlarm.js', title, url] });
+         Alarm.init(null);
+-        return true;
+-
+-        /* let notification = new Notify.Notification({ summary: title, body: '' });
+-        notification.add_action('default', _('detail view'), data => this.onNotificationPopupOpened(data));
+-        notification.set_urgency(Notify.Urgency.NORMAL);
+-        notification.set_timeout(NOTIFICATION_TIMEOUT);
+-        notification.show();
+-
+-        return notification;*/
+     }
+ 
+     onNotificationClosed() {
+diff --git a/extensions/notification-center/noticeView.js b/extensions/notification-center/noticeView.js
+index c819845..a7b3f9e 100755
+--- a/extensions/notification-center/noticeView.js
++++ b/extensions/notification-center/noticeView.js
+@@ -1,10 +1,14 @@
+ const { Gtk, Gdk, Soup, WebKit2 } = imports.gi;
+ 
++/* ARGV[0] - url
++  ARGV[1] - signing
++  ARGV[2] - sessionId
++  ARGV[3] - this.clientId */
++
+ function onNotificationWindowClosed() {
+     [offsetX, offsetY] = window.get_position();
+     // send offset?
+ 
+-    // window.destroy();
+     Gtk.main_quit();
+ }
+ 

@@ -1,0 +1,26 @@
+From: jiyun_ha <jiyun_ha@tmax.co.kr>
+Date: Wed, 29 Jun 2022 16:53:29 +0900
+Subject: [feat] arc-menu : replace Tmax arc menu icon with new one
+
+ - Same as above
+
+[IMS] 283190
+---
+ extensions/arc-menu/media/icons/tos_desktop_ic_dock_tmax .svg | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/extensions/arc-menu/media/icons/tos_desktop_ic_dock_tmax .svg b/extensions/arc-menu/media/icons/tos_desktop_ic_dock_tmax .svg
+index fbf7731..fb6a222 100644
+--- a/extensions/arc-menu/media/icons/tos_desktop_ic_dock_tmax .svg	
++++ b/extensions/arc-menu/media/icons/tos_desktop_ic_dock_tmax .svg	
+@@ -1,7 +1,4 @@
+-<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
+-    <g fill="none" fill-rule="evenodd">
+-        <path d="M0 0h26v26H0z"/>
+-        <path d="M22.009 6.655a.406.406 0 0 0-.318-.155h-9.103l-.676 2.836a.412.412 0 0 1-.399.326H5.55l-.341 1.86a.425.425 0 0 0 .082.35.407.407 0 0 0 .319.155H9.7L7.167 24.195a.428.428 0 0 0 .082.35.409.409 0 0 0 .318.155h5.913c.194 0 .36-.138.4-.331l2.571-12.342h4.269c.193 0 .36-.138.4-.332l.97-4.69a.423.423 0 0 0-.081-.35" fill="#FFF"/>
+-        <path d="M12.072 1.3H5.445c-.19 0-.355.14-.397.336L3.65 8.14a.448.448 0 0 0 .08.364.4.4 0 0 0 .318.162h6.623c.19 0 .354-.139.396-.335l1.403-6.506a.448.448 0 0 0-.08-.364.4.4 0 0 0-.318-.162z" fill="#EB5549"/>
+-    </g>
++<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
++<path fill-rule="evenodd" clip-rule="evenodd" d="M30.3944 12.6786C30.3049 12.5658 30.17 12.5 30.0278 12.5H19.5244L18.7449 15.7725C18.6959 15.9925 18.5046 16.1485 18.2844 16.1485H11.4034L11.0102 18.294C10.9806 18.4367 11.0156 18.5849 11.1053 18.6982C11.1953 18.811 11.3297 18.8771 11.4726 18.8771H16.1938L13.2698 32.9172C13.2404 33.0591 13.2749 33.2084 13.3644 33.3216C13.4544 33.4339 13.5893 33.5 13.7315 33.5H20.5542C20.7777 33.5 20.97 33.3402 21.0163 33.1179L23.9823 18.8771H28.9076C29.1302 18.8771 29.3222 18.7178 29.3688 18.4945L30.4895 13.0825C30.5193 12.9404 30.4846 12.7919 30.3944 12.6786" fill="white"/>
++<path fill-rule="evenodd" clip-rule="evenodd" d="M18.9295 6.5H11.2831C11.0633 6.5 10.8731 6.66081 10.8241 6.88728L9.21171 14.3938C9.18 14.5415 9.21354 14.6959 9.30288 14.8138C9.39223 14.9317 9.52716 15 9.67022 15H17.3122C17.5317 15 17.7214 14.8401 17.7699 14.6139L19.3883 7.10675C19.42 6.95966 19.3865 6.80527 19.2971 6.68707C19.2078 6.56888 19.0731 6.5 18.9295 6.5Z" fill="#EB5549"/>
+ </svg>

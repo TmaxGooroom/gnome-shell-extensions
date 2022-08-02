@@ -1,0 +1,78 @@
+From: jingi_jeong <jingi_jeong@tmax.co.kr>
+Date: Tue, 14 Dec 2021 15:08:20 +0900
+Subject: [bugfix] desktop-icons-ng : Remove extension of .desktop file in
+ icon label
+
+- Update Name to remove extension whenever metadata changed
+
+[IMS] N/A
+---
+ extensions/desktop-icons-ng/desktopManager.js | 4 ++++
+ extensions/desktop-icons-ng/fileItem.js       | 9 +++++----
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/extensions/desktop-icons-ng/desktopManager.js b/extensions/desktop-icons-ng/desktopManager.js
+index 7a4e704..eaad6ca 100644
+--- a/extensions/desktop-icons-ng/desktopManager.js
++++ b/extensions/desktop-icons-ng/desktopManager.js
+@@ -1369,6 +1369,10 @@ var DesktopManager = class {
+ 
+     onFileRenamed(oldFile, newFile) {
+         let oldItem = this.getFileItem(oldFile.get_uri());
++        if (!oldItem)
++            return;
++
++
+         if (oldItem.dropCoordinates) {
+             let [X, Y] = oldItem.savedCoordinates;
+             let info = new Gio.FileInfo();
+diff --git a/extensions/desktop-icons-ng/fileItem.js b/extensions/desktop-icons-ng/fileItem.js
+index 1d8c62b..21594d6 100644
+--- a/extensions/desktop-icons-ng/fileItem.js
++++ b/extensions/desktop-icons-ng/fileItem.js
+@@ -91,8 +91,6 @@ var FileItem = class {
+         this._innerContainer.pack_start(this._renameScrollView, true, true, 0);
+         this._container.pack_start(this._eventBox, false, false, 0);
+         this.actor.add(this._container);
+-
+-        this._setFileName(fileInfo.get_display_name());
+         this._windowError = null;
+ 
+         /* We need to allow the "button-press" event to pass through the callbacks, to allow the DnD to work
+@@ -169,7 +167,7 @@ var FileItem = class {
+             text = text.split(character).join(`${character}\u200B`);
+ 
+         this._label.label = text;
+-        this._renameScrollView.setText(text, this.fileNameLength);
++        this._renameScrollView.setText(this.fileName, this.fileNameLength);
+     }
+ 
+     _readCoordinatesFromAttribute(fileInfo, attribute) {
+@@ -370,7 +368,6 @@ var FileItem = class {
+                     if (rebuild)
+                         this._updateIcon();
+ 
+-                    this._updateName();
+                 } catch (error) {
+                     if (!error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                         print(`Error getting the file info: ${error}`);
+@@ -416,6 +413,8 @@ var FileItem = class {
+             this._setFileName(this._displayName);
+ 
+ 
++        this._updateName();
++
+         this._fileType = fileInfo.get_file_type();
+         this._isDirectory = this._fileType === Gio.FileType.DIRECTORY;
+         this._isSpecial = this._fileExtra !== Enums.FileType.NONE;
+@@ -728,8 +727,10 @@ var FileItem = class {
+     _updateName() {
+         if (this._isValidDesktopFile && !this._desktopManager.writableByOthers && !this._writableByOthers && this.trustedDesktopFile)
+             this._setFileName(this._desktopFile.get_locale_string('Name'));
++
+         else
+             this._setFileName(this._fileInfo.get_display_name());
++
+     }
+ 
+     canRename() {
